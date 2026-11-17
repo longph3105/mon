@@ -4,6 +4,8 @@
 
 ### Added
 
+- `mon.data.labels`: `read_yolo`/`write_yolo`, `read_voc`, `read_coco` (`CocoAnnotations`) → sample dicts
+  with `tv_tensors.BoundingBoxes` (absolute XYXY) and `labels`; malformed files raise with file and line.
 - `mon.data` package (lazy namespace). `mon.data.io`: `read_image`/`write_image` (RGB `tv_tensors.Image`,
   `uint8`/`uint16`, EXIF orientation, atomic writes; zero-copy CHW view), `to_numpy_hwc`, `iter_video_frames`,
   `video_info`, `VideoWriter` (OpenCV).
@@ -42,7 +44,7 @@
 - Packaging with uv and the `uv_build` backend; install with `uv sync`.
 - Minimal runtime dependencies: `numpy`, `torch`, `torchvision`.
 - Runtime dependencies: `pyyaml`, `rich`, `tqdm`,
-  `xmltodict`, `tensordict`, `omegaconf`,
+  `tensordict`, `omegaconf`,
   `tensorboard`.
 - `opencv-python-headless` as a runtime dependency.
 - `py.typed` marker (PEP 561): type checkers use `mon`'s annotations.

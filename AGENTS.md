@@ -15,10 +15,11 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
 - **Done:** `mon.core` (ported from `mon_old/libs/mon/src/mon/core`): paths, file I/O and downloads, config
   (OmegaConf), logging and progress bars, enums, registry, runtime (devices, seeding), weights, size, timing.
-- **In progress:** `mon.data`: `io` done (images, videos via OpenCV); next `labels`, `structures`, `dataset` +
+- **In progress:** `mon.data`: `io`, `labels` done; next `structures`, `dataset` +
   `loader`, `transforms`, `zoo`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
-- **Next:** `mon.nn` / `mon.models` (registries, weights enums), runners (train/predict configs, run directories), plotting. Decisions deferred to these ports are
-  recorded in `logs/log_2026_11_17.md` under each `core` module's entry.
+- **Next:** `mon.nn` / `mon.models` (registries, weights enums), runners (train/predict configs, run
+  directories), plotting. Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
+  `core` module's entry.
 - **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the
   `dev` group. No linter or formatter config yet.
 - Don't invent commands (`uv run …`, `pytest …`) until the config that backs them exists.
@@ -106,6 +107,12 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   Pretrained weights: declare a `WeightsEnum` of `Weights("zoo/relative/path.pt")` per model and accept user input
   through `resolve_weights(spec, Enum)`; a missing file must raise, never skip loading.
 - Image/video I/O: `mon.data.io` (OpenCV). Don't use `torchvision.io` codecs: deprecated in torchvision 0.29.
+- Samples are dicts. Wrap every image-like value explicitly (`tv_tensors.Image`/`Mask`/`Video`); v2 treats only
+  the first *plain* tensor as an image and silently skips the rest. Class-id maps are `Mask` (nearest resize);
+  continuous maps (depth, targets) are `Image`. Restore types after arithmetic with `tv_tensors.wrap`.
+- Transforms run in two stages: geometric on the whole sample, photometric only on input keys (via `ApplyTo`):
+  v2 photometric ops change *every* `Image`, including ground-truth targets and depth. After crops, use
+  `SanitizeBoundingBoxes` so labels drop with their boxes.
 - Tensors are `[B, C, H, W]` unless stated otherwise; document shapes in docstrings when they're not obvious.
 
 ---

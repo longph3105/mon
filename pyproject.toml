@@ -40,7 +40,6 @@ dependencies    = [
     "pyyaml>=6.0.3",                    # YAML parser and emitter.
     "rich>=15.0",                       # Rich terminal output: tables, progress, tracebacks.
     "tqdm>=4.70",                       # Not imported by mon: gives torch.hub downloads a real progress bar.
-    "xmltodict>=1.0",                   # XML <-> dict (e.g. VOC-style annotations).
     # --- Scientific Computing ---
     "numpy>=2.5",                       # Array computing.
     # --- Deep Learning ---
