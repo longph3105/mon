@@ -15,8 +15,9 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
 - **Done:** `mon.core` (ported from `mon_old/libs/mon/src/mon/core`): paths, file I/O and downloads, config
   (OmegaConf), logging and progress bars, enums, registry, runtime (devices, seeding), weights, size, timing.
-- **Next:** `mon.data` (images, boxes, classes, metadata), `mon.nn` / `mon.models` (registries, weights enums),
-  datasets, runners (train/predict configs, run directories), plotting. Decisions deferred to these ports are
+- **In progress:** `mon.data`: `io` done (images, videos via OpenCV); next `labels`, `structures`, `dataset` +
+  `loader`, `transforms`, `zoo`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
+- **Next:** `mon.nn` / `mon.models` (registries, weights enums), runners (train/predict configs, run directories), plotting. Decisions deferred to these ports are
   recorded in `logs/log_2026_11_17.md` under each `core` module's entry.
 - **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the
   `dev` group. No linter or formatter config yet.
@@ -28,15 +29,16 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
 ## Layout
 
-| Path            | Purpose                                                                          |
-|-----------------|----------------------------------------------------------------------------------|
-| `src/mon/`      | The importable package. All library code lives here.                             |
-| `src/mon/core/` | Shared infrastructure; no deps on the rest of `mon`. Overview: `help(mon.core)`. |
-| `tests/`        | Tests, mirroring the `src/mon/` module tree.                                     |
-| `docs/`         | Long-form documentation.                                                         |
-| `logs/`         | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`.                         |
-| `CHANGELOG.md`  | User-facing changes, newest first.                                               |
-| `README.md`     | Install, usage, citation.                                                        |
+| Path            | Purpose                                                                            |
+|-----------------|------------------------------------------------------------------------------------|
+| `src/mon/`      | The importable package. All library code lives here.                               |
+| `src/mon/core/` | Shared infrastructure; no deps on the rest of `mon`. Overview: `help(mon.core)`.   |
+| `src/mon/data/` | Files → samples → batches; may import only `mon.core`. Overview: `help(mon.data)`. |
+| `tests/`        | Tests, mirroring the `src/mon/` module tree.                                       |
+| `docs/`         | Long-form documentation.                                                           |
+| `logs/`         | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`.                           |
+| `CHANGELOG.md`  | User-facing changes, newest first.                                                 |
+| `README.md`     | Install, usage, citation.                                                          |
 
 Keep each fact in one place: link to `docs/` instead of restating it here or in `README.md`.
 
@@ -88,7 +90,8 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Declare `__all__` at the top of every public module.
 - Package namespaces (`mon.core`, later `mon.data`, …) re-export their submodules' `__all__` lazily (PEP 562
   `__getattr__` + a literal `__all__` + `TYPE_CHECKING` imports). When adding a public name, add it to the
-  package's `_EXPORTS` and `__all__` (`tests/core/test_init.py` enforces this). Code inside `mon` imports from
+  package's `_EXPORTS` and `__all__`, and its row in the docstring overview table (`tests/test_namespaces.py`
+  enforces all three, plus the package layering in `ALLOWED_IMPORTS`). Code inside `mon` imports from
   submodules (`from mon.core.path import Path`), never from the package namespace. Top-level `mon` exposes
   only subpackages.
 - Group large modules with section comments: `# --- Section Name ---`.
@@ -102,6 +105,7 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Never hardcode data, weight, or output paths. Read them from config or env vars (for example `DATA_DIR`).
   Pretrained weights: declare a `WeightsEnum` of `Weights("zoo/relative/path.pt")` per model and accept user input
   through `resolve_weights(spec, Enum)`; a missing file must raise, never skip loading.
+- Image/video I/O: `mon.data.io` (OpenCV). Don't use `torchvision.io` codecs: deprecated in torchvision 0.29.
 - Tensors are `[B, C, H, W]` unless stated otherwise; document shapes in docstrings when they're not obvious.
 
 ---
@@ -124,3 +128,5 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 3. Add an entry to `CHANGELOG.md` for user-visible changes.
 4. After significant work, append a short summary to `logs/log_YYYY_MM_DD.md` in this repo.
 5. Never commit model weights, datasets, checkpoints (`*.pt`, `*.pth`, `*.ckpt`), or secrets.
+6. Tests use synthetic data (NumPy/torch arrays, tiny files in `tmp_path`); never commit image or video
+   assets. Sample photos for manual work belong under `$DATA_DIR`, accessed by path, not constants.

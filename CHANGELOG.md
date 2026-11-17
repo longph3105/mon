@@ -4,6 +4,9 @@
 
 ### Added
 
+- `mon.data` package (lazy namespace). `mon.data.io`: `read_image`/`write_image` (RGB `tv_tensors.Image`,
+  `uint8`/`uint16`, EXIF orientation, atomic writes; zero-copy CHW view), `to_numpy_hwc`, `iter_video_frames`,
+  `video_info`, `VideoWriter` (OpenCV).
 - Flat, lazily loaded namespace: `import mon.core as mc; mc.Path, mc.load_config, …`;
   `mon.core` subpackage reachable from `import mon`. `get_console()` accessor.
 - `mon.core.path.Path`: `pathlib.Path` subclass with case-insensitive extension checks

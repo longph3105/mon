@@ -30,8 +30,9 @@ Examples:
     (224, 224)
 """
 
-import importlib
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+
+from mon.core._lazy import make_lazy
 
 _SUBMODULES: tuple[str, ...] = (
     "config", "console", "constants", "enums", "fileio", "path", "registry",
@@ -196,19 +197,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str) -> Any:
-    """Import the defining submodule on first access and cache the attribute."""
-    if name in _EXPORTS:
-        value = getattr(importlib.import_module(f"{__name__}.{_EXPORTS[name]}"), name)
-        globals()[name] = value
-        return value
-    if name in _SUBMODULES:
-        return importlib.import_module(f"{__name__}.{name}")
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def __dir__() -> list[str]:
-    return sorted({*globals(), *_EXPORTS, *_SUBMODULES})
+__getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 
 
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.

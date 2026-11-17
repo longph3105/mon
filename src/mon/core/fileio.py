@@ -33,8 +33,8 @@ _SHA256_RE   = re.compile(r"^[0-9a-f]{64}$")
 
 # --- Helpers ---
 
-def _atomic_write_text(path: Path, text: str) -> None:
-    """Write ``text`` to ``path`` via a temp file in the same directory and ``os.replace``.
+def _atomic_write_bytes(path: Path, data: bytes) -> None:
+    """Write ``data`` to ``path`` via a temp file in the same directory and ``os.replace``.
 
     Readers never see a partial file, and a crash mid-write leaves any old file intact.
     The temp file is created with mode ``0o666`` so the usual umask applies.
@@ -42,14 +42,19 @@ def _atomic_write_text(path: Path, text: str) -> None:
     tmp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
-            f.write(text)
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, path)
     except BaseException:
         tmp.unlink(missing_ok=True)
         raise
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """``_atomic_write_bytes`` for UTF-8 text (no newline translation)."""
+    _atomic_write_bytes(path, text.encode("utf-8"))
 
 
 def _prepare_target(path: PathLike, overwrite: bool) -> Path:
