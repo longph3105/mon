@@ -49,10 +49,14 @@ export MON_ZOO_DIR=/path/to/zoo   # or: export DATA_DIR=/path/to/data
 ## Usage
 
 ```python
-import mon
+import mon.core as mc
 
-print(mon.__version__)
+cfg  = mc.load_config("exp.yaml", overrides=["optimizer.lr=1e-3"])
+dev  = mc.select_device("auto")        # cuda:0 → mps → cpu
+seed = mc.seed_everything(cfg.get("seed"))
 ```
+
+Names load lazily, so `import mon.core` stays fast until a name that needs PyTorch is used.
 
 ## Citation
 

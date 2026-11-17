@@ -1,4 +1,4 @@
-"""Runtime helpers: device discovery and selection, and global RNG seeding.
+"""Device selection and global RNG seeding.
 
 Nothing here runs at import; every call reads the current system state.
 """

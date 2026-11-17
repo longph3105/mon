@@ -1,4 +1,4 @@
-"""Global constants shared across ``mon``."""
+"""Global constants: file extensions, dir names, env vars."""
 
 __all__ = [
     "ANNS_DIR",

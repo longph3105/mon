@@ -28,15 +28,15 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
 ## Layout
 
-| Path            | Purpose                                                  |
-|-----------------|----------------------------------------------------------|
-| `src/mon/`      | The importable package. All library code lives here.     |
-| `src/mon/core/` | Shared infrastructure; depends on nothing else in `mon`. |
-| `tests/`        | Tests, mirroring the `src/mon/` module tree.             |
-| `docs/`         | Long-form documentation.                                 |
-| `logs/`         | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`. |
-| `CHANGELOG.md`  | User-facing changes, newest first.                       |
-| `README.md`     | Install, usage, citation.                                |
+| Path            | Purpose                                                                          |
+|-----------------|----------------------------------------------------------------------------------|
+| `src/mon/`      | The importable package. All library code lives here.                             |
+| `src/mon/core/` | Shared infrastructure; no deps on the rest of `mon`. Overview: `help(mon.core)`. |
+| `tests/`        | Tests, mirroring the `src/mon/` module tree.                                     |
+| `docs/`         | Long-form documentation.                                                         |
+| `logs/`         | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`.                         |
+| `CHANGELOG.md`  | User-facing changes, newest first.                                               |
+| `README.md`     | Install, usage, citation.                                                        |
 
 Keep each fact in one place: link to `docs/` instead of restating it here or in `README.md`.
 
@@ -86,6 +86,11 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Enums: subclass `AliasStrEnum` (`mon.core.enums`), not `aenum`. No `"default"` member or `None` fallback;
   put defaults in signatures (`split: Split = Split.TRAIN`).
 - Declare `__all__` at the top of every public module.
+- Package namespaces (`mon.core`, later `mon.data`, …) re-export their submodules' `__all__` lazily (PEP 562
+  `__getattr__` + a literal `__all__` + `TYPE_CHECKING` imports). When adding a public name, add it to the
+  package's `_EXPORTS` and `__all__` (`tests/core/test_init.py` enforces this). Code inside `mon` imports from
+  submodules (`from mon.core.path import Path`), never from the package namespace. Top-level `mon` exposes
+  only subpackages.
 - Group large modules with section comments: `# --- Section Name ---`.
 - Match the surrounding style. The owner aligns `=` and `:` in related assignments and signatures;
   keep that alignment and don't reformat code you aren't changing.

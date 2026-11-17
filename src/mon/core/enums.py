@@ -1,4 +1,4 @@
-"""Shared string enums (tasks, splits, run modes, strategies, box formats).
+"""Shared string enums with aliases.
 
 Members compare equal to their primary value (``Split.TRAIN == "train"``). Lookup by
 value also accepts aliases and is case-insensitive (``Task("Low_Light_Enhancement")``).

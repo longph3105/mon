@@ -1,4 +1,4 @@
-"""Read and write JSON, YAML, and text files; writes are atomic."""
+"""Atomic JSON/YAML/text I/O and verified downloads."""
 
 __all__ = [
     "download_file",

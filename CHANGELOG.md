@@ -4,6 +4,8 @@
 
 ### Added
 
+- Flat, lazily loaded namespace: `import mon.core as mc; mc.Path, mc.load_config, …`;
+  `mon.core` subpackage reachable from `import mon`. `get_console()` accessor.
 - `mon.core.path.Path`: `pathlib.Path` subclass with case-insensitive extension checks
   (`has_ext`, `is_image_file`, ...), sorted `files()`/`subdirs()`, `sibling`, `find_sibling`,
   `resolve_subdir`, `ensure_dir`, `normalize`, `size`, `modified_at`, `fingerprint`.

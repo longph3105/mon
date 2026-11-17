@@ -1,4 +1,4 @@
-"""Pretrained-weights descriptors, per-model weights enums, and loading.
+"""Pretrained-weights descriptors, enums, and loading.
 
 Pattern (as in torchvision): each model defines a ``WeightsEnum`` whose members are
 ``Weights``; user input (config value, CLI string, member) goes through

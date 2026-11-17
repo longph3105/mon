@@ -1,4 +1,4 @@
-"""A ``pathlib.Path`` subclass with helpers for research workflows."""
+"""Path subclass plus model-zoo and weights lookup."""
 
 __all__ = ["Path", "find_weights", "zoo_dir"]
 

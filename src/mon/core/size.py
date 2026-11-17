@@ -1,4 +1,4 @@
-"""Unambiguous ``(height, width)`` image size."""
+"""Unambiguous (height, width) image size."""
 
 __all__ = ["Size"]
 

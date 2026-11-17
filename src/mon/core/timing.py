@@ -1,4 +1,4 @@
-"""Wall-clock timers that account for asynchronous GPU work."""
+"""Wall-clock timers that account for async GPU work."""
 
 __all__ = [
     "Profiler",

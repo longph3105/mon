@@ -1,4 +1,4 @@
-"""General-purpose helpers for values, strings, and lists. Standard library only."""
+"""Stdlib-only helpers for values, strings, and lists."""
 
 __all__ = [
     "has_value",

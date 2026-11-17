@@ -1,4 +1,4 @@
-"""Console output, logging, and progress bars on a shared ``rich`` console.
+"""Logging, progress bars, and the shared rich console.
 
 Library code only calls ``get_logger(__name__)``. Importing ``mon`` never configures
 logging; entry points (scripts, CLIs) call ``setup_logging()`` once.
@@ -8,6 +8,7 @@ __all__ = [
     "DEFAULT_QUIET_LOGGERS",
     "SpeedColumn",
     "console",
+    "get_console",
     "get_logger",
     "print_dict",
     "progress_bar",
@@ -50,6 +51,14 @@ _THEME = Theme({
 
 console = Console(theme=_THEME, log_time_format="[%X]", soft_wrap=True)
 """Shared ``rich`` console (stdout) for rules, tables, and progress bars."""
+
+
+def get_console() -> Console:
+    """Return the shared ``console``. Prefer this outside ``mon.core.console``: the name
+    ``mon.core.console`` refers to this module, so ``mon.core`` can't re-export the object
+    under that name.
+    """
+    return console
 
 
 # --- Logging ---

@@ -1,4 +1,4 @@
-"""Name-to-object registries with metadata (models, datasets, optimizers, …).
+"""Name-to-object registries with metadata filtering.
 
 Create one ``Registry`` per kind of object in the package that owns it, e.g.
 ``MODELS = Registry[type[nn.Module]]("models")`` in ``mon.nn``.
