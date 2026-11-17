@@ -4,6 +4,9 @@
 
 ### Added
 
+- `mon.data.dataset.ImageFolder`: prediction input from a folder (recursive, sorted), one file, or a list of
+  files; `meta.stem` keeps the relative path so outputs can mirror the input tree. Folder indexing (also in
+  `FolderDataset`) skips hidden files such as macOS `._*` AppleDouble files.
 - `docs/data.md`: guide to datasets, transforms, loaders, and pad-and-crop inference; its code runs in the
   tests. Docstring examples for `register_dataset`/`DATASETS` and the LOL datasets.
 - `Registry.add`: an object with the same `__module__` and `__qualname__` as the registered one (its module
@@ -15,11 +18,11 @@
   `MinMaxNormalize` (per-image or per-channel `[0, 1]` scaling).
 - `python -m mon.core.path`: shows the data, datasets, and zoo directories, their source variable, and
   whether they exist. `datasets_dir()`/`zoo_dir()` log the resolved directory and source once.
-- Environment variables are `DATA_DIR`, `DATASET_DIR`, `ZOO_DIR` (no `MON_` prefix).
+- Environment variables are `DATA_DIR`, `DATASETS_DIR`, `ZOO_DIR` (no `MON_` prefix).
 - `mon.data.dataset`: `FolderDataset` (declare per-split modality folders; pairing by relative stem),
   `Modality` (image/mask/depth/yolo/voc), `DATASETS` registry (zoo loaded on first lookup),
   `register_dataset`. `mon.data.loader`: `collate`, `create_dataloader` (seeded shuffle and workers).
-- `mon.core.path.datasets_dir()` (`DATASET_DIR`, else `$DATA_DIR/datasets`); `Registry(autoload=)`.
+- `mon.core.path.datasets_dir()` (`DATASETS_DIR`, else `$DATA_DIR/datasets`); `Registry(autoload=)`.
 - `mon.data.structures`: `ClassDef`, `ClassList` (validated, name/id lookup, `encode` annotation ids → training
   ids, `from_coco` with raw ids kept as `source_id`, YAML I/O), `SampleMeta`, `Sample`.
 - `mon.data.labels`: `read_yolo`/`write_yolo`, `read_voc`, `read_coco` (`CocoAnnotations`) → sample dicts

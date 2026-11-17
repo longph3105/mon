@@ -66,7 +66,7 @@ def _real_root(name: str) -> StdPath:
     try:
         root = datasets_dir() / name
     except RuntimeError:
-        pytest.skip("DATA_DIR / DATASET_DIR not set")
+        pytest.skip("DATA_DIR / DATASETS_DIR not set")
     if not root.is_dir():
         pytest.skip(f"{root} not on this machine")
     return root

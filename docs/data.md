@@ -9,15 +9,15 @@ interpreter.
 
 `mon` never hardcodes data paths. It reads environment variables:
 
-| Variable      | Meaning                               | Default              |
-|---------------|---------------------------------------|----------------------|
-| `DATA_DIR`    | Data root                             | none (required)      |
-| `DATASET_DIR` | Extracted datasets, one folder per id | `$DATA_DIR/datasets` |
-| `ZOO_DIR`     | Pretrained weights                    | `$DATA_DIR/zoo`      |
+| Variable       | Meaning                               | Default              |
+|----------------|---------------------------------------|----------------------|
+| `DATA_DIR`     | Data root                             | none (required)      |
+| `DATASETS_DIR` | Extracted datasets, one folder per id | `$DATA_DIR/datasets` |
+| `ZOO_DIR`      | Pretrained weights                    | `$DATA_DIR/zoo`      |
 
 Check them with `uv run python -m mon.core.path`.
 
-Each dataset has one **id**, e.g. `lol_v1`: its folder (`$DATASET_DIR/lol_v1/`) and its registry name are
+Each dataset has one **id**, e.g. `lol_v1`: its folder (`$DATASETS_DIR/lol_v1/`) and its registry name are
 the same string. Datasets are stored in a normalized layout per task family. Paired restoration datasets
 (low-light, denoising, …) use `<split>/images/` for inputs and `<split>/targets/` for ground truth, paired
 by file name. The workspace `data/README.md` defines ids and layouts and lists every dataset.
@@ -47,7 +47,7 @@ A sample is a plain dict:
   as `uint8`, 16-bit as `uint16`; nothing is scaled yet.
 - `meta` is a `SampleMeta`: index, stem, split, source paths, and the size before transforms.
 
-Pass `root=` to load a copy outside `DATASET_DIR`; `on_missing="skip"` drops samples with a missing file
+Pass `root=` to load a copy outside `DATASETS_DIR`; `on_missing="skip"` drops samples with a missing file
 instead of raising.
 
 ## 3. Transforms
@@ -122,9 +122,26 @@ assert pred.shape == batch["target"].shape
 To pad inside the dataset instead (e.g. to batch images of different sizes after padding), use
 `PadToMultiple(32)` in the transform and crop each prediction with `crop_to(pred, meta.orig_size)`.
 
+To predict on images that aren't a registered dataset (a folder, one file, or a list of files), use
+`ImageFolder`. It searches subfolders, skips hidden files (macOS `._*`), and keeps each image's path
+relative to the folder in `meta.stem`, so outputs can mirror the input tree:
+
+```python
+from mon.data import ImageFolder, write_image
+
+inputs = ImageFolder(test.root / "test" / "images", transform=v2.ToDtype(torch.float32, scale=True))
+out_dir = test.root.parent.parent / "runs" / "demo"          # in real code: the run directory
+for batch in create_dataloader(inputs, batch_size=1):
+    x, size = pad_to_multiple(batch["image"], 32)
+    with torch.no_grad():
+        pred = crop_to(model(x), size).clamp(0, 1)
+    meta = batch["meta"][0]
+    write_image(pred[0], out_dir / f"{meta.stem}.png")      # night/0001.jpg → night/0001.png
+```
+
 ## 6. Adding a dataset
 
-1. Put the data in `$DATASET_DIR/<id>/` in the normalized layout and add its row to `data/README.md`.
+1. Put the data in `$DATASETS_DIR/<id>/` in the normalized layout and add its row to `data/README.md`.
 2. Declare and register the class in a `mon.data.zoo` module:
 
    ```python

@@ -12,7 +12,7 @@ from typing import Self
 from mon.core.constants import (
     CONFIG_EXTENSIONS,
     DATA_DIR_ENV,
-    DATASET_DIR_ENV,
+    DATASETS_DIR_ENV,
     IMAGE_EXTENSIONS,
     RAW_IMAGE_EXTENSIONS,
     VIDEO_EXTENSIONS,
@@ -252,14 +252,14 @@ def _env_dir(primary: str, subdir: str, what: str) -> Path:
 
 
 def datasets_dir() -> Path:
-    """Return the datasets directory: ``$DATASET_DIR``, then ``$DATA_DIR/datasets``.
+    """Return the datasets directory: ``$DATASETS_DIR``, then ``$DATA_DIR/datasets``.
 
     Each dataset lives in a folder named by its id, e.g. ``datasets_dir() / "lol_v1"``.
 
     Raises:
         RuntimeError: If neither variable is set.
     """
-    return _env_dir(DATASET_DIR_ENV, "datasets", "datasets")
+    return _env_dir(DATASETS_DIR_ENV, "datasets", "datasets")
 
 
 def zoo_dir() -> Path:
@@ -318,7 +318,7 @@ def main() -> int:
     rows: list[tuple[str, Path | None, str]] = []
     data = os.environ.get(DATA_DIR_ENV, "").strip()
     rows.append(("data", Path(data).expanduser() if data else None, DATA_DIR_ENV if data else f"set {DATA_DIR_ENV}"))
-    for label, env, subdir in (("datasets", DATASET_DIR_ENV, "datasets"), ("zoo", ZOO_DIR_ENV, "zoo")):
+    for label, env, subdir in (("datasets", DATASETS_DIR_ENV, "datasets"), ("zoo", ZOO_DIR_ENV, "zoo")):
         resolved = _resolve_env_dir(env, subdir)
         rows.append((label, *resolved) if resolved else (label, None, f"set {env} or {DATA_DIR_ENV}"))
     ok = True

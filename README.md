@@ -40,11 +40,11 @@ Use the `gui` extra and matplotlib to display images.
 
 ## Configuration
 
-Pretrained weights are looked up in `$ZOO_DIR` and datasets in `$DATASET_DIR`; if unset, they default to
+Pretrained weights are looked up in `$ZOO_DIR` and datasets in `$DATASETS_DIR`; if unset, they default to
 `$DATA_DIR/zoo` and `$DATA_DIR/datasets`:
 
 ```shell
-export DATA_DIR=/path/to/data       # or set ZOO_DIR / DATASET_DIR individually
+export DATA_DIR=/path/to/data       # or set ZOO_DIR / DATASETS_DIR individually
 ```
 
 Set them where every process sees them, not only interactive terminals:

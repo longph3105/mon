@@ -58,7 +58,7 @@ _EXPORTS: dict[str, str] = {
     # constants
     "ANNS_DIR"             : "constants",
     "CONFIG_EXTENSIONS"    : "constants",
-    "DATASET_DIR_ENV"     : "constants",
+    "DATASETS_DIR_ENV"     : "constants",
     "DATA_DIR_ENV"         : "constants",
     "DEBUG_DIR"            : "constants",
     "DEFAULT_CKPT_EXT"     : "constants",
@@ -134,7 +134,7 @@ __all__ = [
     "BASE_KEY",
     "BBoxFormat",
     "CONFIG_EXTENSIONS",
-    "DATASET_DIR_ENV",
+    "DATASETS_DIR_ENV",
     "DATA_DIR_ENV",
     "DEBUG_DIR",
     "DEFAULT_CKPT_EXT",
@@ -210,7 +210,7 @@ if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
         DEFAULT_QUIET_LOGGERS, SpeedColumn, get_console, get_logger, print_dict, progress_bar, setup_logging,
     )
     from mon.core.constants import (
-        ANNS_DIR, CONFIG_EXTENSIONS, DATA_DIR_ENV, DATASET_DIR_ENV, DEBUG_DIR, DEFAULT_CKPT_EXT,
+        ANNS_DIR, CONFIG_EXTENSIONS, DATA_DIR_ENV, DATASETS_DIR_ENV, DEBUG_DIR, DEFAULT_CKPT_EXT,
         DEFAULT_IMAGE_EXT,
         DEFAULT_LABEL_EXT, DEFAULT_WEIGHTS_EXT, DEPTH_DIR, IMAGE_EXTENSIONS, IMAGES_DIR, LABELS_DIR,
         RAW_IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, WEIGHTS_EXTENSIONS, ZOO_DIR_ENV,

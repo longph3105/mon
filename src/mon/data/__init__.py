@@ -9,7 +9,7 @@ Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
     ==========  ===================================================================  ==========================================
     Module      Purpose                                                              Key names
     ==========  ===================================================================  ==========================================
-    dataset     Folder-based datasets declared by their on-disk layout.              FolderDataset, Modality, DATASETS
+    dataset     Folder-based datasets declared by their on-disk layout.              FolderDataset, ImageFolder, DATASETS
     io          Read and write images and videos.                                    read_image, write_image, VideoWriter
     labels      Read and write YOLO, VOC, and COCO box labels.                       read_yolo, read_voc, read_coco, write_yolo
     loader      Batching for dict samples and reproducible DataLoader construction.  collate, create_dataloader
@@ -29,6 +29,7 @@ _EXPORTS: dict[str, str] = {
     # dataset
     "DATASETS"         : "dataset",
     "FolderDataset"    : "dataset",
+    "ImageFolder"      : "dataset",
     "Modality"         : "dataset",
     "ModalityKind"     : "dataset",
     "paired_layout"    : "dataset",
@@ -73,6 +74,7 @@ __all__ = [
     "CocoAnnotations",
     "DATASETS",
     "FolderDataset",
+    "ImageFolder",
     "LIST_KEYS",
     "MinMaxNormalize",
     "Modality",
@@ -105,7 +107,7 @@ __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
     from mon.data.dataset import (
-        DATASETS, FolderDataset, Modality, ModalityKind, paired_layout, register_dataset,
+        DATASETS, FolderDataset, ImageFolder, Modality, ModalityKind, paired_layout, register_dataset,
     )
     from mon.data.io import (
         VideoInfo, VideoWriter, iter_video_frames, read_image, to_numpy_hwc, video_info, write_image,

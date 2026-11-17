@@ -248,13 +248,13 @@ def test_find_weights_zoo_unset_is_explained(monkeypatch: pytest.MonkeyPatch, tm
 import logging  # noqa: E402
 
 from mon.core import path as path_mod  # noqa: E402
-from mon.core.constants import DATASET_DIR_ENV  # noqa: E402
+from mon.core.constants import DATASETS_DIR_ENV  # noqa: E402
 from mon.core.path import datasets_dir  # noqa: E402
 
 
 @pytest.fixture
 def clean_env(monkeypatch: pytest.MonkeyPatch):
-    for var in (DATA_DIR_ENV, DATASET_DIR_ENV, ZOO_DIR_ENV):
+    for var in (DATA_DIR_ENV, DATASETS_DIR_ENV, ZOO_DIR_ENV):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(path_mod, "_announced", set())
 
@@ -267,14 +267,14 @@ def test_resolution_is_logged_once_with_source(clean_env, monkeypatch: pytest.Mo
     assert msgs == [f"datasets directory: {tmp_path / 'datasets'} (from DATA_DIR/datasets)",
                     f"model zoo directory: {tmp_path / 'zoo'} (from DATA_DIR/zoo)"]
     caplog.clear()
-    monkeypatch.setenv(DATASET_DIR_ENV, str(tmp_path / "elsewhere"))  # a stray override is visible
+    monkeypatch.setenv(DATASETS_DIR_ENV, str(tmp_path / "elsewhere"))  # a stray override is visible
     with caplog.at_level(logging.INFO, logger="mon.core.path"):
         assert datasets_dir() == tmp_path / "elsewhere"
-    assert caplog.records[0].getMessage().endswith("(from DATASET_DIR)")
+    assert caplog.records[0].getMessage().endswith("(from DATASETS_DIR)")
 
 
 def test_datasets_dir_errors_like_zoo_dir(clean_env):
-    with pytest.raises(RuntimeError, match="set DATASET_DIR=.* or DATA_DIR="):
+    with pytest.raises(RuntimeError, match="set DATASETS_DIR=.* or DATA_DIR="):
         datasets_dir()
 
 
@@ -298,7 +298,7 @@ def test_python_dash_m_entry(tmp_path: pathlib.Path):
     import subprocess
     import sys
     env = {**os.environ, DATA_DIR_ENV: str(tmp_path)}
-    env.pop(DATASET_DIR_ENV, None); env.pop(ZOO_DIR_ENV, None)
+    env.pop(DATASETS_DIR_ENV, None); env.pop(ZOO_DIR_ENV, None)
     (tmp_path / "datasets").mkdir(); (tmp_path / "zoo").mkdir()
     done = subprocess.run([sys.executable, "-m", "mon.core.path"], capture_output=True, text=True, env=env)
     assert done.returncode == 0 and done.stdout.count("exists") == 3 and not done.stderr

@@ -33,7 +33,7 @@ def test_doc_blocks_run(tmp_path: StdPath):
     script = tmp_path / "doc.py"
     script.write_text("\n\n".join(_python_blocks(DOC.read_text())))
     env = {k: v for k, v in os.environ.items() if k not in ("DATA_DIR", "ZOO_DIR")}
-    env["DATASET_DIR"] = str(tmp_path / "datasets")
+    env["DATASETS_DIR"] = str(tmp_path / "datasets")
     # Subprocess: the doc registers a dataset, which must not leak into this test session.
     result = subprocess.run([sys.executable, str(script)], env=env, capture_output=True, text=True, timeout=300)
     assert result.returncode == 0, result.stderr

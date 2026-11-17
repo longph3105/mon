@@ -11,7 +11,7 @@ import torch
 from torchvision import tv_tensors
 from torchvision.transforms import v2
 
-from mon.core.constants import DATA_DIR_ENV, DATASET_DIR_ENV
+from mon.core.constants import DATA_DIR_ENV, DATASETS_DIR_ENV
 from mon.core.enums import Split, Task
 from mon.core.size import Size
 from mon.data.dataset import DATASETS, FolderDataset, Modality, register_dataset
@@ -88,9 +88,9 @@ def test_default_root_from_datasets_dir(paired_root: StdPath, monkeypatch: pytes
     target = paired_root.parent / "datasets" / "enhance" / "LOL"
     target.parent.mkdir(parents=True)
     paired_root.rename(target)
-    monkeypatch.setenv(DATASET_DIR_ENV, str(paired_root.parent / "datasets"))
+    monkeypatch.setenv(DATASETS_DIR_ENV, str(paired_root.parent / "datasets"))
     assert len(WithFolder("test")) == 1
-    monkeypatch.delenv(DATASET_DIR_ENV)
+    monkeypatch.delenv(DATASETS_DIR_ENV)
     monkeypatch.setenv(DATA_DIR_ENV, str(paired_root.parent))
     assert WithFolder("test").root == target
 

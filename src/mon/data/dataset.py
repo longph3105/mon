@@ -15,6 +15,7 @@ Examples:
 __all__ = [
     "DATASETS",
     "FolderDataset",
+    "ImageFolder",
     "Modality",
     "ModalityKind",
     "paired_layout",
@@ -22,7 +23,7 @@ __all__ = [
 ]
 
 import os
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, ClassVar, Literal
@@ -36,7 +37,7 @@ from mon.core.enums import Split, Task
 from mon.core.path import Path, datasets_dir
 from mon.core.registry import Registry
 from mon.core.size import Size
-from mon.data.io import read_image
+from mon.data.io import ImageMode, read_image
 from mon.data.labels import _empty_target, read_voc, read_yolo
 from mon.data.structures import ClassList, Sample, SampleMeta
 
@@ -89,11 +90,20 @@ class Modality:
         object.__setattr__(self, "exts", exts)
 
 
-def _index_dir(directory: Path, exts: frozenset[str]) -> dict[str, Path]:
-    """Map relative path without suffix (posix) → file, for files with an accepted suffix."""
+def _is_hidden(path: Path, directory: Path) -> bool:
+    """Whether any part of ``path`` below ``directory`` starts with ``.`` (``._x.png``, ``.ipynb_checkpoints/``)."""
+    return any(part.startswith(".") for part in path.relative_to(directory).parts)
+
+
+def _index_dir(directory: Path, exts: frozenset[str], *, recursive: bool = True) -> dict[str, Path]:
+    """Map relative path without suffix (posix) → file, for files with an accepted suffix.
+
+    Hidden files and folders (name starts with ``.``) are skipped: macOS writes ``._name``
+    AppleDouble files next to images on external and network drives.
+    """
     files: dict[str, Path] = {}
-    for path in sorted(directory.rglob("*")):
-        if path.suffix.lower() not in exts or not path.is_file():
+    for path in sorted(directory.rglob("*") if recursive else directory.iterdir()):
+        if path.suffix.lower() not in exts or _is_hidden(path, directory) or not path.is_file():
             continue
         key = path.relative_to(directory).with_suffix("").as_posix()
         if key in files:
@@ -250,6 +260,110 @@ class FolderDataset(Dataset[Sample]):
     def splits(cls) -> frozenset[Split]:
         """Splits this dataset defines."""
         return frozenset(cls.layout)
+
+
+class ImageFolder(Dataset[Sample]):
+    """Images from any folder, file, or list of files: the input of prediction.
+
+    Unlike ``FolderDataset`` there is no layout or registry entry; every image is one sample
+    ``{"image", "meta"}`` with ``meta.split == Split.PREDICT``. ``meta.stem`` is the path
+    relative to the folder without suffix (``"night/0001"``), so outputs can mirror the input
+    tree: ``out_dir / f"{meta.stem}.png"``.
+
+    Args:
+        source: A folder, an image file, or a sequence of image files.
+        mode: ``read_image`` mode: ``"rgb"`` (default), ``"gray"``, or ``"unchanged"``.
+        transform: Called on each sample dict, as in ``FolderDataset``.
+        recursive: Search subfolders of a folder ``source``.
+        exts: Accepted suffixes for a folder ``source``; default: every image format
+            ``read_image`` can decode (no camera RAW or HEIC).
+
+    Raises:
+        FileNotFoundError: If ``source`` (or a listed file) doesn't exist.
+        ValueError: If no images are found, a listed file isn't an image, or two inputs share a stem
+            (their outputs would overwrite each other).
+
+    Examples:
+        >>> import shutil, tempfile, torch
+        >>> from mon.data.io import write_image
+        >>> root = Path(tempfile.mkdtemp())
+        >>> for name in ("b.png", "night/a.jpg", "._b.png"):
+        ...     _ = write_image(torch.zeros(3, 4, 6, dtype=torch.uint8), root / name)
+        >>> ds = ImageFolder(root)
+        >>> len(ds), [ds[i]["meta"].stem for i in range(len(ds))]  # sorted; hidden ._b.png skipped
+        (2, ['b', 'night/a'])
+        >>> ds[1]["image"].shape, ds[1]["meta"].split
+        (torch.Size([3, 4, 6]), <Split.PREDICT: 'predict'>)
+        >>> len(ImageFolder(root, recursive=False)), len(ImageFolder(root / "b.png"))
+        (1, 1)
+        >>> shutil.rmtree(root)
+    """
+
+    def __init__(
+        self,
+        source   : str | os.PathLike[str] | Sequence[str | os.PathLike[str]],
+        *,
+        mode     : ImageMode = "rgb",
+        transform: Callable[[Sample], Sample] | None = None,
+        recursive: bool = True,
+        exts     : Iterable[str] | None = None,
+    ) -> None:
+        if mode not in ("rgb", "gray", "unchanged"):
+            raise ValueError(f"mode must be 'rgb', 'gray', or 'unchanged', got {mode!r}")
+        accepted = _READABLE_IMAGE_EXTS if exts is None else frozenset(
+            e.lower() if e.startswith(".") else f".{e.lower()}" for e in exts
+        )
+        self.mode      = mode
+        self.transform = transform
+        self.root: Path | None = None
+        if isinstance(source, (str, os.PathLike)):
+            path = Path(source).expanduser()
+            if path.is_dir():
+                self.root   = path
+                self._items = list(_index_dir(path, accepted, recursive=recursive).items())
+                if not self._items:
+                    kind = "recursively " if recursive else ""
+                    raise ValueError(f"no images ({', '.join(sorted(accepted))}) found {kind}in {path}")
+                return
+            files: list[Path] = [path]
+        else:
+            files = [Path(p).expanduser() for p in source]
+            if not files:
+                raise ValueError("source is an empty list of files")
+        self._items = self._index_files(files)
+
+    @staticmethod
+    def _index_files(files: list[Path]) -> list[tuple[str, Path]]:
+        items: dict[str, Path] = {}
+        for path in files:
+            if not path.is_file():
+                raise FileNotFoundError(f"image not found: {path}")
+            if path.suffix.lower() not in _READABLE_IMAGE_EXTS:
+                raise ValueError(f"not a readable image: {path} (accepted: {', '.join(sorted(_READABLE_IMAGE_EXTS))})")
+            if path.stem in items:
+                raise ValueError(f"two inputs share the stem {path.stem!r}: {items[path.stem]}, {path}; pass their folder instead")
+            items[path.stem] = path
+        return list(items.items())  # given order kept
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def __getitem__(self, index: int) -> Sample:
+        stem, path = self._items[index]
+        image  = read_image(path, self.mode)
+        meta   = SampleMeta(
+            index     = index,
+            stem      = stem,
+            split     = Split.PREDICT,
+            paths     = MappingProxyType({"image": path}),
+            orig_size = Size.from_shape(image),
+        )
+        sample: Sample = {"image": image, "meta": meta}
+        return self.transform(sample) if self.transform is not None else sample
+
+    def __repr__(self) -> str:
+        where = str(self.root) if self.root is not None else f"{len(self)} files"
+        return f"{type(self).__name__}({where!r}, {len(self)} images)"
 
 
 def register_dataset(name: str, *, tasks: Iterable[Task]) -> Callable[[type[FolderDataset]], type[FolderDataset]]:
