@@ -139,7 +139,36 @@ for batch in create_dataloader(inputs, batch_size=1):
     write_image(pred[0], out_dir / f"{meta.stem}.png")      # night/0001.jpg → night/0001.png
 ```
 
-## 6. Adding a dataset
+## 6. Classification datasets
+
+`cifar10`, `cifar100`, `mnist` and `fashion_mnist` are stored as `<split>/<class>/<index>.png` with a
+`classes.txt` listing class names in label-id order. Samples are `{"image", "label", "meta"}`; `label` is an
+`int64` scalar, so batches carry a `[B]` label tensor ready for `cross_entropy`.
+
+```python
+from collections import Counter
+
+from torch.nn import functional as F
+
+mnist = DATASETS.build("mnist", "train", transform=v2.Compose([
+    v2.RandomCrop(28, padding=2),
+    v2.ToDtype(torch.float32, scale=True),           # uint8 → [0, 1]
+    v2.Normalize(mean=[0.1307], std=[0.3081]),       # MNIST statistics
+]))
+mnist.classes.names                                  # ['0', '1', …, '9']: label id = position
+Counter(mnist.labels)                                # class counts without decoding any image
+
+batch = next(iter(create_dataloader(mnist, batch_size=4, shuffle=True)))
+batch["image"].shape, batch["label"].shape           # (4, 1, 28, 28), (4,)
+classifier = torch.nn.Sequential(torch.nn.Flatten(), torch.nn.Linear(28 * 28, 10))
+loss = F.cross_entropy(classifier(batch["image"]), batch["label"])
+```
+
+- MNIST and Fashion-MNIST load as 1-channel gray images (`image_mode = "gray"`); CIFAR as RGB.
+- `meta.stem` is `"<class>/<index>"`; `<index>` is the image's position in the upstream split.
+- CIFAR-100 has 26 groups of byte-identical images, some with conflicting labels; see `mon.data.zoo.classify`.
+
+## 7. Adding a dataset
 
 1. Put the data in `$DATASETS_DIR/<id>/` in the normalized layout and add its row to `data/README.md`.
 2. Declare and register the class in a `mon.data.zoo` module:
@@ -161,4 +190,6 @@ for batch in create_dataloader(inputs, batch_size=1):
    no train/test overlap) that skip when the data isn't on the machine. See `tests/data/zoo/test_lol.py`.
 
 For other layouts, write `layout` by hand with `Modality(dir, kind)`: kinds are `image`, `mask`, `depth`,
-`yolo` and `voc`.
+`yolo` and `voc`. Classification datasets (`<split>/<class>/<image>` plus `classes.txt`) subclass
+`ClassFolderDataset` with `layout = classification_layout("train", "test")` instead; their samples are
+`{"image", "label", "meta"}`, and `collate` stacks `label` into a `[B]` tensor.

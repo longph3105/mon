@@ -102,8 +102,9 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Devices: `select_device(spec)` from `mon.core.runtime`; never fall back to CPU silently.
 - Pretrained weights: declare a `WeightsEnum` of `Weights("zoo/relative/path.pt")` per model and accept user input
   through `resolve_weights(spec, Enum)`; a missing file must raise, never skip loading.
-- Datasets: subclass `FolderDataset`, set `folder` (the dataset id, under `datasets_dir()`) and `layout`
-  (the normalized layout of its task family, e.g. `paired_layout(...)`; ids and layouts: workspace
+- Datasets: subclass `FolderDataset` (or `ClassFolderDataset` for `<split>/<class>/` folders), set `folder`
+  (the dataset id, under `datasets_dir()`) and `layout` (the normalized layout of its task family, e.g.
+  `paired_layout(...)`, `classification_layout(...)`; ids and layouts: workspace
   `data/README.md`), register with `register_dataset` under the same id in a `mon.data.zoo` module, and import
   that module in `zoo/__init__.py`. Record known train/test overlaps with other datasets in the docstring.
   Build loaders with `create_dataloader` (seeded). `uint16` tensors (16-bit images) support only some torch ops:

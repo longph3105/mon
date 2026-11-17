@@ -14,10 +14,12 @@ Examples:
 
 __all__ = [
     "DATASETS",
+    "ClassFolderDataset",
     "FolderDataset",
     "ImageFolder",
     "Modality",
     "ModalityKind",
+    "classification_layout",
     "paired_layout",
     "register_dataset",
 ]
@@ -28,6 +30,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, ClassVar, Literal
 
+import torch
 from torch.utils.data import Dataset
 from torchvision import tv_tensors
 
@@ -56,7 +59,9 @@ _DEFAULT_EXTS: dict[str, frozenset[str]] = {
     "voc"  : frozenset({".xml"}),
 }
 
-DATASETS: Registry[type["FolderDataset"]] = Registry("datasets", autoload="mon.data.zoo")
+type DatasetClass = type["FolderDataset"] | type["ClassFolderDataset"]
+
+DATASETS: Registry[DatasetClass] = Registry("datasets", autoload="mon.data.zoo")
 """All registered datasets; the zoo is imported on first lookup. Metadata: ``tasks``, ``splits``."""
 
 
@@ -262,6 +267,123 @@ class FolderDataset(Dataset[Sample]):
         return frozenset(cls.layout)
 
 
+class ClassFolderDataset(Dataset[Sample]):
+    """Base for classification datasets stored as ``<split>/<class>/<image>``; subclasses declare the layout.
+
+    Labels come from the parent folder; ids follow ``classes.txt`` at the dataset root (one
+    name per line, in label-id order), not the alphabetical order of the folders. Samples are
+    ``{"image", "label", "meta"}`` with ``label`` a 0-d ``int64`` tensor (``collate`` stacks it
+    into ``[B]``) and ``meta.stem`` the path below the split folder (``"cat/00042"``).
+
+    Class attributes to set in subclasses:
+        folder: Dataset root relative to ``datasets_dir()`` (the dataset id).
+        layout: Split → split folder relative to the root; see ``classification_layout``.
+        image_mode: ``read_image`` mode, e.g. ``"gray"`` for MNIST.
+
+    Args:
+        split: Split to load; must be a key of ``layout``.
+        root: Dataset root; defaults to ``datasets_dir() / folder``.
+        transform: Called on each sample dict.
+
+    Raises:
+        ValueError: Bad split, a class folder missing from ``classes.txt`` (or a duplicate name in
+            it), or no images.
+        FileNotFoundError: Missing root, split folder, or ``classes.txt``.
+
+    Examples:
+        >>> import shutil, tempfile, torch
+        >>> from mon.data.io import write_image
+        >>> root = Path(tempfile.mkdtemp())
+        >>> _ = (root / "classes.txt").write_text("zebra\\nant\\n")        # label ids: zebra=0, ant=1
+        >>> for name in ("train/zebra/0.png", "train/ant/1.png"):
+        ...     _ = write_image(torch.zeros(3, 4, 6, dtype=torch.uint8), root / name)
+        >>> class Animals(ClassFolderDataset):
+        ...     layout = classification_layout("train")
+        >>> ds = Animals("train", root=root)
+        >>> ds.classes.names, ds.labels                     # sorted by path; ids from classes.txt
+        (['zebra', 'ant'], [1, 0])
+        >>> s = ds[0]
+        >>> sorted(s), int(s["label"]), s["meta"].stem
+        (['image', 'label', 'meta'], 1, 'ant/1')
+        >>> shutil.rmtree(root)
+    """
+
+    folder    : ClassVar[str] = ""
+    layout    : ClassVar[Mapping[Split, str]] = {}
+    image_mode: ClassVar[ImageMode] = "rgb"
+    classes_file: ClassVar[str] = "classes.txt"
+
+    def __init__(
+        self,
+        split    : Split | str,
+        *,
+        root     : str | os.PathLike[str] | None = None,
+        transform: Callable[[Sample], Sample] | None = None,
+    ) -> None:
+        name = type(self).__name__
+        self.split = Split(split)
+        if self.split not in self.layout:
+            raise ValueError(f"{name} has no {self.split.value!r} split; available: {[s.value for s in self.layout]}")
+        if root is not None:
+            self.root = Path(root).expanduser()
+        elif self.folder:
+            self.root = datasets_dir() / self.folder
+        else:
+            raise ValueError(f"{name} defines no `folder`; pass root=")
+        split_dir = self.root / self.layout[self.split]
+        if not split_dir.is_dir():
+            raise FileNotFoundError(f"{name} split folder not found: {split_dir}")
+        classes_path = self.root / self.classes_file
+        if not classes_path.is_file():
+            raise FileNotFoundError(f"{name}: {self.classes_file} not found in {self.root}")
+        names = [line.strip() for line in classes_path.read_text().splitlines() if line.strip()]
+        self.classes = ClassList.from_names(names)  # raises on duplicate names
+        self.transform = transform
+
+        folders = {p.name for p in split_dir.iterdir() if p.is_dir() and not p.name.startswith(".")}
+        unknown = sorted(folders - set(names))
+        if unknown:
+            raise ValueError(f"{name} [{self.split.value}]: class folders not in {self.classes_file}: {unknown[:5]}")
+        self._items: list[tuple[str, Path, int]] = []
+        for class_def in self.classes:
+            class_dir = split_dir / class_def.name
+            if class_dir.is_dir():
+                for key, path in _index_dir(class_dir, _READABLE_IMAGE_EXTS).items():
+                    self._items.append((f"{class_def.name}/{key}", path, class_def.id))
+        if not self._items:
+            raise ValueError(f"{name} [{self.split.value}]: no images found in {split_dir}")
+        self._items.sort(key=lambda item: item[0])
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def __getitem__(self, index: int) -> Sample:
+        stem, path, label = self._items[index]
+        image  = read_image(path, self.image_mode)
+        meta   = SampleMeta(
+            index     = index,
+            stem      = stem,
+            split     = self.split,
+            paths     = MappingProxyType({"image": path}),
+            orig_size = Size.from_shape(image),
+        )
+        sample: Sample = {"image": image, "label": torch.tensor(label, dtype=torch.int64), "meta": meta}
+        return self.transform(sample) if self.transform is not None else sample
+
+    @property
+    def labels(self) -> list[int]:
+        """Label id of every sample, in index order (without reading images), e.g. for class-balanced samplers."""
+        return [label for _, _, label in self._items]
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(split={self.split.value!r}, root={str(self.root)!r}, {len(self)} samples)"
+
+    @classmethod
+    def splits(cls) -> frozenset[Split]:
+        """Splits this dataset defines."""
+        return frozenset(cls.layout)
+
+
 class ImageFolder(Dataset[Sample]):
     """Images from any folder, file, or list of files: the input of prediction.
 
@@ -366,8 +488,8 @@ class ImageFolder(Dataset[Sample]):
         return f"{type(self).__name__}({where!r}, {len(self)} images)"
 
 
-def register_dataset(name: str, *, tasks: Iterable[Task]) -> Callable[[type[FolderDataset]], type[FolderDataset]]:
-    """Register a ``FolderDataset`` subclass in ``DATASETS`` with ``tasks`` and its ``layout``'s splits.
+def register_dataset[C: DatasetClass](name: str, *, tasks: Iterable[Task]) -> Callable[[C], C]:
+    """Register a ``FolderDataset``/``ClassFolderDataset`` subclass in ``DATASETS`` with ``tasks`` and its splits.
 
     Deriving ``splits`` from ``layout`` keeps registry filters (``DATASETS.names(splits=...)``)
     consistent with what the class can actually load. Registering never imports or touches data;
@@ -396,9 +518,9 @@ def register_dataset(name: str, *, tasks: Iterable[Task]) -> Callable[[type[Fold
         mon.core.registry.RegistryKeyError: 'doc_pairde' is not registered in 'datasets'; did you mean 'doc_paired'?
         >>> _ = DATASETS.remove("doc_paired"); shutil.rmtree(root)
     """
-    def decorator(cls: type[FolderDataset]) -> type[FolderDataset]:
-        if not (isinstance(cls, type) and issubclass(cls, FolderDataset)):
-            raise TypeError(f"register_dataset expects a FolderDataset subclass, got {cls!r}")
+    def decorator(cls: C) -> C:
+        if not (isinstance(cls, type) and issubclass(cls, (FolderDataset, ClassFolderDataset))):
+            raise TypeError(f"register_dataset expects a FolderDataset or ClassFolderDataset subclass, got {cls!r}")
         DATASETS.add(cls, name, tasks=frozenset(Task(t) for t in tasks), splits=cls.splits())
         return cls
     return decorator
@@ -423,3 +545,18 @@ def paired_layout(*splits: Split | str) -> dict[Split, dict[str, Modality]]:
         s: {"image": Modality(f"{s.value}/images"), "target": Modality(f"{s.value}/targets")}
         for s in parsed
     }
+
+
+def classification_layout(*splits: Split | str) -> dict[Split, str]:
+    """Layout for classification datasets: split → folder of the same name holding ``<class>/<image>``.
+
+    Examples:
+        >>> classification_layout("train", "test")[Split.TEST]
+        'test'
+    """
+    if not splits:
+        raise ValueError("classification_layout needs at least one split")
+    parsed = [Split(s) for s in splits]
+    if len(set(parsed)) != len(parsed):
+        raise ValueError(f"duplicate splits: {[s.value for s in parsed]}")
+    return {s: s.value for s in parsed}

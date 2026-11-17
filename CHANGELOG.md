@@ -4,6 +4,9 @@
 
 ### Added
 
+- `mon.data.dataset.ClassFolderDataset` + `classification_layout`: classification from `<split>/<class>/<image>`
+  with label ids from `classes.txt`; samples `{"image", "label", "meta"}`. `mon.data.zoo.classify`: `cifar10`,
+  `cifar100`, `mnist`, `fashion_mnist` (`Task.CLASSIFY`).
 - `mon.nn` package (lazy namespace). `mon.nn.losses` (one module per family). `mon.nn.losses.zero_reference`: Zero-DCE's zero-reference losses
   (`ColorConstancyLoss`, `ExposureControlLoss`, `SpatialConsistencyLoss`, `IlluminationSmoothnessLoss`),
   matching the official code, with `reduction="mean"|"sum"|"none"`. `mon.nn.tiling.tiled_forward`:

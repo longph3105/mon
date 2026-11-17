@@ -27,49 +27,52 @@ _SUBMODULES: tuple[str, ...] = ("dataset", "io", "labels", "loader", "structures
 # Public name -> submodule. Keep in sync with each submodule's ``__all__``.
 _EXPORTS: dict[str, str] = {
     # dataset
-    "DATASETS"         : "dataset",
-    "FolderDataset"    : "dataset",
-    "ImageFolder"      : "dataset",
-    "Modality"         : "dataset",
-    "ModalityKind"     : "dataset",
-    "paired_layout"    : "dataset",
-    "register_dataset" : "dataset",
+    "DATASETS"             : "dataset",
+    "ClassFolderDataset"   : "dataset",
+    "FolderDataset"        : "dataset",
+    "ImageFolder"          : "dataset",
+    "Modality"             : "dataset",
+    "ModalityKind"         : "dataset",
+    "classification_layout": "dataset",
+    "paired_layout"        : "dataset",
+    "register_dataset"     : "dataset",
     # io
-    "VideoInfo"        : "io",
-    "VideoWriter"      : "io",
-    "iter_video_frames": "io",
-    "read_image"       : "io",
-    "to_numpy_hwc"     : "io",
-    "video_info"       : "io",
-    "write_image"      : "io",
+    "VideoInfo"            : "io",
+    "VideoWriter"          : "io",
+    "iter_video_frames"    : "io",
+    "read_image"           : "io",
+    "to_numpy_hwc"         : "io",
+    "video_info"           : "io",
+    "write_image"          : "io",
     # labels
-    "CocoAnnotations"  : "labels",
-    "read_coco"        : "labels",
-    "read_voc"         : "labels",
-    "read_yolo"        : "labels",
-    "write_yolo"       : "labels",
+    "CocoAnnotations"      : "labels",
+    "read_coco"            : "labels",
+    "read_voc"             : "labels",
+    "read_yolo"            : "labels",
+    "write_yolo"           : "labels",
     # loader
-    "LIST_KEYS"        : "loader",
-    "collate"          : "loader",
-    "create_dataloader": "loader",
+    "LIST_KEYS"            : "loader",
+    "collate"              : "loader",
+    "create_dataloader"    : "loader",
     # structures
-    "ClassDef"         : "structures",
-    "ClassList"        : "structures",
-    "Sample"           : "structures",
-    "SampleMeta"       : "structures",
+    "ClassDef"             : "structures",
+    "ClassList"            : "structures",
+    "Sample"               : "structures",
+    "SampleMeta"           : "structures",
     # transforms
-    "ApplyTo"          : "transforms",
-    "MinMaxNormalize"  : "transforms",
-    "PadToMultiple"    : "transforms",
-    "ResizeToMultiple" : "transforms",
-    "crop_to"          : "transforms",
-    "pad_to_multiple"  : "transforms",
+    "ApplyTo"              : "transforms",
+    "MinMaxNormalize"      : "transforms",
+    "PadToMultiple"        : "transforms",
+    "ResizeToMultiple"     : "transforms",
+    "crop_to"              : "transforms",
+    "pad_to_multiple"      : "transforms",
 }
 
 # Literal list so static tools (mypy, pyright) see the re-exports; must equal sorted(_EXPORTS).
 __all__ = [
     "ApplyTo",
     "ClassDef",
+    "ClassFolderDataset",
     "ClassList",
     "CocoAnnotations",
     "DATASETS",
@@ -85,6 +88,7 @@ __all__ = [
     "SampleMeta",
     "VideoInfo",
     "VideoWriter",
+    "classification_layout",
     "collate",
     "create_dataloader",
     "crop_to",
@@ -107,7 +111,8 @@ __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
     from mon.data.dataset import (
-        DATASETS, FolderDataset, ImageFolder, Modality, ModalityKind, paired_layout, register_dataset,
+        DATASETS, ClassFolderDataset, FolderDataset, ImageFolder, Modality, ModalityKind, classification_layout,
+        paired_layout, register_dataset,
     )
     from mon.data.io import (
         VideoInfo, VideoWriter, iter_video_frames, read_image, to_numpy_hwc, video_info, write_image,

@@ -1,4 +1,4 @@
-"""Runs every Python block of ``docs/data.md`` in order, against a synthetic ``lol_v1`` folder."""
+"""Runs every Python block of ``docs/data.md`` in order, against synthetic ``lol_v1`` and ``mnist`` folders."""
 
 import os
 import re
@@ -30,6 +30,11 @@ def test_doc_blocks_run(tmp_path: StdPath):
         for i in range(n):
             for sub in ("images", "targets"):
                 write_image(torch.randint(0, 256, (3, 300, 320), dtype=torch.uint8), root / split / sub / f"{i}.png")
+    mnist = tmp_path / "datasets" / "mnist"
+    (mnist).mkdir(parents=True)
+    (mnist / "classes.txt").write_text("\n".join(str(d) for d in range(10)) + "\n")
+    for d in range(10):
+        write_image(torch.randint(0, 256, (1, 28, 28), dtype=torch.uint8), mnist / "train" / str(d) / f"{d:05d}.png")
     script = tmp_path / "doc.py"
     script.write_text("\n\n".join(_python_blocks(DOC.read_text())))
     env = {k: v for k, v in os.environ.items() if k not in ("DATA_DIR", "ZOO_DIR")}
