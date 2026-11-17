@@ -7,9 +7,12 @@
 - `mon.core.path.Path`: `pathlib.Path` subclass with case-insensitive extension checks
   (`has_ext`, `is_image_file`, ...), sorted `files()`/`subdirs()`, `sibling`, `find_sibling`,
   `resolve_subdir`, `ensure_dir`, `normalize`, `size`, `modified_at`, `fingerprint`.
+- `mon.core.config`: `load_config` (dataclass schema ← `_base_` files ← YAML ← dotlist overrides, via
+  OmegaConf) and `save_config` (resolved, atomic).
 - `mon.core.console`: shared `rich` `console`, `get_logger`, `setup_logging` (rich terminal output, optional
   log file, rank-0-only under DDP, captures `warnings`), `print_dict` (also for OmegaConf configs).
   Importing `mon` no longer changes logging levels.
+- `mon.core.console.progress_bar`: rich progress bar (speed as `it/s` or `ms/it`), drawn only on rank 0.
 - `mon.core.fileio`: `load_json`/`load_yaml`/`load_txt` and atomic `save_json`/`save_yaml`/`save_txt`
   (UTF-8, parent dirs created, paths/NumPy/tensors serialized, `overwrite=False` raises `FileExistsError`).
 - `mon.core.enums`: `Task`, `Split`, `RunMode`, `Strategy`, `BBoxFormat` (stdlib `StrEnum` with aliases,
@@ -21,6 +24,10 @@
 - `mon.core.runtime`: `available_devices()`, `select_device()` (raises instead of silently falling back
   to CPU; `"auto"` = `cuda:0` → `mps` → `cpu`), `seed_everything()` (returns the seed; optional
   deterministic mode).
+- `mon.core.weights`: `Weights` (zoo-relative or absolute path, optional URL + SHA-256),
+  `WeightsEnum`, `resolve_weights()`; loads with `weights_only=True`; missing files raise.
+- `mon.core.size.Size`: validated `(height, width)`; `from_any`, `from_shape(layout=)`, `round_up`.
+- `mon.core.timing`: `Timer` and `Profiler` (named stages); sync CUDA and MPS at start and stop.
 - `mon.core.type_aliases`: `TensorOrArray`, `Int2`, `Int3`, `Float3`, `OneOrPair[T]`.
 - `mon.core.fileio.download_file`: atomic, SHA-256-verified downloads (via `torch.hub`); `sha256sum`.
 - `mon.core.path.find_weights`: find a weights file/dir as given, else under `zoo_dir()`.

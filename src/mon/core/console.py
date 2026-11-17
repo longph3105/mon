@@ -1,4 +1,4 @@
-"""Console output and logging: a shared ``rich`` console and stdlib-logging setup.
+"""Console output, logging, and progress bars on a shared ``rich`` console.
 
 Library code only calls ``get_logger(__name__)``. Importing ``mon`` never configures
 logging; entry points (scripts, CLIs) call ``setup_logging()`` once.
@@ -6,9 +6,11 @@ logging; entry points (scripts, CLIs) call ``setup_logging()`` once.
 
 __all__ = [
     "DEFAULT_QUIET_LOGGERS",
+    "SpeedColumn",
     "console",
     "get_logger",
     "print_dict",
+    "progress_bar",
     "setup_logging",
 ]
 
@@ -22,6 +24,18 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel
 from rich.pretty import Pretty
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    ProgressColumn,
+    Task,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
+from rich.text import Text
 from rich.theme import Theme
 
 # --- Console ---
@@ -147,3 +161,51 @@ def print_dict(value: Mapping[Any, Any] | DictConfig, title: str = "") -> None:
     data = OmegaConf.to_container(value, resolve=True) if isinstance(value, DictConfig) else value
     pretty = Pretty(data, expand_all=True, indent_guides=True, overflow="fold")
     console.print(Panel(pretty, title=title or None, title_align="left"))
+
+
+# --- Progress ---
+
+class SpeedColumn(ProgressColumn):
+    """Show throughput as ``it/s``, or ``ms/it`` when slower than one item per second."""
+
+    def render(self, task: Task) -> Text:
+        speed = task.speed
+        if not speed:
+            return Text("?", style="progress.data.speed")
+        text = f"{1000.0 / speed:.1f}ms/it" if speed < 1.0 else f"{speed:.2f}it/s"
+        return Text(f"{text:>10}", style="progress.data.speed")
+
+
+def progress_bar(*, transient: bool = False, disable: bool | None = None) -> Progress:
+    """Create a ``rich`` progress bar on ``console``.
+
+    Columns: description, bar, percentage, completed/total, speed, remaining, elapsed.
+
+    Args:
+        transient: Remove the bar when it finishes.
+        disable: Hide the bar. ``None`` hides it on non-zero ranks of a multi-process run
+            (``RANK``/``SLURM_PROCID``/``LOCAL_RANK``), so only rank 0 draws.
+
+    Examples:
+        >>> with progress_bar(disable=True) as pbar:
+        ...     for _ in pbar.track(range(3), description="Predicting"):
+        ...         pass
+    """
+    if disable is None:
+        disable = _process_rank() != 0
+    return Progress(
+        TextColumn("{task.description}", justify="right"),
+        BarColumn(bar_width=None, finished_style="green"),
+        TaskProgressColumn(),
+        "•",
+        MofNCompleteColumn(),
+        "•",
+        SpeedColumn(),
+        "•",
+        TimeRemainingColumn(),
+        ">",
+        TimeElapsedColumn(),
+        console=console,
+        transient=transient,
+        disable=disable,
+    )

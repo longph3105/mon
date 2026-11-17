@@ -11,9 +11,15 @@ The rewrite is a single package with a `src/` layout.
 
 ## Status
 
-The repo is a scaffold. Packaging uses **uv** with the `uv_build` backend (`pyproject.toml`, `uv.lock`).
-Tests run with pytest and types are checked with mypy (both in the `dev` group). There is no linter or formatter config yet.
+Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
+- **Done:** `mon.core` (ported from `mon_old/libs/mon/src/mon/core`): paths, file I/O and downloads, config
+  (OmegaConf), logging and progress bars, enums, registry, runtime (devices, seeding), weights, size, timing.
+- **Next:** `mon.data` (images, boxes, classes, metadata), `mon.nn` / `mon.models` (registries, weights enums),
+  datasets, runners (train/predict configs, run directories), plotting. Decisions deferred to these ports are
+  recorded in `logs/log_2026_11_17.md` under each `core` module's entry.
+- **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the
+  `dev` group. No linter or formatter config yet.
 - Don't invent commands (`uv run …`, `pytest …`) until the config that backs them exists.
 - When adding tooling, propose the choice first (package manager, build backend, linter, test runner).
   Then update the **Commands** section below in the same change.
@@ -22,14 +28,15 @@ Tests run with pytest and types are checked with mypy (both in the `dev` group).
 
 ## Layout
 
-| Path           | Purpose                                                       |
-|----------------|---------------------------------------------------------------|
-| `src/mon/`     | The importable package. All library code lives here.          |
-| `tests/`       | Tests, mirroring the `src/mon/` module tree.                  |
-| `docs/`        | Long-form documentation.                                      |
-| `logs/`        | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`.      |
-| `CHANGELOG.md` | User-facing changes, newest first.                            |
-| `README.md`    | Install, usage, citation.                                     |
+| Path            | Purpose                                                  |
+|-----------------|----------------------------------------------------------|
+| `src/mon/`      | The importable package. All library code lives here.     |
+| `src/mon/core/` | Shared infrastructure; depends on nothing else in `mon`. |
+| `tests/`        | Tests, mirroring the `src/mon/` module tree.             |
+| `docs/`         | Long-form documentation.                                 |
+| `logs/`         | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`. |
+| `CHANGELOG.md`  | User-facing changes, newest first.                       |
+| `README.md`     | Install, usage, citation.                                |
 
 Keep each fact in one place: link to `docs/` instead of restating it here or in `README.md`.
 
@@ -71,6 +78,9 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   the paper or source code when you port or adapt something.
 - No shebang (`#!/usr/bin/env python`) or encoding line (`# -*- coding: utf-8 -*-`) in package modules.
   Python 3 source is UTF-8 by default, and CLI entry points go in `[project.scripts]`. Strip both when porting.
+- Configs: OmegaConf via `mon.core.config.load_config`/`save_config`. Schemas are dataclasses next to the code that
+  consumes them; resolve devices, weights, and run dirs explicitly after loading (no property setters). Save the
+  resolved config into each run directory.
 - Registries: one `Registry` (`mon.core.registry`) per kind, defined in the package that owns it. Register with an
   explicit name when `cls.__name__.lower()` isn't the paper's name (`@MODELS.register("zero_dce++", arch=...)`).
 - Enums: subclass `AliasStrEnum` (`mon.core.enums`), not `aenum`. No `"default"` member or `None` fallback;
@@ -79,13 +89,14 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Group large modules with section comments: `# --- Section Name ---`.
 - Match the surrounding style. The owner aligns `=` and `:` in related assignments and signatures;
   keep that alignment and don't reformat code you aren't changing.
-- Reproducibility: seed every RNG through `mon.core.runtime.seed_everything()`; save the seed it returns with the run. Pin dependencies.
-  Don't add a dependency without saying why.
+- Reproducibility: seed every RNG through `mon.core.runtime.seed_everything()`; save the seed it returns with
+  the run. Pin dependencies. Don't add a dependency without saying why.
 - Logging: library code uses `logger = get_logger(__name__)` from `mon.core.console` and never configures
   logging or prints at import. Only entry points call `setup_logging()`. Use `%`-style args: `logger.info("x=%s", x)`.
 - Devices: `select_device(spec)` from `mon.core.runtime`; never fall back to CPU silently.
 - Never hardcode data, weight, or output paths. Read them from config or env vars (for example `DATA_DIR`).
-  Pretrained weights: `zoo_dir() / "…"` (`mon.core.path`; `MON_ZOO_DIR`, else `$DATA_DIR/zoo`).
+  Pretrained weights: declare a `WeightsEnum` of `Weights("zoo/relative/path.pt")` per model and accept user input
+  through `resolve_weights(spec, Enum)`; a missing file must raise, never skip loading.
 - Tensors are `[B, C, H, W]` unless stated otherwise; document shapes in docstrings when they're not obvious.
 
 ---
@@ -101,9 +112,10 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 
 ## Workflow
 
-1. **Ask before** creating the git repo, adding remotes, publishing packages, or changing the public API
-   of code that already has callers.
-2. Add or update tests for any behavior change. Mark slow or GPU-only tests with `@pytest.mark.slow` / `@pytest.mark.gpu`.
+1. **Ask before** rewriting git history (amend/force-push of pushed commits), adding remotes, publishing
+   packages, or changing the public API of code that already has callers.
+2. Add or update tests for any behavior change. Mark slow or GPU-only tests with `@pytest.mark.slow` /
+   `@pytest.mark.gpu`. Before committing, `uv run pytest` and `uv run mypy` must pass.
 3. Add an entry to `CHANGELOG.md` for user-visible changes.
 4. After significant work, append a short summary to `logs/log_YYYY_MM_DD.md` in this repo.
 5. Never commit model weights, datasets, checkpoints (`*.pt`, `*.pth`, `*.ckpt`), or secrets.

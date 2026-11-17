@@ -137,3 +137,38 @@ def test_print_dict_plain_and_omegaconf():
     out = cap.get()
     assert "Plain" in out and "0.001" in out and "depth" in out
     assert "/data/runs" in out and "???" in out
+
+
+# --- progress_bar ---
+
+from rich.progress import Progress  # noqa: E402
+
+
+class _FakeTask:
+    def __init__(self, speed: float | None) -> None:
+        self.speed = speed
+
+
+@pytest.mark.parametrize(
+    ("speed", "expected"),
+    [(None, "?"), (0.0, "?"), (12.345, "12.35it/s"), (1.0, "1.00it/s"), (0.5, "2000.0ms/it")],
+)
+def test_speed_column(speed: float | None, expected: str):
+    assert mc.SpeedColumn().render(_FakeTask(speed)).plain.strip() == expected  # type: ignore[arg-type]
+
+
+def test_progress_bar_tracks_and_renders(no_rank: None):
+    pbar = mc.progress_bar()
+    assert isinstance(pbar, Progress) and not pbar.disable
+    with mc.console.capture() as cap:
+        with pbar:
+            assert list(pbar.track(range(5), description="Predicting")) == list(range(5))
+    out = cap.get()
+    assert "Predicting" in out and "5/5" in out
+
+
+@pytest.mark.parametrize(("rank", "disable", "expected"), [(None, None, False), ("1", None, True), ("0", None, False), ("1", False, False), (None, True, True)])
+def test_progress_bar_rank_zero_only(monkeypatch: pytest.MonkeyPatch, no_rank: None, rank: str | None, disable: bool | None, expected: bool):
+    if rank is not None:
+        monkeypatch.setenv("RANK", rank)
+    assert mc.progress_bar(disable=disable).disable is expected
