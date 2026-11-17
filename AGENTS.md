@@ -80,11 +80,8 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 
 ## Code Conventions
 
-- **Python ≥ 3.13**, PyTorch ≥ 2.x. Type-annotate public functions and classes.
-- **Google-style docstrings.** Give each module a one-line docstring, and add `References:` with links to
-  the paper or source code when you port or adapt something.
-- No shebang (`#!/usr/bin/env python`) or encoding line (`# -*- coding: utf-8 -*-`) in package modules.
-  Python 3 source is UTF-8 by default, and CLI entry points go in `[project.scripts]`. Strip both when porting.
+- **Google-style docstrings.** Every module gets a one-line docstring; add `References:` with links to the paper
+  or source code when you port or adapt something.
 - Configs: OmegaConf via `mon.core.config.load_config`/`save_config`. Schemas are dataclasses next to the code that
   consumes them; resolve devices, weights, and run dirs explicitly after loading (no property setters). Save the
   resolved config into each run directory.
@@ -93,22 +90,17 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Enums: subclass `AliasStrEnum` (`mon.core.enums`), not `aenum`. No `"default"` member or `None` fallback;
   put defaults in signatures (`split: Split = Split.TRAIN`).
 - Declare `__all__` at the top of every public module.
-- Package namespaces (`mon.core`, later `mon.data`, …) re-export their submodules' `__all__` lazily (PEP 562
-  `__getattr__` + a literal `__all__` + `TYPE_CHECKING` imports). When adding a public name, add it to the
-  package's `_EXPORTS` and `__all__`, and its row in the docstring overview table (`tests/test_namespaces.py`
-  enforces all three, plus the package layering in `ALLOWED_IMPORTS`). Code inside `mon` imports from
-  submodules (`from mon.core.path import Path`), never from the package namespace. Top-level `mon` exposes
-  only subpackages.
-- Group large modules with section comments: `# --- Section Name ---`.
-- Match the surrounding style. The owner aligns `=` and `:` in related assignments and signatures;
-  keep that alignment and don't reformat code you aren't changing.
-- Reproducibility: seed every RNG through `mon.core.runtime.seed_everything()`; save the seed it returns with
-  the run. Pin dependencies. Don't add a dependency without saying why.
+- Package namespaces re-export their submodules' `__all__` lazily. When adding a public name, add it to the
+  package's `_EXPORTS` and `__all__` and to its docstring overview table (`tests/test_namespaces.py` enforces
+  these and the layering in `ALLOWED_IMPORTS`). Code inside `mon` imports from submodules
+  (`from mon.core.path import Path`), never from a package namespace. Top-level `mon` exposes only subpackages.
+- Group large modules with section comments: `# --- Section Name ---`. The owner aligns `=` and `:` in related
+  assignments and signatures; keep that alignment.
+- Seed every RNG through `mon.core.runtime.seed_everything()` and save the seed it returns with the run.
 - Logging: library code uses `logger = get_logger(__name__)` from `mon.core.console` and never configures
-  logging or prints at import. Only entry points call `setup_logging()`. Use `%`-style args: `logger.info("x=%s", x)`.
+  logging or prints at import. Only entry points call `setup_logging()`.
 - Devices: `select_device(spec)` from `mon.core.runtime`; never fall back to CPU silently.
-- Never hardcode data, weight, or output paths. Read them from config or env vars (for example `DATA_DIR`).
-  Pretrained weights: declare a `WeightsEnum` of `Weights("zoo/relative/path.pt")` per model and accept user input
+- Pretrained weights: declare a `WeightsEnum` of `Weights("zoo/relative/path.pt")` per model and accept user input
   through `resolve_weights(spec, Enum)`; a missing file must raise, never skip loading.
 - Datasets: subclass `FolderDataset`, set `folder` (the dataset id, under `datasets_dir()`) and `layout`
   (the normalized layout of its task family, e.g. `paired_layout(...)`; ids and layouts: workspace
@@ -122,22 +114,20 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   continuous maps (depth, targets) are `Image`. Restore types after arithmetic with `tv_tensors.wrap`.
 - Transforms run in two stages: geometric on the whole sample, photometric only on input keys (via `ApplyTo`):
   v2 photometric ops change *every* `Image`, including ground-truth targets and depth. After crops, use
-  `SanitizeBoundingBoxes` so labels drop with their boxes. Custom transforms go in `mon.data.transforms`
-  only when v2 lacks them.
+  `SanitizeBoundingBoxes` so labels drop with their boxes.
 - Stride-multiple sizes: training resizes (`ResizeToMultiple`); inference pads (`PadToMultiple`, or
   `pad_to_multiple` on a batch) and crops predictions back with `crop_to(pred, meta.orig_size)`. Predictors
   default to padding; never resize an output back for evaluation.
-- Models (agreed 2026-11-18): plain `nn.Module`, tensors in and out (`forward(image) -> Tensor`, or a small dict
-  of named outputs); no TensorDict, `in_keys`/`out_keys`, or `__call__` override. The runner maps sample dicts
-  to model inputs; a model's paper loss is a separate module, not a method. Large-image inference uses
+- Models: plain `nn.Module`, tensors in and out (`forward(image) -> Tensor`, or a small dict of named outputs);
+  no TensorDict, `in_keys`/`out_keys`, or `__call__` override. The runner maps sample dicts to model inputs; a
+  model's paper loss is a separate module, not a method. Large-image inference uses
   `mon.nn.tiling.tiled_forward`, never a per-model `forward_patch`.
-- Losses: shared ones live in `mon.nn.losses.<family>` (e.g. `zero_reference`), one module per family; a loss
-  used by one model stays in that model's module until a second model needs it. Don't wrap losses PyTorch has.
-  Every loss returns per-sample values reduced by `reduction="mean"|"sum"|"none"`.
+- Losses: shared ones live in `mon.nn.losses.<family>` (e.g. `zero_reference`); a loss used by one model stays in
+  that model's module until a second model needs it. Every loss returns per-sample values reduced by
+  `reduction="mean"|"sum"|"none"`.
 - Losses and models ported from a paper follow its official code; test parity against a reference copy of
   that code (losses) or against `mon_old` outputs with the same weights (models, `slow`; needs the old
   `mon` conda env). Record known differences between `mon_old` copies in the docstring.
-- Tensors are `[B, C, H, W]` unless stated otherwise; document shapes in docstrings when they're not obvious.
 
 ---
 
@@ -147,6 +137,7 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Port module by module and on purpose: clean up, drop dead code, and add tests as you go.
   Don't bulk-copy directories, and don't port `archive/` code unless asked.
 - Note what you ported and from where in the work log.
+- Strip the shebang and `# -*- coding: utf-8 -*-` lines that `mon_old` modules start with.
 
 ---
 
