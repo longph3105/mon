@@ -1,0 +1,45 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+build/
+dist/
+
+# --- uv / virtual envs (keep uv.lock committed) ---
+.venv/
+venv/
+.python-version
+
+# --- Tooling caches ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# --- Model weights, checkpoints, and experiment outputs ---
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+runs/
+wandb/
+lightning_logs/
+
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- OS / editors / sync ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+.sync/
+*.!sync
