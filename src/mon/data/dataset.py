@@ -8,7 +8,7 @@ Examples:
     >>> from mon.core.enums import Split, Task
     >>> @register_dataset("my_lle", tasks={Task.LLE})  # doctest: +SKIP
     ... class MyLLE(FolderDataset):
-    ...     folder = "enhance/MyLLE"
+    ...     folder = "my_lle"
     ...     layout = {Split.TEST: {"image": Modality("low"), "target": Modality("high")}}
 """
 

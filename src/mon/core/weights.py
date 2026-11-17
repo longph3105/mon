@@ -96,9 +96,9 @@ class WeightsEnum(Enum):
 
     Examples:
         >>> class ZeroDCE_Weights(WeightsEnum):
-        ...     LOL = Weights("enhance/zero_dce/lol.pt")
-        ...     DEFAULT = LOL
-        >>> resolve_weights("default", ZeroDCE_Weights) == ZeroDCE_Weights.LOL.value
+        ...     SICE = Weights("lle/zero_dce/zero_dce_sice.pt")
+        ...     DEFAULT = SICE
+        >>> resolve_weights("default", ZeroDCE_Weights) == ZeroDCE_Weights.SICE.value
         True
     """
 

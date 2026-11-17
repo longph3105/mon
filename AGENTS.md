@@ -34,13 +34,13 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
 | Path            | Purpose                                                                                    |
 |-----------------|--------------------------------------------------------------------------------------------|
+| `docs/`         | Long-form documentation.                                                                   |
+| `logs/`         | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`.                                   |
 | `src/mon/`      | The importable package. All library code lives here.                                       |
 | `src/mon/core/` | Shared infrastructure; no deps on the rest of `mon`. Overview: `help(mon.core)`.           |
 | `src/mon/data/` | Files → samples → batches; may import only `mon.core`. Overview: `help(mon.data)`.         |
 | `src/mon/nn/`   | Losses, model helpers, tiled inference; imports only `mon.core`. Overview: `help(mon.nn)`. |
 | `tests/`        | Tests, mirroring the `src/mon/` module tree.                                               |
-| `docs/`         | Long-form documentation.                                                                   |
-| `logs/`         | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`.                                   |
 | `CHANGELOG.md`  | User-facing changes, newest first.                                                         |
 | `README.md`     | Install, usage, citation.                                                                  |
 
@@ -100,7 +100,8 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Logging: library code uses `logger = get_logger(__name__)` from `mon.core.console` and never configures
   logging or prints at import. Only entry points call `setup_logging()`.
 - Devices: `select_device(spec)` from `mon.core.runtime`; never fall back to CPU silently.
-- Pretrained weights: declare a `WeightsEnum` of `Weights("zoo/relative/path.pt")` per model and accept user input
+- Pretrained weights: declare a `WeightsEnum` of `Weights("<task>/<model>/<file>.pt")` (path under `zoo_dir()`; layout
+  and file naming: workspace `data/README.md`, Zoo) per model with `url` and `sha256`, and accept user input
   through `resolve_weights(spec, Enum)`; a missing file must raise, never skip loading.
 - Datasets: subclass `FolderDataset` (or `ClassFolderDataset` for `<split>/<class>/` folders), set `folder`
   (the dataset id, under `datasets_dir()`) and `layout` (the normalized layout of its task family, e.g.
