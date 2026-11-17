@@ -6,19 +6,20 @@ and data loaders. Image-processing algorithms live in ``mon.ops``, drawing in
 
 Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 
-    ======  ==============================================  ==========================================
-    Module  Purpose                                         Key names
-    ======  ==============================================  ==========================================
-    io      Read and write images and videos.               read_image, write_image, VideoWriter
-    labels  Read and write YOLO, VOC, and COCO box labels.  read_yolo, read_voc, read_coco, write_yolo
-    ======  ==============================================  ==========================================
+    ==========  ==============================================  ==========================================
+    Module      Purpose                                         Key names
+    ==========  ==============================================  ==========================================
+    io          Read and write images and videos.               read_image, write_image, VideoWriter
+    labels      Read and write YOLO, VOC, and COCO box labels.  read_yolo, read_voc, read_coco, write_yolo
+    structures  Class definitions and per-sample metadata.      ClassList, ClassDef, SampleMeta
+    ==========  ==============================================  ==========================================
 """
 
 from typing import TYPE_CHECKING
 
 from mon.core._lazy import make_lazy
 
-_SUBMODULES: tuple[str, ...] = ("io", "labels")
+_SUBMODULES: tuple[str, ...] = ("io", "labels", "structures")
 
 # Public name -> submodule. Keep in sync with each submodule's ``__all__``.
 _EXPORTS: dict[str, str] = {
@@ -36,11 +37,20 @@ _EXPORTS: dict[str, str] = {
     "read_voc"         : "labels",
     "read_yolo"        : "labels",
     "write_yolo"       : "labels",
+    # structures
+    "ClassDef"         : "structures",
+    "ClassList"        : "structures",
+    "Sample"           : "structures",
+    "SampleMeta"       : "structures",
 }
 
 # Literal list so static tools (mypy, pyright) see the re-exports; must equal sorted(_EXPORTS).
 __all__ = [
+    "ClassDef",
+    "ClassList",
     "CocoAnnotations",
+    "Sample",
+    "SampleMeta",
     "VideoInfo",
     "VideoWriter",
     "iter_video_frames",
@@ -62,3 +72,4 @@ if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
         VideoInfo, VideoWriter, iter_video_frames, read_image, to_numpy_hwc, video_info, write_image,
     )
     from mon.data.labels import CocoAnnotations, read_coco, read_voc, read_yolo, write_yolo
+    from mon.data.structures import ClassDef, ClassList, Sample, SampleMeta

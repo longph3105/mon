@@ -4,6 +4,8 @@
 
 ### Added
 
+- `mon.data.structures`: `ClassDef`, `ClassList` (validated, name/id lookup, `encode` annotation ids → training
+  ids, `from_coco` with raw ids kept as `source_id`, YAML I/O), `SampleMeta`, `Sample`.
 - `mon.data.labels`: `read_yolo`/`write_yolo`, `read_voc`, `read_coco` (`CocoAnnotations`) → sample dicts
   with `tv_tensors.BoundingBoxes` (absolute XYXY) and `labels`; malformed files raise with file and line.
 - `mon.data` package (lazy namespace). `mon.data.io`: `read_image`/`write_image` (RGB `tv_tensors.Image`,

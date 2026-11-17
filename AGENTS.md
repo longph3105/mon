@@ -15,8 +15,8 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
 - **Done:** `mon.core` (ported from `mon_old/libs/mon/src/mon/core`): paths, file I/O and downloads, config
   (OmegaConf), logging and progress bars, enums, registry, runtime (devices, seeding), weights, size, timing.
-- **In progress:** `mon.data`: `io`, `labels` done; next `structures`, `dataset` +
-  `loader`, `transforms`, `zoo`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
+- **In progress:** `mon.data`: `io`, `labels`, `structures` done; next `dataset` + `loader`, `transforms`,
+  `zoo`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **Next:** `mon.nn` / `mon.models` (registries, weights enums), runners (train/predict configs, run
   directories), plotting. Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
   `core` module's entry.
