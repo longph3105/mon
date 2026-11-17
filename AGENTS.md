@@ -22,6 +22,7 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   `core` module's entry.
 - **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the
   `dev` group. No linter or formatter config yet.
+- **Resuming work:** read the latest "Session handoff" section at the end of the newest `logs/log_*.md`.
 - Don't invent commands (`uv run …`, `pytest …`) until the config that backs them exists.
 - When adding tooling, propose the choice first (package manager, build backend, linter, test runner).
   Then update the **Commands** section below in the same change.
