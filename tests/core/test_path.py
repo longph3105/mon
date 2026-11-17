@@ -192,7 +192,7 @@ def test_zoo_dir_blank_values_count_as_unset(monkeypatch: pytest.MonkeyPatch):
 def test_zoo_dir_unset_raises(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv(ZOO_DIR_ENV, raising=False)
     monkeypatch.delenv(DATA_DIR_ENV, raising=False)
-    with pytest.raises(RuntimeError, match="MON_ZOO_DIR"):
+    with pytest.raises(RuntimeError, match="ZOO_DIR"):
         zoo_dir()
 
 
@@ -239,5 +239,66 @@ def test_find_weights_zoo_unset_is_explained(monkeypatch: pytest.MonkeyPatch, tm
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv(ZOO_DIR_ENV, raising=False)
     monkeypatch.delenv(DATA_DIR_ENV, raising=False)
-    with pytest.raises(FileNotFoundError, match="MON_ZOO_DIR"):
+    with pytest.raises(FileNotFoundError, match="ZOO_DIR"):
         find_weights("yolo/n.pt")
+
+
+# --- Resolution logging and `python -m mon.core.path` ---
+
+import logging  # noqa: E402
+
+from mon.core import path as path_mod  # noqa: E402
+from mon.core.constants import DATASET_DIR_ENV  # noqa: E402
+from mon.core.path import datasets_dir  # noqa: E402
+
+
+@pytest.fixture
+def clean_env(monkeypatch: pytest.MonkeyPatch):
+    for var in (DATA_DIR_ENV, DATASET_DIR_ENV, ZOO_DIR_ENV):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(path_mod, "_announced", set())
+
+
+def test_resolution_is_logged_once_with_source(clean_env, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, tmp_path: pathlib.Path):
+    monkeypatch.setenv(DATA_DIR_ENV, str(tmp_path))
+    with caplog.at_level(logging.INFO, logger="mon.core.path"):
+        datasets_dir(); datasets_dir(); zoo_dir()
+    msgs = [r.getMessage() for r in caplog.records]
+    assert msgs == [f"datasets directory: {tmp_path / 'datasets'} (from DATA_DIR/datasets)",
+                    f"model zoo directory: {tmp_path / 'zoo'} (from DATA_DIR/zoo)"]
+    caplog.clear()
+    monkeypatch.setenv(DATASET_DIR_ENV, str(tmp_path / "elsewhere"))  # a stray override is visible
+    with caplog.at_level(logging.INFO, logger="mon.core.path"):
+        assert datasets_dir() == tmp_path / "elsewhere"
+    assert caplog.records[0].getMessage().endswith("(from DATASET_DIR)")
+
+
+def test_datasets_dir_errors_like_zoo_dir(clean_env):
+    with pytest.raises(RuntimeError, match="set DATASET_DIR=.* or DATA_DIR="):
+        datasets_dir()
+
+
+def test_main_reports_and_exit_code(clean_env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: pathlib.Path):
+    assert path_mod.main() == 1
+    out = capsys.readouterr().out
+    assert out.count("not configured") == 3 and "set ZOO_DIR or DATA_DIR" in out
+
+    (tmp_path / "datasets").mkdir()
+    monkeypatch.setenv(DATA_DIR_ENV, str(tmp_path))
+    assert path_mod.main() == 1  # zoo/ missing
+    out = capsys.readouterr().out
+    assert "exists" in out and "missing" in out and "(DATA_DIR/zoo)" in out
+
+    (tmp_path / "zoo").mkdir()
+    assert path_mod.main() == 0
+
+
+def test_python_dash_m_entry(tmp_path: pathlib.Path):
+    import os
+    import subprocess
+    import sys
+    env = {**os.environ, DATA_DIR_ENV: str(tmp_path)}
+    env.pop(DATASET_DIR_ENV, None); env.pop(ZOO_DIR_ENV, None)
+    (tmp_path / "datasets").mkdir(); (tmp_path / "zoo").mkdir()
+    done = subprocess.run([sys.executable, "-m", "mon.core.path"], capture_output=True, text=True, env=env)
+    assert done.returncode == 0 and done.stdout.count("exists") == 3 and not done.stderr

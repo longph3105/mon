@@ -40,10 +40,23 @@ Use the `gui` extra and matplotlib to display images.
 
 ## Configuration
 
-Pretrained weights are looked up in `$MON_ZOO_DIR`, or `$DATA_DIR/zoo` if that is unset:
+Pretrained weights are looked up in `$ZOO_DIR` and datasets in `$DATASET_DIR`; if unset, they default to
+`$DATA_DIR/zoo` and `$DATA_DIR/datasets`:
 
 ```shell
-export MON_ZOO_DIR=/path/to/zoo   # or: export DATA_DIR=/path/to/data
+export DATA_DIR=/path/to/data       # or set ZOO_DIR / DATASET_DIR individually
+```
+
+Set them where every process sees them, not only interactive terminals:
+
+- macOS (zsh): `~/.zshenv`. Linux servers: `~/.profile` or `~/.bashrc`.
+- Containers: `docker run -e DATA_DIR=/data …`. Per-project overrides: a git-ignored `.env` file with
+  `uv run --env-file .env …`.
+
+Check what `mon` will use (exit code 1 if something is unset or missing):
+
+```shell
+uv run python -m mon.core.path
 ```
 
 ## Usage

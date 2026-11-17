@@ -58,6 +58,7 @@ _EXPORTS: dict[str, str] = {
     # constants
     "ANNS_DIR"             : "constants",
     "CONFIG_EXTENSIONS"    : "constants",
+    "DATASET_DIR_ENV"     : "constants",
     "DATA_DIR_ENV"         : "constants",
     "DEBUG_DIR"            : "constants",
     "DEFAULT_CKPT_EXT"     : "constants",
@@ -90,6 +91,7 @@ _EXPORTS: dict[str, str] = {
     "sha256sum"            : "fileio",
     # path
     "Path"                 : "path",
+    "datasets_dir"         : "path",
     "find_weights"         : "path",
     "zoo_dir"              : "path",
     # registry
@@ -132,6 +134,7 @@ __all__ = [
     "BASE_KEY",
     "BBoxFormat",
     "CONFIG_EXTENSIONS",
+    "DATASET_DIR_ENV",
     "DATA_DIR_ENV",
     "DEBUG_DIR",
     "DEFAULT_CKPT_EXT",
@@ -168,6 +171,7 @@ __all__ = [
     "WeightsLike",
     "ZOO_DIR_ENV",
     "available_devices",
+    "datasets_dir",
     "download_file",
     "find_weights",
     "get_console",
@@ -206,7 +210,8 @@ if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
         DEFAULT_QUIET_LOGGERS, SpeedColumn, get_console, get_logger, print_dict, progress_bar, setup_logging,
     )
     from mon.core.constants import (
-        ANNS_DIR, CONFIG_EXTENSIONS, DATA_DIR_ENV, DEBUG_DIR, DEFAULT_CKPT_EXT, DEFAULT_IMAGE_EXT,
+        ANNS_DIR, CONFIG_EXTENSIONS, DATA_DIR_ENV, DATASET_DIR_ENV, DEBUG_DIR, DEFAULT_CKPT_EXT,
+        DEFAULT_IMAGE_EXT,
         DEFAULT_LABEL_EXT, DEFAULT_WEIGHTS_EXT, DEPTH_DIR, IMAGE_EXTENSIONS, IMAGES_DIR, LABELS_DIR,
         RAW_IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, WEIGHTS_EXTENSIONS, ZOO_DIR_ENV,
     )
@@ -214,7 +219,7 @@ if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
     from mon.core.fileio import (
         download_file, load_json, load_txt, load_yaml, save_json, save_txt, save_yaml, sha256sum,
     )
-    from mon.core.path import Path, find_weights, zoo_dir
+    from mon.core.path import Path, datasets_dir, find_weights, zoo_dir
     from mon.core.registry import Entry, Registry, RegistryKeyError
     from mon.core.runtime import available_devices, seed_everything, select_device
     from mon.core.size import Size

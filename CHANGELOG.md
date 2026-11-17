@@ -4,6 +4,13 @@
 
 ### Added
 
+- `python -m mon.core.path`: shows the data, datasets, and zoo directories, their source variable, and
+  whether they exist. `datasets_dir()`/`zoo_dir()` log the resolved directory and source once.
+- Environment variables are `DATA_DIR`, `DATASET_DIR`, `ZOO_DIR` (no `MON_` prefix).
+- `mon.data.dataset`: `FolderDataset` (declare per-split modality folders; pairing by relative stem),
+  `Modality` (image/mask/depth/yolo/voc), `DATASETS` registry (zoo loaded on first lookup),
+  `register_dataset`. `mon.data.loader`: `collate`, `create_dataloader` (seeded shuffle and workers).
+- `mon.core.path.datasets_dir()` (`DATASET_DIR`, else `$DATA_DIR/datasets`); `Registry(autoload=)`.
 - `mon.data.structures`: `ClassDef`, `ClassList` (validated, name/id lookup, `encode` annotation ids → training
   ids, `from_coco` with raw ids kept as `source_id`, YAML I/O), `SampleMeta`, `Sample`.
 - `mon.data.labels`: `read_yolo`/`write_yolo`, `read_voc`, `read_coco` (`CocoAnnotations`) → sample dicts
@@ -26,7 +33,7 @@
   (UTF-8, parent dirs created, paths/NumPy/tensors serialized, `overwrite=False` raises `FileExistsError`).
 - `mon.core.enums`: `Task`, `Split`, `RunMode`, `Strategy`, `BBoxFormat` (stdlib `StrEnum` with aliases,
   case-insensitive lookup; unknown values raise). `AliasStrEnum` base for new enums.
-- `mon.core.path.zoo_dir()`: weights directory from `MON_ZOO_DIR`, falling back to `$DATA_DIR/zoo`.
+- `mon.core.path.zoo_dir()`: weights directory from `ZOO_DIR`, falling back to `$DATA_DIR/zoo`.
 - `mon.core.constants`: standard directory names (`IMAGES_DIR`, ...) and default extensions.
 - `mon.core.registry.Registry`: case-insensitive name → object registry with metadata filtering
   (`names(**criteria)`), "did you mean" errors, and duplicate protection.

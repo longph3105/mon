@@ -11,6 +11,7 @@ __all__ = [
 ]
 
 import difflib
+import importlib
 from collections.abc import Callable, Collection, Iterator, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -68,23 +69,46 @@ class Registry[T]:
         (True, ['l1'])
     """
 
-    def __init__(self, name: str) -> None:
-        self.name = name
+    def __init__(self, name: str, *, autoload: str | None = None) -> None:
+        """Args:
+            name: Label used in messages.
+            autoload: Module (usually a package) imported on the first lookup so that its
+                registrations are present, e.g. ``"mon.data.zoo"``. Registration itself never
+                triggers it, so importing the module that defines the registry stays cheap.
+        """
+        self.name      = name
+        self._autoload = autoload
+        self._loaded   = autoload is None
         self._entries: dict[str, Entry[T]] = {}
+
+    def _ensure_loaded(self) -> None:
+        """Import ``autoload`` once, before the first lookup."""
+        if self._loaded:
+            return
+        self._loaded = True  # set first: the imported modules register into this registry
+        try:
+            importlib.import_module(self._autoload or "")
+        except BaseException:
+            self._loaded = False
+            raise
 
     # --- Container ---
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.name!r}, {len(self)} entries)"
+        pending = "" if self._loaded else f", autoload={self._autoload!r} pending"
+        return f"{type(self).__name__}({self.name!r}, {len(self._entries)} entries{pending})"  # no autoload
 
     def __len__(self) -> int:
+        self._ensure_loaded()
         return len(self._entries)
 
     def __contains__(self, name: object) -> bool:
+        self._ensure_loaded()
         return isinstance(name, str) and name.strip().lower() in self._entries
 
     def __iter__(self) -> Iterator[str]:
         """Iterate over names in sorted order."""
+        self._ensure_loaded()
         return iter(sorted(self._entries))
 
     # --- Registration ---
@@ -150,6 +174,7 @@ class Registry[T]:
             RegistryKeyError: If ``name`` isn't registered; suggests close matches.
         """
         key = _normalize(name)
+        self._ensure_loaded()
         try:
             return self._entries[key]
         except KeyError:
@@ -180,6 +205,7 @@ class Registry[T]:
         ``meta[key]`` is a non-string collection containing ``value``. Entries lacking
         ``key`` don't match.
         """
+        self._ensure_loaded()
         return [
             e for _, e in sorted(self._entries.items())
             if all(_matches(e.meta.get(k, _ABSENT), v) for k, v in criteria.items())

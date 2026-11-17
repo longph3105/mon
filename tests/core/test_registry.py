@@ -142,3 +142,56 @@ def test_dataset_split_filter():
     datasets.add(object(), "sid", tasks={Task.LLE}, splits={Split.TRAIN})
     assert datasets.names(tasks=Task.LLE) == ["dicm", "lol", "sid"]  # no hidden split requirement
     assert datasets.names(tasks=Task.LLE, splits=Split.TEST) == ["dicm", "lol"]
+
+
+# --- Autoload ---
+
+import sys  # noqa: E402
+import textwrap  # noqa: E402
+
+
+@pytest.fixture
+def plugin_pkg(tmp_path, monkeypatch: pytest.MonkeyPatch):
+    """A throwaway package that registers into ``REG`` when imported."""
+    import mon.core.registry as regmod
+    reg = regmod.Registry[type]("plugins", autoload="mon_test_plugins")
+    monkeypatch.setattr(regmod, "_TEST_REG", reg, raising=False)
+    pkg = tmp_path / "mon_test_plugins"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text(textwrap.dedent("""
+        from mon.core.registry import _TEST_REG
+        from . import a  # noqa: F401
+    """))
+    (pkg / "a.py").write_text(textwrap.dedent("""
+        from mon.core.registry import _TEST_REG
+
+        @_TEST_REG.register("alpha", kind="x")
+        class Alpha: ...
+    """))
+    monkeypatch.syspath_prepend(str(tmp_path))
+    yield reg
+    sys.modules.pop("mon_test_plugins", None)
+    sys.modules.pop("mon_test_plugins.a", None)
+
+
+def test_autoload_on_first_lookup_only(plugin_pkg: Registry[type]):
+    reg = plugin_pkg
+    assert "mon_test_plugins" not in sys.modules
+    assert "pending" in repr(reg) and "mon_test_plugins" not in sys.modules  # repr doesn't load
+    assert reg.names(kind="x") == ["alpha"]
+    assert "mon_test_plugins" in sys.modules
+    assert "alpha" in reg and len(reg) == 1 and list(reg) == ["alpha"] and "pending" not in repr(reg)
+
+
+@pytest.mark.parametrize("lookup", [len, list, lambda r: "alpha" in r, lambda r: r.get("alpha"), lambda r: r.entries()])
+def test_every_lookup_triggers_autoload(plugin_pkg: Registry[type], lookup):
+    lookup(plugin_pkg)
+    assert "mon_test_plugins" in sys.modules
+
+
+def test_autoload_failure_is_retried():
+    reg = Registry[type]("broken", autoload="mon_no_such_module_xyz")
+    with pytest.raises(ModuleNotFoundError):
+        reg.names()
+    with pytest.raises(ModuleNotFoundError):  # not silently marked as loaded
+        len(reg)

@@ -1,15 +1,18 @@
 """Path subclass plus model-zoo and weights lookup."""
 
-__all__ = ["Path", "find_weights", "zoo_dir"]
+__all__ = ["Path", "datasets_dir", "find_weights", "zoo_dir"]
 
+import logging
 import os
 import pathlib
+import sys
 from collections.abc import Iterable
 from typing import Self
 
 from mon.core.constants import (
     CONFIG_EXTENSIONS,
     DATA_DIR_ENV,
+    DATASET_DIR_ENV,
     IMAGE_EXTENSIONS,
     RAW_IMAGE_EXTENSIONS,
     VIDEO_EXTENSIONS,
@@ -215,10 +218,54 @@ class Path(pathlib.Path):
 
 # --- Well-Known Directories ---
 
+# stdlib logging (not mon.core.console) keeps this module light to import.
+logger = logging.getLogger(__name__)
+_announced: set[tuple[str, str]] = set()
+
+
+def _resolve_env_dir(primary: str, subdir: str) -> tuple[Path, str] | None:
+    """``($primary, "PRIMARY")``, else ``($DATA_DIR/subdir, "DATA_DIR/subdir")``, else ``None``."""
+    if value := os.environ.get(primary, "").strip():
+        return Path(value).expanduser(), primary
+    if value := os.environ.get(DATA_DIR_ENV, "").strip():
+        return Path(value).expanduser() / subdir, f"{DATA_DIR_ENV}/{subdir}"
+    return None
+
+
+def _env_dir(primary: str, subdir: str, what: str) -> Path:
+    """``$primary``, else ``$DATA_DIR/subdir``; ``~`` expanded; raise if neither is set.
+
+    Logs the resolved directory and its source once per process (INFO), so a stray
+    variable from another tool is visible.
+    """
+    resolved = _resolve_env_dir(primary, subdir)
+    if resolved is not None:
+        path, source = resolved
+        if (what, str(path)) not in _announced:
+            _announced.add((what, str(path)))
+            logger.info("%s directory: %s (from %s)", what, path, source)
+        return path
+    raise RuntimeError(
+        f"{what} directory is not configured: set {primary}=/path/to/{subdir} "
+        f"or {DATA_DIR_ENV}=/path/to/data (uses $DATA_DIR/{subdir})"
+    )
+
+
+def datasets_dir() -> Path:
+    """Return the datasets directory: ``$DATASET_DIR``, then ``$DATA_DIR/datasets``.
+
+    Datasets keep their upstream layout under it, e.g. ``datasets_dir() / "enhance/LOL-v1"``.
+
+    Raises:
+        RuntimeError: If neither variable is set.
+    """
+    return _env_dir(DATASET_DIR_ENV, "datasets", "datasets")
+
+
 def zoo_dir() -> Path:
     """Return the pretrained-weights directory from the environment.
 
-    Resolution order: ``$MON_ZOO_DIR``, then ``$DATA_DIR/zoo``. ``~`` is expanded. The
+    Resolution order: ``$ZOO_DIR``, then ``$DATA_DIR/zoo``. ``~`` is expanded. The
     directory is not required to exist. Read on every call, so env changes apply.
 
     Raises:
@@ -227,14 +274,7 @@ def zoo_dir() -> Path:
     Examples:
         >>> weights = zoo_dir() / "framework/ultralytics/yolo11/yolo11n/coco/yolo11n_coco.pt"  # doctest: +SKIP
     """
-    if value := os.environ.get(ZOO_DIR_ENV, "").strip():
-        return Path(value).expanduser()
-    if value := os.environ.get(DATA_DIR_ENV, "").strip():
-        return Path(value).expanduser() / "zoo"
-    raise RuntimeError(
-        f"model zoo directory is not configured: set {ZOO_DIR_ENV}=/path/to/zoo "
-        f"or {DATA_DIR_ENV}=/path/to/data (uses $DATA_DIR/zoo)"
-    )
+    return _env_dir(ZOO_DIR_ENV, "zoo", "model zoo")
 
 
 def find_weights(path: str | os.PathLike[str]) -> Path:
@@ -266,3 +306,32 @@ def find_weights(path: str | os.PathLike[str]) -> Path:
                 return candidate
             tried.append(str(candidate))
     raise FileNotFoundError(f"weights not found; tried: {', '.join(tried)}")
+
+
+# --- Diagnostics: python -m mon.core.path ---
+
+def main() -> int:
+    """Print where ``mon`` looks for data, datasets, and weights, and whether those exist.
+
+    Returns ``0`` if all three are configured and exist, else ``1``.
+    """
+    rows: list[tuple[str, Path | None, str]] = []
+    data = os.environ.get(DATA_DIR_ENV, "").strip()
+    rows.append(("data", Path(data).expanduser() if data else None, DATA_DIR_ENV if data else f"set {DATA_DIR_ENV}"))
+    for label, env, subdir in (("datasets", DATASET_DIR_ENV, "datasets"), ("zoo", ZOO_DIR_ENV, "zoo")):
+        resolved = _resolve_env_dir(env, subdir)
+        rows.append((label, *resolved) if resolved else (label, None, f"set {env} or {DATA_DIR_ENV}"))
+    ok = True
+    for label, path, source in rows:
+        if path is None:
+            status, ok = "not configured", False
+        elif path.is_dir():
+            status = "exists"
+        else:
+            status, ok = "missing", False
+        print(f"{label:<9} {str(path) if path else '-':<50} {status:<15} ({source})")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

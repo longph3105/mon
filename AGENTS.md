@@ -15,7 +15,7 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
 - **Done:** `mon.core` (ported from `mon_old/libs/mon/src/mon/core`): paths, file I/O and downloads, config
   (OmegaConf), logging and progress bars, enums, registry, runtime (devices, seeding), weights, size, timing.
-- **In progress:** `mon.data`: `io`, `labels`, `structures` done; next `dataset` + `loader`, `transforms`,
+- **In progress:** `mon.data`: `io`, `labels`, `structures`, `dataset`, `loader` done; next `transforms`,
   `zoo`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **Next:** `mon.nn` / `mon.models` (registries, weights enums), runners (train/predict configs, run
   directories), plotting. Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
@@ -59,6 +59,7 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 | Test              | `uv run pytest`                           |
 | Test, fast/CPU    | `uv run pytest -m "not slow and not gpu"` |
 | Type check        | `uv run mypy`                             |
+| Check data paths  | `uv run python -m mon.core.path`          |
 
 - The lock must resolve for macOS arm64 and Linux x86_64 (`tool.uv.required-environments`).
 - OpenCV is `opencv-python-headless` only; never add `opencv-python` (both install `cv2/` and clobber
@@ -106,6 +107,10 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Never hardcode data, weight, or output paths. Read them from config or env vars (for example `DATA_DIR`).
   Pretrained weights: declare a `WeightsEnum` of `Weights("zoo/relative/path.pt")` per model and accept user input
   through `resolve_weights(spec, Enum)`; a missing file must raise, never skip loading.
+- Datasets: subclass `FolderDataset`, set `folder` (under `datasets_dir()`, upstream layout kept) and `layout`,
+  register with `register_dataset` in a `mon.data.zoo` module, and import that module in `zoo/__init__.py`.
+  Build loaders with `create_dataloader` (seeded). `uint16` tensors (16-bit images) support only some torch ops:
+  convert with `.float()`/`v2.ToDtype` before arithmetic.
 - Image/video I/O: `mon.data.io` (OpenCV). Don't use `torchvision.io` codecs: deprecated in torchvision 0.29.
 - Samples are dicts. Wrap every image-like value explicitly (`tv_tensors.Image`/`Mask`/`Video`); v2 treats only
   the first *plain* tensor as an image and silently skips the rest. Class-id maps are `Mask` (nearest resize);

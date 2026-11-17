@@ -92,6 +92,10 @@ def read_image(path: str | os.PathLike[str], mode: ImageMode = "rgb") -> tv_tens
     Returns:
         ``uint8`` image, or ``uint16`` for 16-bit files (PNG/TIFF) and float for EXR. It is a
         zero-copy view of the decoded array, so not contiguous; use ``.reshape``, not ``.view``.
+        torch supports only some ops on ``uint16`` (v2 geometric transforms, ``stack``, ``.to``
+        work; arithmetic and reductions like ``max`` don't): convert with ``.float()``/``.to()``
+        or ``v2.ToDtype`` first. ``ToDtype(scale=True)`` divides by 65535; use ``scale=False``
+        to keep raw units such as depth in millimetres.
 
     Notes:
         EXIF orientation is applied for ``"rgb"`` and ``"gray"``. OpenCV can't keep alpha and

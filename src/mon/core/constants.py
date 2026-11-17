@@ -3,6 +3,7 @@
 __all__ = [
     "ANNS_DIR",
     "CONFIG_EXTENSIONS",
+    "DATASET_DIR_ENV",
     "DATA_DIR_ENV",
     "DEBUG_DIR",
     "DEFAULT_CKPT_EXT",
@@ -21,11 +22,14 @@ __all__ = [
 
 # --- Environment Variables ---
 
-ZOO_DIR_ENV : str = "MON_ZOO_DIR"
-"""Directory holding pretrained weights; see ``mon.core.path.zoo_dir``."""
+DATA_DIR_ENV   : str = "DATA_DIR"
+"""Data root; ``$DATA_DIR/zoo`` and ``$DATA_DIR/datasets`` are the fallbacks."""
 
-DATA_DIR_ENV: str = "DATA_DIR"
-"""Data root; ``$DATA_DIR/zoo`` is the fallback zoo directory."""
+DATASET_DIR_ENV: str = "DATASET_DIR"
+"""Directory holding datasets; see ``mon.core.path.datasets_dir``."""
+
+ZOO_DIR_ENV    : str = "ZOO_DIR"
+"""Directory holding pretrained weights; see ``mon.core.path.zoo_dir``."""
 
 # --- Directory Names ---
 # Standard subdirectory names inside datasets and run outputs.
