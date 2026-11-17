@@ -15,8 +15,8 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
 - **Done:** `mon.core` (ported from `mon_old/libs/mon/src/mon/core`): paths, file I/O and downloads, config
   (OmegaConf), logging and progress bars, enums, registry, runtime (devices, seeding), weights, size, timing.
-- **In progress:** `mon.data`: `io`, `labels`, `structures`, `dataset`, `loader` done; next `transforms`,
-  `zoo`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
+- **In progress:** `mon.data`: `io`, `labels`, `structures`, `dataset`, `loader`, `transforms` done; `zoo`
+  has `lol_v1`, `lol_v2_real`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **Next:** `mon.nn` / `mon.models` (registries, weights enums), runners (train/predict configs, run
   directories), plotting. Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
   `core` module's entry.
@@ -108,8 +108,10 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Never hardcode data, weight, or output paths. Read them from config or env vars (for example `DATA_DIR`).
   Pretrained weights: declare a `WeightsEnum` of `Weights("zoo/relative/path.pt")` per model and accept user input
   through `resolve_weights(spec, Enum)`; a missing file must raise, never skip loading.
-- Datasets: subclass `FolderDataset`, set `folder` (under `datasets_dir()`, upstream layout kept) and `layout`,
-  register with `register_dataset` in a `mon.data.zoo` module, and import that module in `zoo/__init__.py`.
+- Datasets: subclass `FolderDataset`, set `folder` (the dataset id, under `datasets_dir()`) and `layout`
+  (the normalized layout of its task family, e.g. `paired_layout(...)`; ids and layouts: workspace
+  `data/README.md`), register with `register_dataset` under the same id in a `mon.data.zoo` module, and import
+  that module in `zoo/__init__.py`. Record known train/test overlaps with other datasets in the docstring.
   Build loaders with `create_dataloader` (seeded). `uint16` tensors (16-bit images) support only some torch ops:
   convert with `.float()`/`v2.ToDtype` before arithmetic.
 - Image/video I/O: `mon.data.io` (OpenCV). Don't use `torchvision.io` codecs: deprecated in torchvision 0.29.
@@ -118,7 +120,11 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   continuous maps (depth, targets) are `Image`. Restore types after arithmetic with `tv_tensors.wrap`.
 - Transforms run in two stages: geometric on the whole sample, photometric only on input keys (via `ApplyTo`):
   v2 photometric ops change *every* `Image`, including ground-truth targets and depth. After crops, use
-  `SanitizeBoundingBoxes` so labels drop with their boxes.
+  `SanitizeBoundingBoxes` so labels drop with their boxes. Custom transforms go in `mon.data.transforms`
+  only when v2 lacks them.
+- Stride-multiple sizes: training resizes (`ResizeToMultiple`); inference pads (`PadToMultiple`, or
+  `pad_to_multiple` on a batch) and crops predictions back with `crop_to(pred, meta.orig_size)`. Predictors
+  default to padding; never resize an output back for evaluation.
 - Tensors are `[B, C, H, W]` unless stated otherwise; document shapes in docstrings when they're not obvious.
 
 ---

@@ -60,6 +60,26 @@ def test_reregistering_same_object_is_noop(models: Registry[type]):
         models.add(unet, arch="different")  # same object, different metadata
 
 
+def _define(module: str, qualname: str = "Net") -> type:
+    """A fresh class object, as if ``module`` defining ``qualname`` were imported again."""
+    namespace: dict = {"__name__": module}
+    exec(f"class {qualname}: ...", namespace)
+    return namespace[qualname]
+
+
+def test_redefinition_from_reimported_module_replaces():
+    reg = Registry[type]("models")
+    old, new = _define("pkg.zoo"), _define("pkg.zoo")
+    assert old is not new
+    reg.add(old, "net", arch="a")
+    assert reg.add(new, "net", arch="b").obj is new  # reload: newest definition wins
+    assert reg.entry("net").meta["arch"] == "b"
+    with pytest.raises(RegistryKeyError):
+        reg.add(_define("pkg.other"), "net")          # same class name, different module
+    with pytest.raises(RegistryKeyError):
+        reg.add(_define("pkg.zoo", "Other"), "net")   # same module, different class
+
+
 def test_name_required_without_dunder_name():
     reg = Registry[object]("fns")
     partial = functools.partial(max, 0)

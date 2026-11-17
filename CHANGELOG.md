@@ -4,6 +4,15 @@
 
 ### Added
 
+- `docs/data.md`: guide to datasets, transforms, loaders, and pad-and-crop inference; its code runs in the
+  tests. Docstring examples for `register_dataset`/`DATASETS` and the LOL datasets.
+- `Registry.add`: an object with the same `__module__` and `__qualname__` as the registered one (its module
+  imported again: `importlib.reload`, notebooks, pytest) replaces it instead of raising.
+- `mon.data.zoo.lol`: `LOLv1` (`lol_v1`) and `LOLv2Real` (`lol_v2_real`), registered in `DATASETS` for
+  `Task.LLE`. `mon.data.dataset.paired_layout` for the normalized `<split>/images|targets` layout.
+- `mon.data.transforms`: `ApplyTo` (run a transform on selected sample keys, shared random parameters),
+  `ResizeToMultiple` (training), `PadToMultiple`/`pad_to_multiple` + `crop_to` (exact pad-and-crop inference),
+  `MinMaxNormalize` (per-image or per-channel `[0, 1]` scaling).
 - `python -m mon.core.path`: shows the data, datasets, and zoo directories, their source variable, and
   whether they exist. `datasets_dir()`/`zoo_dir()` log the resolved directory and source once.
 - Environment variables are `DATA_DIR`, `DATASET_DIR`, `ZOO_DIR` (no `MON_` prefix).

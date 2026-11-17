@@ -49,7 +49,7 @@ export DATA_DIR=/path/to/data       # or set ZOO_DIR / DATASET_DIR individually
 
 Set them where every process sees them, not only interactive terminals:
 
-- macOS (zsh): `~/.zshenv`. Linux servers: `~/.profile` or `~/.bashrc`.
+- macOS: `~/.zshenv` (zsh) or `~/.bash_profile` (bash). Linux servers: `~/.profile` or `~/.bashrc`.
 - Containers: `docker run -e DATA_DIR=/data …`. Per-project overrides: a git-ignored `.env` file with
   `uv run --env-file .env …`.
 
@@ -70,6 +70,8 @@ seed = mc.seed_everything(cfg.get("seed"))
 ```
 
 Names load lazily, so `import mon.core` stays fast until a name that needs PyTorch is used.
+
+Datasets, transforms and loaders: [docs/data.md](docs/data.md).
 
 ## Citation
 

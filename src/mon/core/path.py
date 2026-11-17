@@ -254,7 +254,7 @@ def _env_dir(primary: str, subdir: str, what: str) -> Path:
 def datasets_dir() -> Path:
     """Return the datasets directory: ``$DATASET_DIR``, then ``$DATA_DIR/datasets``.
 
-    Datasets keep their upstream layout under it, e.g. ``datasets_dir() / "enhance/LOL-v1"``.
+    Each dataset lives in a folder named by its id, e.g. ``datasets_dir() / "lol_v1"``.
 
     Raises:
         RuntimeError: If neither variable is set.

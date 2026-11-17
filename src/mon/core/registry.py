@@ -55,6 +55,12 @@ def _matches(actual: Any, wanted: Any) -> bool:
     return isinstance(actual, Collection) and not isinstance(actual, (str, bytes)) and wanted in actual
 
 
+def _same_definition(a: Any, b: Any) -> bool:
+    """Whether ``a`` and ``b`` come from the same source definition (same module and qualified name)."""
+    names = [(getattr(x, "__module__", None), getattr(x, "__qualname__", None)) for x in (a, b)]
+    return None not in names[0] and names[0] == names[1]
+
+
 class Registry[T]:
     """A mapping from case-insensitive names to objects, with metadata for filtering.
 
@@ -125,7 +131,9 @@ class Registry[T]:
         Raises:
             TypeError: If ``name`` is omitted and ``obj`` has no ``__name__``.
             RegistryKeyError: If the name is taken by a different object and not ``replace``.
-                Re-registering the same object with the same metadata is a no-op.
+                Re-registering the same object with the same metadata is a no-op; an object
+                with the same ``__module__`` and ``__qualname__`` (its module imported again)
+                replaces the old entry.
         """
         if name is None:
             name = getattr(obj, "__name__", None)
@@ -138,6 +146,11 @@ class Registry[T]:
         if existing is not None and not replace:
             if existing.obj is obj and dict(existing.meta) == dict(meta):
                 return existing
+            if existing.obj is not obj and _same_definition(existing.obj, obj):
+                # The defining module was imported again (importlib.reload, notebooks, pytest's
+                # importlib mode): the new object supersedes the old one.
+                self._entries[key] = entry
+                return entry
             raise RegistryKeyError(
                 f"{key!r} is already registered in {self.name!r} (as {existing.obj!r}); pass replace=True to overwrite"
             )

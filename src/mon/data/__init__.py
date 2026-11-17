@@ -14,6 +14,7 @@ Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
     labels      Read and write YOLO, VOC, and COCO box labels.                       read_yolo, read_voc, read_coco, write_yolo
     loader      Batching for dict samples and reproducible DataLoader construction.  collate, create_dataloader
     structures  Class definitions and per-sample metadata.                           ClassList, ClassDef, SampleMeta
+    transforms  Sample transforms missing from torchvision v2.                       ApplyTo, PadToMultiple, ResizeToMultiple
     ==========  ===================================================================  ==========================================
 """
 
@@ -21,7 +22,7 @@ from typing import TYPE_CHECKING
 
 from mon.core._lazy import make_lazy
 
-_SUBMODULES: tuple[str, ...] = ("dataset", "io", "labels", "loader", "structures")
+_SUBMODULES: tuple[str, ...] = ("dataset", "io", "labels", "loader", "structures", "transforms")
 
 # Public name -> submodule. Keep in sync with each submodule's ``__all__``.
 _EXPORTS: dict[str, str] = {
@@ -30,6 +31,7 @@ _EXPORTS: dict[str, str] = {
     "FolderDataset"    : "dataset",
     "Modality"         : "dataset",
     "ModalityKind"     : "dataset",
+    "paired_layout"    : "dataset",
     "register_dataset" : "dataset",
     # io
     "VideoInfo"        : "io",
@@ -54,25 +56,39 @@ _EXPORTS: dict[str, str] = {
     "ClassList"        : "structures",
     "Sample"           : "structures",
     "SampleMeta"       : "structures",
+    # transforms
+    "ApplyTo"          : "transforms",
+    "MinMaxNormalize"  : "transforms",
+    "PadToMultiple"    : "transforms",
+    "ResizeToMultiple" : "transforms",
+    "crop_to"          : "transforms",
+    "pad_to_multiple"  : "transforms",
 }
 
 # Literal list so static tools (mypy, pyright) see the re-exports; must equal sorted(_EXPORTS).
 __all__ = [
+    "ApplyTo",
     "ClassDef",
     "ClassList",
     "CocoAnnotations",
     "DATASETS",
     "FolderDataset",
     "LIST_KEYS",
+    "MinMaxNormalize",
     "Modality",
     "ModalityKind",
+    "PadToMultiple",
+    "ResizeToMultiple",
     "Sample",
     "SampleMeta",
     "VideoInfo",
     "VideoWriter",
     "collate",
     "create_dataloader",
+    "crop_to",
     "iter_video_frames",
+    "pad_to_multiple",
+    "paired_layout",
     "read_coco",
     "read_image",
     "read_voc",
@@ -88,10 +104,15 @@ __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 
 
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
-    from mon.data.dataset import DATASETS, FolderDataset, Modality, ModalityKind, register_dataset
+    from mon.data.dataset import (
+        DATASETS, FolderDataset, Modality, ModalityKind, paired_layout, register_dataset,
+    )
     from mon.data.io import (
         VideoInfo, VideoWriter, iter_video_frames, read_image, to_numpy_hwc, video_info, write_image,
     )
     from mon.data.labels import CocoAnnotations, read_coco, read_voc, read_yolo, write_yolo
     from mon.data.loader import LIST_KEYS, collate, create_dataloader
     from mon.data.structures import ClassDef, ClassList, Sample, SampleMeta
+    from mon.data.transforms import (
+        ApplyTo, MinMaxNormalize, PadToMultiple, ResizeToMultiple, crop_to, pad_to_multiple,
+    )

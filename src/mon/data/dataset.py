@@ -1,7 +1,8 @@
 """Folder-based datasets declared by their on-disk layout.
 
-A dataset subclass states where each modality lives per split (in the dataset's upstream
-folder layout); files are paired across modalities by relative path without extension.
+A dataset subclass states where each modality lives per split; files are paired across
+modalities by relative path without extension. Datasets are stored in the normalized layout of
+their task family (workspace ``data/README.md``), e.g. ``paired_layout`` for paired restoration.
 
 Examples:
     >>> from mon.core.enums import Split, Task
@@ -16,6 +17,7 @@ __all__ = [
     "FolderDataset",
     "Modality",
     "ModalityKind",
+    "paired_layout",
     "register_dataset",
 ]
 
@@ -254,7 +256,31 @@ def register_dataset(name: str, *, tasks: Iterable[Task]) -> Callable[[type[Fold
     """Register a ``FolderDataset`` subclass in ``DATASETS`` with ``tasks`` and its ``layout``'s splits.
 
     Deriving ``splits`` from ``layout`` keeps registry filters (``DATASETS.names(splits=...)``)
-    consistent with what the class can actually load.
+    consistent with what the class can actually load. Registering never imports or touches data;
+    ``DATASETS.build(name, split, ...)`` instantiates the class.
+
+    Examples:
+        >>> import shutil, tempfile, torch
+        >>> from mon.data.io import write_image
+        >>> root = Path(tempfile.mkdtemp())
+        >>> for split in ("train", "test"):
+        ...     for sub in ("images", "targets"):
+        ...         _ = write_image(torch.zeros(3, 4, 6, dtype=torch.uint8), root / split / sub / "a.png")
+        >>> @register_dataset("doc_paired", tasks={Task.LLE})
+        ... class DocPaired(FolderDataset):
+        ...     layout = paired_layout("train", "test")
+        >>> DATASETS.get("DOC_PAIRED") is DocPaired          # names are case-insensitive
+        True
+        >>> "doc_paired" in DATASETS.names(tasks=Task.LLE, splits=Split.TEST)
+        True
+        >>> ds = DATASETS.build("doc_paired", "test", root=root)  # = DocPaired("test", root=root)
+        >>> len(ds), sorted(ds[0])
+        (1, ['image', 'meta', 'target'])
+        >>> DATASETS.get("doc_pairde")
+        Traceback (most recent call last):
+            ...
+        mon.core.registry.RegistryKeyError: 'doc_pairde' is not registered in 'datasets'; did you mean 'doc_paired'?
+        >>> _ = DATASETS.remove("doc_paired"); shutil.rmtree(root)
     """
     def decorator(cls: type[FolderDataset]) -> type[FolderDataset]:
         if not (isinstance(cls, type) and issubclass(cls, FolderDataset)):
@@ -262,3 +288,24 @@ def register_dataset(name: str, *, tasks: Iterable[Task]) -> Callable[[type[Fold
         DATASETS.add(cls, name, tasks=frozenset(Task(t) for t in tasks), splits=cls.splits())
         return cls
     return decorator
+
+
+# --- Normalized layouts ---
+
+def paired_layout(*splits: Split | str) -> dict[Split, dict[str, Modality]]:
+    """Layout for paired restoration datasets: ``<split>/images/`` → ``image``, ``<split>/targets/`` → ``target``.
+
+    Examples:
+        >>> layout = paired_layout("train", "test")
+        >>> layout[Split.TEST]["target"].dir
+        'test/targets'
+    """
+    if not splits:
+        raise ValueError("paired_layout needs at least one split")
+    parsed = [Split(s) for s in splits]
+    if len(set(parsed)) != len(parsed):
+        raise ValueError(f"duplicate splits: {[s.value for s in parsed]}")
+    return {
+        s: {"image": Modality(f"{s.value}/images"), "target": Modality(f"{s.value}/targets")}
+        for s in parsed
+    }

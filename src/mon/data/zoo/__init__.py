@@ -5,3 +5,5 @@ registers itself.
 """
 
 __all__: list[str] = []
+
+from mon.data.zoo import lol  # noqa: F401
