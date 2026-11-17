@@ -8,13 +8,18 @@ from types import ModuleType
 
 import pytest
 
-PACKAGES = ["mon.core", "mon.data"]
+PACKAGES = ["mon.core", "mon.data", "mon.nn", "mon.nn.losses"]
 
 # (package, submodule, name) deliberately not re-exported.
 EXCLUDED = {("mon.core", "console", "console")}  # collides with the ``console`` submodule name
 
 # Which ``mon`` packages each package may import (layering).
-ALLOWED_IMPORTS = {"mon.core": {"mon.core"}, "mon.data": {"mon.core", "mon.data"}}
+ALLOWED_IMPORTS = {
+    "mon.core": {"mon.core"},
+    "mon.data": {"mon.core", "mon.data"},
+    "mon.nn"  : {"mon.core", "mon.nn"},
+    "mon.nn.losses": {"mon.core", "mon.nn"},
+}
 
 SRC = StdPath(__file__).resolve().parents[1] / "src"
 

@@ -4,6 +4,11 @@
 
 ### Added
 
+- `mon.nn` package (lazy namespace). `mon.nn.losses` (one module per family). `mon.nn.losses.zero_reference`: Zero-DCE's zero-reference losses
+  (`ColorConstancyLoss`, `ExposureControlLoss`, `SpatialConsistencyLoss`, `IlluminationSmoothnessLoss`),
+  matching the official code, with `reduction="mean"|"sum"|"none"`. `mon.nn.tiling.tiled_forward`:
+  Hann-blended overlapping-tile inference (full coverage, borders kept). `mon.nn.utils`: `count_parameters`,
+  `freeze`/`unfreeze`, `module_device`.
 - `mon.data.dataset.ImageFolder`: prediction input from a folder (recursive, sorted), one file, or a list of
   files; `meta.stem` keeps the relative path so outputs can mirror the input tree. Folder indexing (also in
   `FolderDataset`) skips hidden files such as macOS `._*` AppleDouble files.

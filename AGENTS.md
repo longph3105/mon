@@ -17,7 +17,8 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   (OmegaConf), logging and progress bars, enums, registry, runtime (devices, seeding), weights, size, timing.
 - **In progress:** `mon.data`: `io`, `labels`, `structures`, `dataset`, `loader`, `transforms` done; `zoo`
   has `lol_v1`, `lol_v2_real`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
-- **Next:** `mon.nn` / `mon.models` (registries, weights enums), runners (train/predict configs, run
+- **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference done; layers added per model.
+- **Next:** `mon.models` (lazy registry, weights enums, Zero-DCE first), runners (train/predict configs, run
   directories), plotting. Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
   `core` module's entry.
 - **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the
@@ -31,16 +32,17 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
 ## Layout
 
-| Path            | Purpose                                                                            |
-|-----------------|------------------------------------------------------------------------------------|
-| `src/mon/`      | The importable package. All library code lives here.                               |
-| `src/mon/core/` | Shared infrastructure; no deps on the rest of `mon`. Overview: `help(mon.core)`.   |
-| `src/mon/data/` | Files → samples → batches; may import only `mon.core`. Overview: `help(mon.data)`. |
-| `tests/`        | Tests, mirroring the `src/mon/` module tree.                                       |
-| `docs/`         | Long-form documentation.                                                           |
-| `logs/`         | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`.                           |
-| `CHANGELOG.md`  | User-facing changes, newest first.                                                 |
-| `README.md`     | Install, usage, citation.                                                          |
+| Path            | Purpose                                                                                    |
+|-----------------|--------------------------------------------------------------------------------------------|
+| `src/mon/`      | The importable package. All library code lives here.                                       |
+| `src/mon/core/` | Shared infrastructure; no deps on the rest of `mon`. Overview: `help(mon.core)`.           |
+| `src/mon/data/` | Files → samples → batches; may import only `mon.core`. Overview: `help(mon.data)`.         |
+| `src/mon/nn/`   | Losses, model helpers, tiled inference; imports only `mon.core`. Overview: `help(mon.nn)`. |
+| `tests/`        | Tests, mirroring the `src/mon/` module tree.                                               |
+| `docs/`         | Long-form documentation.                                                                   |
+| `logs/`         | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`.                                   |
+| `CHANGELOG.md`  | User-facing changes, newest first.                                                         |
+| `README.md`     | Install, usage, citation.                                                                  |
 
 Keep each fact in one place: link to `docs/` instead of restating it here or in `README.md`.
 
@@ -125,6 +127,16 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Stride-multiple sizes: training resizes (`ResizeToMultiple`); inference pads (`PadToMultiple`, or
   `pad_to_multiple` on a batch) and crops predictions back with `crop_to(pred, meta.orig_size)`. Predictors
   default to padding; never resize an output back for evaluation.
+- Models (agreed 2026-11-18): plain `nn.Module`, tensors in and out (`forward(image) -> Tensor`, or a small dict
+  of named outputs); no TensorDict, `in_keys`/`out_keys`, or `__call__` override. The runner maps sample dicts
+  to model inputs; a model's paper loss is a separate module, not a method. Large-image inference uses
+  `mon.nn.tiling.tiled_forward`, never a per-model `forward_patch`.
+- Losses: shared ones live in `mon.nn.losses.<family>` (e.g. `zero_reference`), one module per family; a loss
+  used by one model stays in that model's module until a second model needs it. Don't wrap losses PyTorch has.
+  Every loss returns per-sample values reduced by `reduction="mean"|"sum"|"none"`.
+- Losses and models ported from a paper follow its official code; test parity against a reference copy of
+  that code (losses) or against `mon_old` outputs with the same weights (models, `slow`; needs the old
+  `mon` conda env). Record known differences between `mon_old` copies in the docstring.
 - Tensors are `[B, C, H, W]` unless stated otherwise; document shapes in docstrings when they're not obvious.
 
 ---
