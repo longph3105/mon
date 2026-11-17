@@ -272,7 +272,7 @@ def zoo_dir() -> Path:
         RuntimeError: If neither variable is set.
 
     Examples:
-        >>> weights = zoo_dir() / "framework/ultralytics/yolo11/yolo11n/coco/yolo11n_coco.pt"  # doctest: +SKIP
+        >>> weights = zoo_dir() / "detect/yolo11/yolo11n_coco.pt"  # <task>/<model>/<file>  # doctest: +SKIP
     """
     return _env_dir(ZOO_DIR_ENV, "zoo", "model zoo")
 

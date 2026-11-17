@@ -2,16 +2,21 @@
 
 ## 3.0.0.dev0 — Unreleased
 
+### Removed
+
+- Unused runtime dependencies `tensordict` (samples are plain dicts) and `tensorboard` (returns with the runners).
+
 ### Added
 
+- `.markdownlint.yaml` (120 columns; tables and code blocks exempt).
 - `mon.data.dataset.ClassFolderDataset` + `classification_layout`: classification from `<split>/<class>/<image>`
   with label ids from `classes.txt`; samples `{"image", "label", "meta"}`. `mon.data.zoo.classify`: `cifar10`,
   `cifar100`, `mnist`, `fashion_mnist` (`Task.CLASSIFY`).
-- `mon.nn` package (lazy namespace). `mon.nn.losses` (one module per family). `mon.nn.losses.zero_reference`: Zero-DCE's zero-reference losses
-  (`ColorConstancyLoss`, `ExposureControlLoss`, `SpatialConsistencyLoss`, `IlluminationSmoothnessLoss`),
-  matching the official code, with `reduction="mean"|"sum"|"none"`. `mon.nn.tiling.tiled_forward`:
-  Hann-blended overlapping-tile inference (full coverage, borders kept). `mon.nn.utils`: `count_parameters`,
-  `freeze`/`unfreeze`, `module_device`.
+- `mon.nn` package (lazy namespace). `mon.nn.losses` (one module per family). `mon.nn.losses.zero_reference`:
+  Zero-DCE's zero-reference losses (`ColorConstancyLoss`, `ExposureControlLoss`, `SpatialConsistencyLoss`,
+  `IlluminationSmoothnessLoss`), matching the official code, with `reduction="mean"|"sum"|"none"`.
+  `mon.nn.tiling.tiled_forward`: Hann-blended overlapping-tile inference (full coverage, borders kept).
+  `mon.nn.utils`: `count_parameters`, `freeze`/`unfreeze`, `module_device`.
 - `mon.data.dataset.ImageFolder`: prediction input from a folder (recursive, sorted), one file, or a list of
   files; `meta.stem` keeps the relative path so outputs can mirror the input tree. Folder indexing (also in
   `FolderDataset`) skips hidden files such as macOS `._*` AppleDouble files.
@@ -72,9 +77,7 @@
 - `mon.core.constants`: file-extension sets (`IMAGE_EXTENSIONS`, `RAW_IMAGE_EXTENSIONS`, ...).
 - Packaging with uv and the `uv_build` backend; install with `uv sync`.
 - Minimal runtime dependencies: `numpy`, `torch`, `torchvision`.
-- Runtime dependencies: `pyyaml`, `rich`, `tqdm`,
-  `tensordict`, `omegaconf`,
-  `tensorboard`.
+- Runtime dependencies: `pyyaml`, `rich`, `tqdm`, `omegaconf`.
 - `opencv-python-headless` as a runtime dependency.
 - `py.typed` marker (PEP 561): type checkers use `mon`'s annotations.
 - Supports Python >= 3.13 (except 3.14.1), with no upper bound.

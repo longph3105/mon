@@ -43,8 +43,6 @@ dependencies    = [
     # --- Scientific Computing ---
     "numpy>=2.5",                       # Array computing.
     # --- Deep Learning ---
-    "tensorboard>=2.21",                # Training logs and visualization.
-    "tensordict>=0.15",                 # Dict-like tensor containers with batch semantics.
     "torch>=2.15",                      # Tensor library and autograd.
     "torchvision>=0.29",                # Vision datasets, transforms, and models.
     # --- Computer Vision ---

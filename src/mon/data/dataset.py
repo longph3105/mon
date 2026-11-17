@@ -123,7 +123,7 @@ class FolderDataset(Dataset[Sample]):
     """Base for datasets stored as folders of files; subclasses only declare the layout.
 
     Class attributes to set in subclasses:
-        folder: Dataset root relative to ``datasets_dir()`` (its upstream layout).
+        folder: Dataset root relative to ``datasets_dir()``: the dataset id, in its normalized layout.
         layout: Split → modality name → ``Modality``. The first modality of each split is the
             primary one: it must be an image kind, and it defines the samples.
         classes: Class list (required for ``"voc"`` modalities; used by models and metrics).

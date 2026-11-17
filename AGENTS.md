@@ -15,14 +15,16 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
 - **Done:** `mon.core` (ported from `mon_old/libs/mon/src/mon/core`): paths, file I/O and downloads, config
   (OmegaConf), logging and progress bars, enums, registry, runtime (devices, seeding), weights, size, timing.
-- **In progress:** `mon.data`: `io`, `labels`, `structures`, `dataset`, `loader`, `transforms` done; `zoo`
-  has `lol_v1`, `lol_v2_real`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
+- **Done:** `mon.data`: `io`, `labels`, `structures`, `dataset` (`FolderDataset`, `ClassFolderDataset`,
+  `ImageFolder`), `loader`, `transforms`; `zoo` has `lol_v1`, `lol_v2_real`, `cifar10`, `cifar100`, `mnist`,
+  `fashion_mnist`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference done; layers added per model.
+- **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
 - **Next:** `mon.models` (lazy registry, weights enums, Zero-DCE first), runners (train/predict configs, run
   directories), plotting. Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
   `core` module's entry.
 - **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the
-  `dev` group. No linter or formatter config yet.
+  `dev` group. Markdown: markdownlint (`.markdownlint.yaml`, 120 columns). No Python linter or formatter yet.
 - **Resuming work:** read the latest "Session handoff" section at the end of the newest `logs/log_*.md`.
 - Don't invent commands (`uv run …`, `pytest …`) until the config that backs them exists.
 - When adding tooling, propose the choice first (package manager, build backend, linter, test runner).
@@ -50,19 +52,20 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 
 ## Commands
 
-| Task              | Command                                   |
-|-------------------|-------------------------------------------|
-| Install           | `uv sync`                                 |
-| Install + display | `uv sync --extra gui`                     |
-| Add a dependency  | `uv add <pkg>`                            |
-| Update the lock   | `uv lock`                                 |
-| Run in the env    | `uv run python …`                         |
-| Build sdist/wheel | `uv build`                                |
-| Bump version      | `uv version --bump <part>`                |
-| Test              | `uv run pytest`                           |
-| Test, fast/CPU    | `uv run pytest -m "not slow and not gpu"` |
-| Type check        | `uv run mypy`                             |
-| Check data paths  | `uv run python -m mon.core.path`          |
+| Task              | Command                                                   |
+|-------------------|-----------------------------------------------------------|
+| Install           | `uv sync`                                                 |
+| Install + display | `uv sync --extra gui`                                     |
+| Add a dependency  | `uv add <pkg>`                                            |
+| Update the lock   | `uv lock`                                                 |
+| Run in the env    | `uv run python …`                                         |
+| Build sdist/wheel | `uv build`                                                |
+| Bump version      | `uv version --bump <part>`                                |
+| Test              | `uv run pytest`                                           |
+| Test, fast/CPU    | `uv run pytest -m "not slow and not gpu"`                 |
+| Type check        | `uv run mypy`                                             |
+| Check data paths  | `uv run python -m mon.core.path`                          |
+| Lint Markdown     | `npx markdownlint-cli2 "*.md" "docs/**/*.md" "logs/*.md"` |
 
 - The lock must resolve for macOS arm64 and Linux x86_64 (`tool.uv.required-environments`).
 - OpenCV is `opencv-python-headless` only; never add `opencv-python` (both install `cv2/` and clobber
@@ -74,7 +77,7 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - `uv run pytest` runs `tests/` plus doctests in `src/mon/`. Markers: `slow`, `gpu` (`--strict-markers`).
 - Dev-only tools go in `[dependency-groups] dev` (`uv add --dev <pkg>`), never in runtime deps.
 - `uv run mypy` checks `src/mon` in strict mode; keep it clean. Add `types-*` stub packages to `dev` when needed.
-- No lint or format commands yet (see **Status**).
+- Markdown must pass markdownlint (`.markdownlint.yaml`). No Python lint or format commands yet (see **Status**).
 
 ---
 

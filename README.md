@@ -14,7 +14,7 @@ Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 - Python ≥ 3.13 (except 3.14.1)
 - PyTorch ≥ 2.15 (installed automatically)
-- Tested platforms: macOS arm64 (MPS) and Linux x86_64 (CUDA 13)
+- Platforms: developed and tested on macOS arm64 (MPS); Linux x86_64 (CUDA) resolves but is not tested yet
 
 ## Installation
 
