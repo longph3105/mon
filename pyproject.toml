@@ -36,11 +36,8 @@ classifiers     = [
 # Add a dependency only when the module that needs it is ported; note why next to it.
 dependencies    = [
     # --- Core ---
-    "aenum>=3.1.17",                    # Advanced enumerations.
-    "fjson>=0.1.6",                     # JSON writer with formatted floats.
     "omegaconf>=2.3,<2.5",              # Configs: interpolation, typed schemas, CLI overrides. Allows 2.3.x for hydra-core.
     "pyyaml>=6.0.3",                    # YAML parser and emitter.
-    "requests>=2.34",                   # HTTP client.
     "rich>=15.0",                       # Rich terminal output: tables, progress, tracebacks.
     "tqdm>=4.70",                       # Progress bars.
     "xmltodict>=1.0",                   # XML <-> dict (e.g. VOC-style annotations).
@@ -69,6 +66,29 @@ Homepage        = "https://github.com/longph3105/mon"
 Documentation   = "https://github.com/longph3105/mon/tree/main/docs"
 Repository      = "https://github.com/longph3105/mon.git"
 Issues          = "https://github.com/longph3105/mon/issues"
+
+# Development-only; installed by `uv sync` (default group), not shipped with the package.
+[dependency-groups]
+dev             = [
+    "mypy>=2.4",                        # Static type checker.
+    "pytest>=9.2",                      # Test runner.
+    "types-PyYAML>=6.0.12",             # Type stubs for pyyaml.
+]
+
+# --- pytest ---
+[tool.pytest]
+testpaths       = ["tests", "src/mon"]
+addopts         = ["--doctest-modules", "--strict-markers", "--import-mode=importlib"]
+markers         = [
+    "slow: long-running test (deselect with -m 'not slow')",
+    "gpu: needs CUDA or MPS (deselect with -m 'not gpu')",
+]
+
+# --- mypy ---
+[tool.mypy]
+python_version  = "3.13"
+files           = ["src/mon"]
+strict          = true
 
 # --- uv ---
 [tool.uv]

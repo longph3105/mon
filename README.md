@@ -38,6 +38,14 @@ pip install "mon[gui] @ git+https://github.com/longph3105/mon@3.0.0"
 OpenCV is installed as `opencv-python-headless`, so `cv2.imshow` does not work on Linux.
 Use the `gui` extra and matplotlib to display images.
 
+## Configuration
+
+Pretrained weights are looked up in `$MON_ZOO_DIR`, or `$DATA_DIR/zoo` if that is unset:
+
+```shell
+export MON_ZOO_DIR=/path/to/zoo   # or: export DATA_DIR=/path/to/data
+```
+
 ## Usage
 
 ```python
