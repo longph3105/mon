@@ -138,7 +138,8 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 
 ## Porting From `mon_old`
 
-- `../mon_old` is **read-only reference**. Never edit it.
+- `../mon_old` is **read-only reference**. Never edit it. It has no git any more (removed 2026-11-18) and the owner
+  will delete it; until then it is needed for parity tests (its `mon` conda env too).
 - Port module by module and on purpose: clean up, drop dead code, and add tests as you go.
   Don't bulk-copy directories, and don't port `archive/` code unless asked.
 - Note what you ported and from where in the work log.
