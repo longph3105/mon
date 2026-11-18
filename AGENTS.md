@@ -20,9 +20,10 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   `fashion_mnist`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference done; layers added per model.
 - **In progress:** `mon.models`: lazy `MODELS` index and `load` done; `lle.zero_dce` (Zero-DCE, Zero-DCE++),
-  `lle.sci` (SCI, SCI++), `lle.pairlie`, `lle.clode`, `lle.dccnet` ported with released weights and parity
-  tests; `lle.colie` (zero-shot, `mon_old` parity); `mef.mertens` (exposure fusion, classical) with OpenCV parity
-  tests; `denoise.tv_denoise` (scikit-image parity) and `denoise.zs_n2n` (zero-shot, `mon_old` parity).
+  `lle.sci` (SCI, SCI++), `lle.pairlie`, `lle.clode`, `lle.dccnet`, `lle.flol` ported with released weights
+  and parity tests; `lle.colie` (zero-shot, `mon_old` parity); `mef.mertens` (exposure fusion, classical) with
+  OpenCV parity tests; `denoise.tv_denoise` (scikit-image parity) and `denoise.zs_n2n` (zero-shot, `mon_old`
+  parity).
 - **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
 - **Next:** the other LLE models whose weights are in `data/zoo/lle/`, then runners (train/predict configs, run
   directories), plotting. Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each

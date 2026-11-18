@@ -8,6 +8,11 @@
 
 ### Added
 
+- `mon.models.lle.flol`: `FLOL` (`forward(image) -> {"enhanced", "amplitude_enhanced"}`; even `H, W`, padded to 8
+  inside), released weights `FLOL_Weights.LOL_V2_REAL` (default; official file, pinned URL, SHA-256) and
+  `UHD_LL` (official tensors, unwrapped). BasicSR `{"params": ...}` checkpoints are unwrapped on load. Matches the
+  official network; reproduces the README's LOL-v2-real 21.75 dB with the official protocol. No `kornia`
+  dependency; no training loss (none released).
 - `mon.models.lle.dccnet`: `DCCNet` (`forward(image) -> {"enhanced", "gray", "color_hist"}`; `H, W` divisible
   by 8), released weights `DCCNet_Weights.LOL_V1` (official Google Drive file, URL, SHA-256; its
   `nn.DataParallel` `module.` prefix is stripped on load). Matches the official network; reproduces the official
