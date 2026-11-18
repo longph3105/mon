@@ -8,6 +8,10 @@
 
 ### Added
 
+- `mon.data.zoo.unpaired_lol`: the no-reference test sets `DICM` (`dicm`, 69), `Fusion` (`fusion`, 16), `LIME`
+  (`lime`, 10), `MEF` (`mef`, 17), `NPE` (`npe`, 8) and `VV` (`vv`, 24), test split only, `{"image", "meta"}`
+  samples; stored under `unpaired_lol/<set>/`. `UNPAIRED_LOL_SETS` maps the names to the classes.
+- `mon.data.dataset.unpaired_layout(*splits)`: `<split>/images/` → `image`, for test sets without targets.
 - `mon.data.zoo.sice`: `SICE` (`sice`; one sample per exposure, paired with its scene's target; 3,021 train /
   1,779 test) and `SICEME` (`sice_me`, Zero-DCE's per-image split of SICE Part 1: 2,422 train images without
   targets, 599 val pairs), registered for `Task.LLE`.

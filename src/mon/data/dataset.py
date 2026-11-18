@@ -22,6 +22,7 @@ __all__ = [
     "classification_layout",
     "paired_layout",
     "register_dataset",
+    "unpaired_layout",
 ]
 
 import os
@@ -560,6 +561,21 @@ def paired_layout(*splits: Split | str) -> dict[Split, dict[str, Modality]]:
         s: {"image": Modality(f"{s.value}/images"), "target": Modality(f"{s.value}/targets")}
         for s in parsed
     }
+
+
+def unpaired_layout(*splits: Split | str) -> dict[Split, dict[str, Modality]]:
+    """Layout for unpaired (no-reference) test sets: ``<split>/images/`` → ``image``, no targets.
+
+    Examples:
+        >>> unpaired_layout("test")[Split.TEST]["image"].dir
+        'test/images'
+    """
+    if not splits:
+        raise ValueError("unpaired_layout needs at least one split")
+    parsed = [Split(s) for s in splits]
+    if len(set(parsed)) != len(parsed):
+        raise ValueError(f"duplicate splits: {[s.value for s in parsed]}")
+    return {s: {"image": Modality(f"{s.value}/images")} for s in parsed}
 
 
 def classification_layout(*splits: Split | str) -> dict[Split, str]:

@@ -36,6 +36,7 @@ _EXPORTS: dict[str, str] = {
     "classification_layout": "dataset",
     "paired_layout"        : "dataset",
     "register_dataset"     : "dataset",
+    "unpaired_layout"      : "dataset",
     # io
     "VideoInfo"            : "io",
     "VideoWriter"          : "io",
@@ -101,6 +102,7 @@ __all__ = [
     "read_yolo",
     "register_dataset",
     "to_numpy_hwc",
+    "unpaired_layout",
     "video_info",
     "write_image",
     "write_yolo",
@@ -112,7 +114,7 @@ __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
     from mon.data.dataset import (
         DATASETS, ClassFolderDataset, FolderDataset, ImageFolder, Modality, ModalityKind, classification_layout,
-        paired_layout, register_dataset,
+        paired_layout, register_dataset, unpaired_layout,
     )
     from mon.data.io import (
         VideoInfo, VideoWriter, iter_video_frames, read_image, to_numpy_hwc, video_info, write_image,

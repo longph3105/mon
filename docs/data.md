@@ -21,7 +21,9 @@ Each dataset has one **id**, e.g. `lol_v1`: its folder (`$DATASETS_DIR/lol_v1/`)
 the same string. Datasets are stored in a normalized layout per task family. Paired restoration datasets
 (low-light, denoising, …) use `<split>/images/` for inputs and `<split>/targets/` for ground truth, paired
 by file name. Multi-exposure datasets (`sice`) keep one folder of exposures per scene and one target per
-scene; a dataset maps each input to its target's name with `FolderDataset.pair_key`. The workspace
+scene; a dataset maps each input to its target's name with `FolderDataset.pair_key`. Unpaired test sets
+(`unpaired_layout`: `<split>/images/` only) are bundled under one id, `unpaired_lol/<set>/`, and registered
+per set (`dicm`, `fusion`, `lime`, `mef`, `npe`, `vv`), since papers report them separately. The workspace
 `data/README.md` defines ids and layouts and lists every dataset.
 
 ## 2. Loading a registered dataset
