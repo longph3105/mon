@@ -8,6 +8,9 @@
 
 ### Added
 
+- `mon.models.lle.colie`: CoLIE (`CoLIE` implicit network, `CoLIELoss`, `colie_enhance` fitting one network per
+  image with the paper's settings, `fit_illumination`, `fast_guided_filter`, `replace_value`). Registered with
+  `zero_shot=True`; the per-image fit matches the official training.
 - `mon.models.lle.sci`: `SCI` and `SCIPP` (`forward(image) -> {"enhanced", "illumination"}`, `forward_stages` for
   training), `SCILoss`, released weights (`SCI_Weights.EASY/MEDIUM/DIFFICULT`, `SCIPP_Weights.TPAMI`; pinned URLs,
   SHA-256). Released checkpoints load strictly; outputs match the official code bit for bit.

@@ -16,7 +16,7 @@ Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 Task subpackages (imported explicitly, like ``mon.data.zoo``):
 
     - ``denoise``: denoising (``tv_denoise``: total variation; ``zs_n2n``: Zero-Shot Noise2Noise).
-    - ``lle``: low-light image enhancement (``sci``: SCI, SCI++; ``zero_dce``: Zero-DCE, Zero-DCE++).
+    - ``lle``: low-light image enhancement (``colie``: CoLIE; ``sci``: SCI, SCI++; ``zero_dce``: Zero-DCE, Zero-DCE++).
     - ``mef``: multi-exposure fusion (``mertens``: Mertens et al. exposure fusion).
 """
 
