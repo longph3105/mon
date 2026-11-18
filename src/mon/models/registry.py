@@ -9,7 +9,7 @@ checks that every entry resolves and every public model class in ``mon.models`` 
 Examples:
     >>> from mon.core.enums import Task
     >>> MODELS.names(tasks=Task.LLE)
-    ['clode', 'colie', 'dccnet', 'flol', 'hvi_cidnet', 'pairlie', 'retinexnet', 'sci', 'sci++', 'zero_dce', 'zero_dce++']
+    ['clode', 'colie', 'dccnet', 'flol', 'hvi_cidnet', 'pairlie', 'retinexnet', 'sci', 'sci++', 'zero_dce', 'zero_dce++', 'zero_ig']
     >>> load("mertens")  # no parameters: nothing to load
     Mertens(contrast=1.0, saturation=1.0, exposure=1.0, sigma=0.2, levels=None)
     >>> model = load("zero_dce", weights=None)  # random init; weights="default" loads SICE_ME
@@ -34,7 +34,8 @@ if TYPE_CHECKING:
 
 MODELS: "Registry[type[nn.Module]]" = Registry("models")
 """All models by name. Metadata: ``tasks`` (set of ``Task``), ``arch`` (shared by variants), and
-``zero_shot=True`` for networks fitted to each input at test time (no pretrained weights)."""
+``zero_shot=True`` for networks fitted to each input at test time (released weights, if any, are
+dataset-trained alternatives, e.g. Zero-IG's)."""
 
 # --- Index: one line per model, grouped by task, sorted by name ---
 
@@ -55,6 +56,8 @@ MODELS.add_lazy("sci"       , "mon.models.lle.sci:SCI"           , tasks={Task.L
 MODELS.add_lazy("sci++"     , "mon.models.lle.sci:SCIPP"         , tasks={Task.LLE}, arch="sci")
 MODELS.add_lazy("zero_dce"  , "mon.models.lle.zero_dce:ZeroDCE"  , tasks={Task.LLE}, arch="zero_dce")
 MODELS.add_lazy("zero_dce++", "mon.models.lle.zero_dce:ZeroDCEPP", tasks={Task.LLE}, arch="zero_dce")
+MODELS.add_lazy("zero_ig"   , "mon.models.lle.zero_ig:ZeroIG"    , tasks={Task.LLE}, arch="zero_ig",
+                zero_shot=True)  # fit per image: zero_ig_enhance
 # mef
 MODELS.add_lazy("mertens"   , "mon.models.mef.mertens:Mertens"   , tasks={Task.MEF}, arch="mertens")
 

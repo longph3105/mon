@@ -11,6 +11,7 @@ One module per model family; each is listed in ``mon.models.MODELS`` and importe
 - ``retinexnet``: RetinexNet (Retinex decomposition, then illumination adjustment).
 - ``sci``: SCI and SCI++ (self-calibrated illumination).
 - ``zero_dce``: Zero-DCE and Zero-DCE++ (zero-reference curve estimation).
+- ``zero_ig``: Zero-IG (joint denoising and enhancement fitted per image; dataset-trained weights too).
 """
 
 __all__: list[str] = []

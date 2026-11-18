@@ -8,6 +8,10 @@
 
 ### Added
 
+- `mon.models.lle.zero_ig`: Zero-IG (`ZeroIG` network, `ZeroIGLoss(model, image)`, `zero_ig_enhance` fitting a
+  fresh network per image with the official recipe), registered `zero_shot=True`, plus the official dataset-trained
+  weights `ZeroIG_Weights.LOL_V1` (default) / `LSRW_HUAWEI` / `LSRW_NIKON` (pinned URLs, SHA-256). Inference and the
+  loss value match the official code exactly; gradients to float32 rounding.
 - `mon.data.zoo.unpaired_lol`: the no-reference test sets `DICM` (`dicm`, 69), `Fusion` (`fusion`, 16), `LIME`
   (`lime`, 10), `MEF` (`mef`, 17), `NPE` (`npe`, 8) and `VV` (`vv`, 24), test split only, `{"image", "meta"}`
   samples; stored under `unpaired_lol/<set>/`. `UNPAIRED_LOL_SETS` maps the names to the classes.
