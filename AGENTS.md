@@ -16,8 +16,8 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 - **Done:** `mon.core` (ported from `mon_old/libs/mon/src/mon/core`): paths, file I/O and downloads, config
   (OmegaConf), logging and progress bars, enums, registry, runtime (devices, seeding), weights, size, timing.
 - **Done:** `mon.data`: `io`, `labels`, `structures`, `dataset` (`FolderDataset`, `ClassFolderDataset`,
-  `ImageFolder`), `loader`, `transforms`; `zoo` has `lol_v1`, `lol_v2_real`, `cifar10`, `cifar100`, `mnist`,
-  `fashion_mnist`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
+  `ImageFolder`), `loader`, `transforms`; `zoo` has `lol_v1`, `lol_v2_real`, `sice`, `sice_me`, `cifar10`,
+  `cifar100`, `mnist`, `fashion_mnist`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference done; layers added per model.
 - **In progress:** `mon.models`: lazy `MODELS` index and `load` done; `lle.zero_dce` (Zero-DCE, Zero-DCE++),
   `lle.sci` (SCI, SCI++), `lle.pairlie`, `lle.clode`, `lle.dccnet`, `lle.flol`, `lle.hvi_cidnet`,

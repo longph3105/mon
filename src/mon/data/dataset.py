@@ -128,6 +128,9 @@ class FolderDataset(Dataset[Sample]):
             primary one: it must be an image kind, and it defines the samples.
         classes: Class list (required for ``"voc"`` modalities; used by models and metrics).
 
+    Override ``pair_key`` when a secondary modality isn't stored under the primary file's
+    relative stem (e.g. one target per folder of inputs).
+
     Args:
         split: Split to load; must be a key of ``layout``.
         root: Dataset root; defaults to ``datasets_dir() / folder``.
@@ -175,6 +178,14 @@ class FolderDataset(Dataset[Sample]):
 
     # --- Construction helpers ---
 
+    @classmethod
+    def pair_key(cls, modality: str, key: str) -> str:
+        """Key of ``modality``'s file for the primary file ``key`` (relative path without suffix).
+
+        The default pairs by identical key; subclasses override it for other pairings.
+        """
+        return key
+
     def _validate_layout(self) -> None:
         name = type(self).__name__
         if not self.modalities:
@@ -208,8 +219,12 @@ class FolderDataset(Dataset[Sample]):
         if not keys:
             raise ValueError(f"{name}: no {primary_name!r} files found in {self.root / self.modalities[primary_name].dir}")
 
+        pair = {
+            m: {k: self.pair_key(m, k) for k in keys} if m != primary_name else {k: k for k in keys}
+            for m in self.modalities
+        }
         missing: dict[str, list[str]] = {
-            mod_name: [k for k in keys if k not in indexed[mod_name]]
+            mod_name: [k for k in keys if pair[mod_name][k] not in indexed[mod_name]]
             for mod_name, mod in self.modalities.items() if mod.required and mod_name != primary_name
         }
         incomplete = {k for ks in missing.values() for k in ks}
@@ -219,7 +234,7 @@ class FolderDataset(Dataset[Sample]):
                 raise ValueError(f"{name} [{self.split.value}]: required files missing for {len(incomplete)} sample(s): {detail}")
             logger.warning("%s [%s]: skipping %d incomplete sample(s): %s", name, self.split.value, len(incomplete), detail)
         return [
-            (k, {m: indexed[m][k] for m in self.modalities if k in indexed[m]})
+            (k, {m: indexed[m][pair[m][k]] for m in self.modalities if pair[m][k] in indexed[m]})
             for k in keys if k not in incomplete
         ]
 

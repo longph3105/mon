@@ -8,6 +8,11 @@
 
 ### Added
 
+- `mon.data.zoo.sice`: `SICE` (`sice`; one sample per exposure, paired with its scene's target; 3,021 train /
+  1,779 test) and `SICEME` (`sice_me`, Zero-DCE's per-image split of SICE Part 1: 2,422 train images without
+  targets, 599 val pairs), registered for `Task.LLE`.
+- `FolderDataset.pair_key(modality, key)`: overridable mapping from a primary file's key to another modality's
+  key (default: the same key), for datasets whose targets aren't stored under the input's stem.
 - `mon.models.lle.retinexnet`: `RetinexNet` (`forward(image) -> {"enhanced", "reflectance", "illumination",
   "illumination_adjusted"}`; any size), following the PyTorch reimplementation's network (the official TensorFlow
   weights don't fit it). `RetinexNet_Weights`: the reimplementation's release merged into one file (`REIMPL_9200`,
