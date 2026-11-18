@@ -9,7 +9,7 @@ checks that every entry resolves and every public model class in ``mon.models`` 
 Examples:
     >>> from mon.core.enums import Task
     >>> MODELS.names(tasks=Task.LLE)
-    ['zero_dce', 'zero_dce++']
+    ['sci', 'sci++', 'zero_dce', 'zero_dce++']
     >>> load("mertens")  # no parameters: nothing to load
     Mertens(contrast=1.0, saturation=1.0, exposure=1.0, sigma=0.2, levels=None)
     >>> model = load("zero_dce", weights=None)  # random init; weights="default" loads SICE_ME
@@ -43,6 +43,8 @@ MODELS.add_lazy("tv_denoise", "mon.models.denoise.tv_denoise:TVDenoise", tasks={
 MODELS.add_lazy("zs_n2n"    , "mon.models.denoise.zs_n2n:ZSN2N"        , tasks={Task.DENOISE}, arch="zs_n2n",
                 zero_shot=True)  # fit per image: zs_n2n_denoise
 # lle
+MODELS.add_lazy("sci"       , "mon.models.lle.sci:SCI"           , tasks={Task.LLE}, arch="sci")
+MODELS.add_lazy("sci++"     , "mon.models.lle.sci:SCIPP"         , tasks={Task.LLE}, arch="sci")
 MODELS.add_lazy("zero_dce"  , "mon.models.lle.zero_dce:ZeroDCE"  , tasks={Task.LLE}, arch="zero_dce")
 MODELS.add_lazy("zero_dce++", "mon.models.lle.zero_dce:ZeroDCEPP", tasks={Task.LLE}, arch="zero_dce")
 # mef

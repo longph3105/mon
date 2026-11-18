@@ -19,9 +19,10 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   `ImageFolder`), `loader`, `transforms`; `zoo` has `lol_v1`, `lol_v2_real`, `cifar10`, `cifar100`, `mnist`,
   `fashion_mnist`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference done; layers added per model.
-- **In progress:** `mon.models`: lazy `MODELS` index and `load` done; `lle.zero_dce` (Zero-DCE, Zero-DCE++) ported
-  with released weights and parity tests; `mef.mertens` (exposure fusion, classical) with OpenCV parity tests;
-  `denoise.tv_denoise` (scikit-image parity) and `denoise.zs_n2n` (zero-shot, `mon_old` parity).
+- **In progress:** `mon.models`: lazy `MODELS` index and `load` done; `lle.zero_dce` (Zero-DCE, Zero-DCE++) and
+  `lle.sci` (SCI, SCI++) ported with released weights and parity tests; `mef.mertens` (exposure fusion,
+  classical) with OpenCV parity tests; `denoise.tv_denoise` (scikit-image parity) and `denoise.zs_n2n`
+  (zero-shot, `mon_old` parity).
 - **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
 - **Next:** the other LLE models whose weights are in `data/zoo/lle/`, then runners (train/predict configs, run
   directories), plotting. Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
@@ -147,7 +148,9 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   test (e.g. `tests/models/lle/zero_dce_reference.py`) computes output statistics on a deterministic input from
   the official code or `mon_old` (in its `mon` conda env), and the test keeps them as a literal. Don't copy
   unlicensed official code into the repo and don't commit tensor files. Record known differences from the
-  official code and from `mon_old` in the module docstring.
+  official code and from `mon_old` in the module docstring. Running downloaded third-party code (official repos)
+  needs the owner's explicit go-ahead each time; generate reference values with `mon_old` when its code is a
+  faithful copy (check by reading), and compare by reading otherwise.
 
 ---
 

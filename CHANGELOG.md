@@ -8,6 +8,9 @@
 
 ### Added
 
+- `mon.models.lle.sci`: `SCI` and `SCIPP` (`forward(image) -> {"enhanced", "illumination"}`, `forward_stages` for
+  training), `SCILoss`, released weights (`SCI_Weights.EASY/MEDIUM/DIFFICULT`, `SCIPP_Weights.TPAMI`; pinned URLs,
+  SHA-256). Released checkpoints load strictly; outputs match the official code bit for bit.
 - `mon.models.denoise.tv_denoise`: total-variation denoising (`tv_denoise`, parameter-free `TVDenoise`), same
   iteration as scikit-image's `denoise_tv_chambolle`; batched, differentiable, any device.
 - `mon.models.denoise.zs_n2n`: Zero-Shot Noise2Noise (`ZSN2N` network, `ZSN2NLoss`, `pair_downsample`,

@@ -37,7 +37,7 @@ def _public_model_classes() -> dict[str, type]:
 
 def test_listing_imports_neither_models_nor_torch():
     code = ("import sys; from mon.models import MODELS; from mon.core.enums import Task; "
-            "names = MODELS.names(tasks=Task.LLE); "
+            "names = MODELS.names(tasks=Task.LLE, arch='zero_dce'); "
             "print(names, 'torch' in sys.modules, any(m.startswith('mon.models.lle') for m in sys.modules))")
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True).stdout.strip()
     assert out == "['zero_dce', 'zero_dce++'] False False"
@@ -59,7 +59,7 @@ def test_every_public_model_class_is_indexed_once():
 
 
 def test_entries_by_task_and_arch():
-    assert MODELS.names(tasks=Task.LLE) == ["zero_dce", "zero_dce++"]
+    assert MODELS.names(tasks=Task.LLE) == ["sci", "sci++", "zero_dce", "zero_dce++"]
     assert MODELS.names(arch="zero_dce") == ["zero_dce", "zero_dce++"]
     assert MODELS.get("Zero_DCE++").__name__ == "ZeroDCEPP"
 
