@@ -9,7 +9,7 @@ checks that every entry resolves and every public model class in ``mon.models`` 
 Examples:
     >>> from mon.core.enums import Task
     >>> MODELS.names(tasks=Task.LLE)
-    ['colie', 'pairlie', 'sci', 'sci++', 'zero_dce', 'zero_dce++']
+    ['clode', 'colie', 'pairlie', 'sci', 'sci++', 'zero_dce', 'zero_dce++']
     >>> load("mertens")  # no parameters: nothing to load
     Mertens(contrast=1.0, saturation=1.0, exposure=1.0, sigma=0.2, levels=None)
     >>> model = load("zero_dce", weights=None)  # random init; weights="default" loads SICE_ME
@@ -43,6 +43,7 @@ MODELS.add_lazy("tv_denoise", "mon.models.denoise.tv_denoise:TVDenoise", tasks={
 MODELS.add_lazy("zs_n2n"    , "mon.models.denoise.zs_n2n:ZSN2N"        , tasks={Task.DENOISE}, arch="zs_n2n",
                 zero_shot=True)  # fit per image: zs_n2n_denoise
 # lle
+MODELS.add_lazy("clode"     , "mon.models.lle.clode:CLODE"       , tasks={Task.LLE}, arch="clode")
 MODELS.add_lazy("colie"     , "mon.models.lle.colie:CoLIE"       , tasks={Task.LLE}, arch="colie",
                 zero_shot=True)  # fit per image: colie_enhance
 MODELS.add_lazy("pairlie"   , "mon.models.lle.pairlie:PairLIE"   , tasks={Task.LLE}, arch="pairlie")

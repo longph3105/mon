@@ -8,6 +8,11 @@
 
 ### Added
 
+- `mon.models.lle.clode`: `CLODE` (`forward(image, t_end=None) -> {"enhanced", "curve_map", "noise", "state"}`;
+  `t_end` 3 by default, larger brightens, negative darkens), released weights `CLODE_Weights.LOL_V1/SICE_ME/
+  UNIVERSAL` (official Drive files without their unused modules; SHA-256; `UNIVERSAL` is the default). Outputs
+  match the official code. Outputs depend on the other images in a batch. No training loss yet.
+- Runtime dependency `torchdiffeq` (ODE solvers, MIT; CLODE).
 - `mon.models.lle.pairlie`: `PairLIE` (`forward(image) -> {"enhanced", "illumination", "reflectance",
   "denoised"}`, `alpha` 0.2 or 0.14 for LOL), `PairLIELoss`, released weights `PairLIE_Weights.SICE` (official
   `weights/PairLIE.pth`, pinned URL, SHA-256). Outputs match the official code bit for bit.

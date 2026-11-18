@@ -45,6 +45,7 @@ dependencies    = [
     # --- Deep Learning ---
     "torch>=2.15",                      # Tensor library and autograd.
     "torchvision>=0.29",                # Vision datasets, transforms, and models.
+    "torchdiffeq>=0.2.5",               # ODE solvers with adjoint backprop (CLODE). MIT.
     # --- Computer Vision ---
     # Headless only: `opencv-python` would overwrite the same `cv2/` package, so don't add it.
     # No cv2.imshow on Linux; show images through the `gui` extra instead.
@@ -90,7 +91,7 @@ strict          = true
 
 # Third-party packages without type information (no py.typed / stubs).
 [[tool.mypy.overrides]]
-module                 = ["torchvision", "torchvision.*"]
+module                 = ["torchdiffeq", "torchdiffeq.*", "torchvision", "torchvision.*"]
 ignore_missing_imports = true
 
 # --- uv ---
