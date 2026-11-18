@@ -8,6 +8,10 @@
 
 ### Added
 
+- `mon.models.lle.dccnet`: `DCCNet` (`forward(image) -> {"enhanced", "gray", "color_hist"}`; `H, W` divisible
+  by 8), released weights `DCCNet_Weights.LOL_V1` (official Google Drive file, URL, SHA-256; its
+  `nn.DataParallel` `module.` prefix is stripped on load). Matches the official network; reproduces the official
+  LOL-v1 results (22.976 dB). No training loss (none released).
 - `mon.models.lle.clode`: `CLODE` (`forward(image, t_end=None) -> {"enhanced", "curve_map", "noise", "state"}`;
   `t_end` 3 by default, larger brightens, negative darkens), released weights `CLODE_Weights.LOL_V1/SICE_ME/
   UNIVERSAL` (official Drive files without their unused modules; SHA-256; `UNIVERSAL` is the default). Outputs
