@@ -8,6 +8,9 @@
 
 ### Added
 
+- `mon.models.lle.pairlie`: `PairLIE` (`forward(image) -> {"enhanced", "illumination", "reflectance",
+  "denoised"}`, `alpha` 0.2 or 0.14 for LOL), `PairLIELoss`, released weights `PairLIE_Weights.SICE` (official
+  `weights/PairLIE.pth`, pinned URL, SHA-256). Outputs match the official code bit for bit.
 - `mon.models.lle.colie`: CoLIE (`CoLIE` implicit network, `CoLIELoss`, `colie_enhance` fitting one network per
   image with the paper's settings, `fit_illumination`, `fast_guided_filter`, `replace_value`). Registered with
   `zero_shot=True`; the per-image fit matches the official training.
