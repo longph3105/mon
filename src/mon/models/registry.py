@@ -10,6 +10,8 @@ Examples:
     >>> from mon.core.enums import Task
     >>> MODELS.names(tasks=Task.LLE)
     ['zero_dce', 'zero_dce++']
+    >>> load("mertens")  # no parameters: nothing to load
+    Mertens(contrast=1.0, saturation=1.0, exposure=1.0, sigma=0.2, levels=None)
     >>> model = load("zero_dce", weights=None)  # random init; weights="default" loads SICE_ME
     >>> type(model).__name__, model.training
     ('ZeroDCE', False)
@@ -38,6 +40,8 @@ MODELS: "Registry[type[nn.Module]]" = Registry("models")
 # lle
 MODELS.add_lazy("zero_dce"  , "mon.models.lle.zero_dce:ZeroDCE"  , tasks={Task.LLE}, arch="zero_dce")
 MODELS.add_lazy("zero_dce++", "mon.models.lle.zero_dce:ZeroDCEPP", tasks={Task.LLE}, arch="zero_dce")
+# mef
+MODELS.add_lazy("mertens"   , "mon.models.mef.mertens:Mertens"   , tasks={Task.MEF}, arch="mertens")
 
 
 def load(
@@ -52,26 +56,29 @@ def load(
 
     Args:
         name: Registry name (case-insensitive), e.g. ``"zero_dce"``.
-        weights: ``"default"`` (the model's ``weights_enum.DEFAULT``), a member name
-            (``"sice_me"``), a ``WeightsEnum`` member, ``Weights``, a checkpoint path (absolute
-            or relative to ``zoo_dir()``), or ``None`` for the constructor's random init.
-            Missing files are downloaded when the ``Weights`` has a ``url``.
+        weights: ``"default"`` (the model's ``weights_enum.DEFAULT``; no weights for a model
+            without parameters, e.g. ``"mertens"``), a member name (``"sice_me"``), a
+            ``WeightsEnum`` member, ``Weights``, a checkpoint path (absolute or relative to
+            ``zoo_dir()``), or ``None`` for the constructor's random init. Missing files are
+            downloaded when the ``Weights`` has a ``url``.
         device: Move the model there (any ``select_device`` spec); ``None`` keeps it on CPU.
         strict: Passed to ``load_state_dict``.
         **kwargs: Constructor arguments; they must match the checkpoint's architecture.
 
     Raises:
         RegistryKeyError: If ``name`` isn't registered.
-        ValueError: If ``weights="default"`` and the model has no pretrained weights.
+        ValueError: If ``weights="default"`` and a model with parameters has no ``weights_enum``.
         FileNotFoundError: If the checkpoint is missing and can't be downloaded.
         RuntimeError: If the checkpoint doesn't match the model (with ``strict``).
     """
     cls   = MODELS.get(name)
     enum  = getattr(cls, "weights_enum", None)
-    if enum is None and isinstance(weights, str) and weights.strip().lower() == "default":
-        raise ValueError(f"{name!r} has no pretrained weights; pass weights=None or a checkpoint path")
-    spec  = resolve_weights(weights, enum)
     model = cls(**kwargs)
+    if enum is None and isinstance(weights, str) and weights.strip().lower() == "default":
+        if any(True for _ in model.parameters()):
+            raise ValueError(f"{name!r} has no pretrained weights; pass weights=None or a checkpoint path")
+        weights = None  # parameter-free (classical) model: nothing to load
+    spec  = resolve_weights(weights, enum)
     if spec is not None:
         model.load_state_dict(spec.load_state_dict(), strict=strict)
     if device is not None:

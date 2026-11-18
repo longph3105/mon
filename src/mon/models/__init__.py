@@ -16,6 +16,7 @@ Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 Task subpackages (imported explicitly, like ``mon.data.zoo``):
 
     - ``lle``: low-light image enhancement (``zero_dce``: Zero-DCE, Zero-DCE++).
+    - ``mef``: multi-exposure fusion (``mertens``: Mertens et al. exposure fusion).
 """
 
 from typing import TYPE_CHECKING

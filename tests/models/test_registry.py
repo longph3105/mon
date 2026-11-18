@@ -106,11 +106,19 @@ def test_load_errors(tmp_path):
     with pytest.raises(FileNotFoundError):
         load("zero_dce", tmp_path / "missing.pt")
 
-    class NoWeights(nn.Module): ...
+    class NoWeights(nn.Module):  # learned, but no released weights
+        def __init__(self) -> None:
+            super().__init__()
+            self.fc = nn.Linear(2, 2)
+
+    class Classical(nn.Module): ...  # no parameters
     MODELS.add(NoWeights, "no_weights_test")
+    MODELS.add(Classical, "classical_test")
     try:
         with pytest.raises(ValueError, match="has no pretrained weights"):
             load("no_weights_test")
         assert isinstance(load("no_weights_test", weights=None), NoWeights)
+        assert isinstance(load("classical_test"), Classical)  # "default" = nothing to load
     finally:
         MODELS.remove("no_weights_test")
+        MODELS.remove("classical_test")

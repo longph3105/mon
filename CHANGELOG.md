@@ -8,6 +8,11 @@
 
 ### Added
 
+- `mon.models.mef.mertens`: Mertens exposure fusion (`Mertens` module, `exposure_fusion`, `fusion_weights`,
+  `pyr_down`/`pyr_up`), registered as `mertens` (`Task.MEF`). Input `[B, N, C, H, W]` exposure stacks; GPU and
+  autograd. Matches OpenCV's `MergeMertens` and fixes `mon_old`'s version (crashed on every input; well-exposedness
+  5× too wide; fixed 4 pyramid levels; grayscale stacks averaged).
+- `mon.models.load`: `weights="default"` loads nothing for parameter-free models.
 - `mon.models` package: `MODELS` registry listing every model lazily (filtering imports no model code or
   PyTorch) and `load(name, weights="default", device=, strict=, **kwargs)`, which returns the model in eval mode.
   `mon.models.lle.zero_dce`: `ZeroDCE`, `ZeroDCEPP` (`forward(image) -> {"enhanced", "curve"}`), the released

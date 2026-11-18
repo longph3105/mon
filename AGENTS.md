@@ -20,7 +20,7 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   `fashion_mnist`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference done; layers added per model.
 - **In progress:** `mon.models`: lazy `MODELS` index and `load` done; `lle.zero_dce` (Zero-DCE, Zero-DCE++) ported
-  with released weights and parity tests.
+  with released weights and parity tests; `mef.mertens` (exposure fusion, classical) with OpenCV parity tests.
 - **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
 - **Next:** the other LLE models whose weights are in `data/zoo/lle/`, then runners (train/predict configs, run
   directories), plotting. Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
@@ -134,7 +134,8 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   `mon.nn.tiling.tiled_forward`, never a per-model `forward_patch`. Constructors take architecture arguments only;
   pretrained weights go through `mon.models.load(name, weights=...)`, so a model class sets
   `weights_enum: ClassVar[type[WeightsEnum]]`. Put a model family in `mon/models/<task>/<family>.py` (weights enums,
-  models, paper loss); loss class names end in `Loss`.
+  models, paper loss); loss class names end in `Loss`. Classical methods are parameter-free modules (`load(name)`
+  loads nothing); multi-image inputs take an explicit axis (`[B, N, C, H, W]` for an exposure stack).
 - Losses: shared ones live in `mon.nn.losses.<family>` (e.g. `zero_reference`); a loss used by one model stays in
   that model's module until a second model needs it. Every loss returns per-sample values reduced by
   `reduction="mean"|"sum"|"none"`.
