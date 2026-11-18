@@ -8,6 +8,11 @@
 
 ### Added
 
+- `mon.models.lle.retinexnet`: `RetinexNet` (`forward(image) -> {"enhanced", "reflectance", "illumination",
+  "illumination_adjusted"}`; any size), following the PyTorch reimplementation's network (the official TensorFlow
+  weights don't fit it). `RetinexNet_Weights`: the reimplementation's release merged into one file (`REIMPL_9200`,
+  default; LOL-v1 17.61 dB) and the owner's `mon_old` LOL-v1 checkpoints (`LOL_V1_PSNR`, `LOL_V1_SSIM`). Matches the
+  reimplementation within 1e-6. Training losses not ported yet.
 - `mon.models.lle.hvi_cidnet`: `HVICIDNet` (`forward(image) -> {"enhanced", "hvi"}`; `H, W` divisible by 8;
   `saturation_gain` / `output_gain` = the official eval gates), `rgb_to_hvi` / `hvi_to_rgb`, and nine released
   weights `HVICIDNet_Weights` (zoo files with the same tensors as the official Hugging Face releases; default

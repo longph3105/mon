@@ -1,0 +1,239 @@
+"""Tests for ``mon.models.lle.retinexnet``: parity with the PyTorch reimplementation and checkpoint loading."""
+
+import importlib.util
+import math
+from pathlib import Path
+
+import pytest
+import torch
+
+from mon.models.lle.retinexnet import RetinexNet, RetinexNet_Weights
+from mon.models.registry import MODELS, load
+
+_spec = importlib.util.spec_from_file_location("retinexnet_reference", Path(__file__).with_name("retinexnet_reference.py"))
+assert _spec and _spec.loader
+_ref = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_ref)
+reference_input, stats = _ref.reference_input, _ref.stats
+
+# The reimplementation's DecomNet/RelightNet (aasharma90/RetinexNet_PyTorch 2267510), CPU, per checkpoint file.
+# Output of retinexnet_reference.py.
+# Generated from the reimplementation with torch 2.15.0+cu132.
+REIMPL: dict = {'retinexnet_lol_v1_psnr.pt': {'enhanced': {'shape': [2, 3, 21, 30],
+                                            'sum': 2126.9225109517574,
+                                            'sumsq': 1287.967523730904,
+                                            'values': [0.7155070304870605,
+                                                       0.7669087052345276,
+                                                       0.3448498249053955,
+                                                       0.09731335937976837,
+                                                       0.5952599048614502,
+                                                       0.5071680545806885,
+                                                       0.8495768904685974]},
+                               'reflectance': {'shape': [2, 3, 21, 30],
+                                               'sum': 1059.445309203118,
+                                               'sumsq': 319.93193236098585,
+                                               'values': [0.3688491880893707,
+                                                          0.3843621611595154,
+                                                          0.17197474837303162,
+                                                          0.05002909526228905,
+                                                          0.30347004532814026,
+                                                          0.25253427028656006,
+                                                          0.4388158321380615]},
+                               'illumination': {'shape': [2, 1, 21, 30],
+                                                'sum': 977.600623190403,
+                                                'sumsq': 758.5008967781566,
+                                                'values': [0.7757745981216431,
+                                                           0.7716432213783264,
+                                                           0.7747400403022766,
+                                                           0.7786819934844971,
+                                                           0.7758656740188599,
+                                                           0.7771843671798706,
+                                                           0.7742763757705688]},
+                               'illumination_adjusted': {'shape': [2, 1, 21, 30],
+                                                         'sum': 2530.2866376638412,
+                                                         'sumsq': 5082.735741142367,
+                                                         'values': [1.9398362636566162,
+                                                                    1.9952762126922607,
+                                                                    2.005235195159912,
+                                                                    1.945135235786438,
+                                                                    2.0199925899505615,
+                                                                    2.0083138942718506,
+                                                                    1.9360671043395996]}},
+ 'retinexnet_lol_v1_ssim.pt': {'enhanced': {'shape': [2, 3, 21, 30],
+                                            'sum': 1840.3364009931684,
+                                            'sumsq': 963.2821097859448,
+                                            'values': [0.6311901807785034,
+                                                       0.6696088910102844,
+                                                       0.29859575629234314,
+                                                       0.08605816960334778,
+                                                       0.5221180319786072,
+                                                       0.44127875566482544,
+                                                       0.7279831171035767]},
+                               'reflectance': {'shape': [2, 3, 21, 30],
+                                               'sum': 1059.445309203118,
+                                               'sumsq': 319.93193236098585,
+                                               'values': [0.3688491880893707,
+                                                          0.3843621611595154,
+                                                          0.17197474837303162,
+                                                          0.05002909526228905,
+                                                          0.30347004532814026,
+                                                          0.25253427028656006,
+                                                          0.4388158321380615]},
+                               'illumination': {'shape': [2, 1, 21, 30],
+                                                'sum': 977.600623190403,
+                                                'sumsq': 758.5008967781566,
+                                                'values': [0.7757745981216431,
+                                                           0.7716432213783264,
+                                                           0.7747400403022766,
+                                                           0.7786819934844971,
+                                                           0.7758656740188599,
+                                                           0.7771843671798706,
+                                                           0.7742763757705688]},
+                               'illumination_adjusted': {'shape': [2, 1, 21, 30],
+                                                         'sum': 2190.7770924568176,
+                                                         'sumsq': 3810.085570109095,
+                                                         'values': [1.7112419605255127,
+                                                                    1.7421300411224365,
+                                                                    1.7362767457962036,
+                                                                    1.7201623916625977,
+                                                                    1.7340213060379028,
+                                                                    1.747401475906372,
+                                                                    1.658971905708313]}},
+ 'retinexnet_reimpl_9200.pt': {'enhanced': {'shape': [2, 3, 21, 30],
+                                            'sum': 1999.5950404703617,
+                                            'sumsq': 1165.3012192794708,
+                                            'values': [0.4650900661945343,
+                                                       0.6927893161773682,
+                                                       0.5222093462944031,
+                                                       0.10476148128509521,
+                                                       0.5430830717086792,
+                                                       0.22838924825191498,
+                                                       0.7682365775108337]},
+                               'reflectance': {'shape': [2, 3, 21, 30],
+                                               'sum': 2179.377967707813,
+                                               'sumsq': 1384.4648369272695,
+                                               'values': [0.4863593876361847,
+                                                          0.7438653111457825,
+                                                          0.5752995014190674,
+                                                          0.12078671157360077,
+                                                          0.5921008586883545,
+                                                          0.2471202313899994,
+                                                          0.8426348567008972]},
+                               'illumination': {'shape': [2, 1, 21, 30],
+                                                'sum': 384.2318042740226,
+                                                'sumsq': 122.63844369082742,
+                                                'values': [0.45521652698516846,
+                                                           0.4158090353012085,
+                                                           0.2597203552722931,
+                                                           0.10289920121431351,
+                                                           0.30234089493751526,
+                                                           0.3249206244945526,
+                                                           0.322892427444458]},
+                               'illumination_adjusted': {'shape': [2, 1, 21, 30],
+                                                         'sum': 1156.000565648079,
+                                                         'sumsq': 1061.4597412435508,
+                                                         'values': [0.956268310546875,
+                                                                    0.9313369989395142,
+                                                                    0.9077173471450806,
+                                                                    0.8673262000083923,
+                                                                    0.9179599285125732,
+                                                                    0.9242029786109924,
+                                                                    0.9117075800895691]}}}
+
+ZOO = {"retinexnet_lol_v1_psnr.pt": RetinexNet_Weights.LOL_V1_PSNR, "retinexnet_lol_v1_ssim.pt": RetinexNet_Weights.LOL_V1_SSIM,
+       "retinexnet_reimpl_9200.pt": RetinexNet_Weights.REIMPL_9200}
+
+
+def assert_matches(actual: torch.Tensor, expected: dict, atol: float = 1e-6) -> None:
+    got = stats(actual)
+    assert got["shape"] == expected["shape"]
+    n = math.prod(expected["shape"])
+    assert got["sum"] == pytest.approx(expected["sum"], abs=atol * n)
+    assert got["sumsq"] == pytest.approx(expected["sumsq"], abs=atol * n)
+    assert got["values"] == pytest.approx(expected["values"], abs=atol)
+
+
+def released(member: RetinexNet_Weights) -> dict:
+    try:
+        return member.weights.load_state_dict(download=False)
+    except FileNotFoundError as err:
+        pytest.skip(f"weights not available: {err}")
+
+
+# --- Parity ---
+
+@pytest.mark.parametrize("name", list(REIMPL))
+def test_checkpoints_load_strictly_and_match_the_reimplementation(name):
+    model = RetinexNet().eval()
+    model.load_state_dict(released(ZOO[name]))
+    with torch.no_grad():
+        out = model(reference_input())
+    for key in ("enhanced", "reflectance", "illumination", "illumination_adjusted"):
+        assert_matches(out[key], REIMPL[name][key])
+
+
+def test_psnr_and_ssim_checkpoints_share_the_decomposition_net():
+    a, b = released(RetinexNet_Weights.LOL_V1_PSNR), released(RetinexNet_Weights.LOL_V1_SSIM)
+    assert all(torch.equal(a[k], b[k]) for k in a if k.startswith("decom_net."))
+    assert not all(torch.equal(a[k], b[k]) for k in a if k.startswith("enhance_net."))
+
+
+# --- Forward ---
+
+def test_forward_definition_and_any_size():
+    torch.manual_seed(0)
+    model = RetinexNet(channels=8).eval()
+    with torch.no_grad():
+        for h, w in ((2, 2), (13, 7), (21, 30)):
+            out = model(torch.rand(1, 3, h, w))
+            assert out["enhanced"].shape == (1, 3, h, w) and out["illumination"].shape == (1, 1, h, w)
+            assert torch.allclose(out["enhanced"], out["reflectance"] * out["illumination_adjusted"])
+            assert 0 < out["reflectance"].min() and out["reflectance"].max() < 1
+
+
+def test_state_dict_layout():
+    keys = list(RetinexNet().state_dict())
+    assert len(keys) == 32 and keys[0] == "decom_net.net1_conv0.weight" and keys[-1] == "enhance_net.net2_output.bias"
+
+
+def test_batch_independence():
+    torch.manual_seed(0)
+    model = RetinexNet().eval()
+    x = torch.rand(3, 3, 16, 20) * 0.4
+    with torch.no_grad():
+        assert torch.allclose(model(x)["enhanced"][1:2], model(x[1:2])["enhanced"], atol=1e-5)
+
+
+# --- Registry ---
+
+def test_registry_and_default_weights():
+    assert MODELS.get("retinexnet") is RetinexNet and RetinexNet_Weights.DEFAULT is RetinexNet_Weights.REIMPL_9200
+    assert isinstance(load("retinexnet", weights=None), RetinexNet)
+
+
+# --- LOL-v1 ---
+
+@pytest.mark.slow
+@pytest.mark.parametrize(("member", "expected"), [
+    (RetinexNet_Weights.LOL_V1_PSNR, 12.780), (RetinexNet_Weights.LOL_V1_SSIM, 11.579), (RetinexNet_Weights.REIMPL_9200, 17.610),
+])
+def test_lol_v1_psnr_regression(member: RetinexNet_Weights, expected: float):
+    """Clamp, truncate to 8 bit (the reimplementation saves ``clip(x·255).astype(uint8)``); measured 2026-11-18, CPU.
+    The mon_old checkpoints score far below the reimplementation's release."""
+    from mon.core.path import datasets_dir
+    from mon.data.zoo.lol import LOLv1
+    try:
+        root = datasets_dir() / LOLv1.folder
+    except RuntimeError:
+        pytest.skip("DATA_DIR / DATASETS_DIR not set")
+    if not root.is_dir():
+        pytest.skip(f"{root} not on this machine")
+    model = RetinexNet().eval()
+    model.load_state_dict(released(member))
+    psnrs = []
+    with torch.no_grad():
+        for sample in LOLv1("test"):
+            x, target = sample["image"].float()[None] / 255, sample["target"].double()
+            y8 = (model(x)["enhanced"][0].clamp(0, 1) * 255).to(torch.uint8).double()
+            psnrs.append(10 * math.log10(255.0**2 / ((y8 - target) ** 2).mean().item()))
+    assert sum(psnrs) / len(psnrs) == pytest.approx(expected, abs=5e-3)

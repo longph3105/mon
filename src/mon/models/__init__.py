@@ -17,8 +17,8 @@ Task subpackages (imported explicitly, like ``mon.data.zoo``):
 
     - ``denoise``: denoising (``tv_denoise``: total variation; ``zs_n2n``: Zero-Shot Noise2Noise).
     - ``lle``: low-light image enhancement (``clode``: CLODE; ``colie``: CoLIE; ``dccnet``: DCC-Net;
-      ``flol``: FLOL; ``hvi_cidnet``: HVI-CIDNet; ``pairlie``: PairLIE; ``sci``: SCI, SCI++;
-      ``zero_dce``: Zero-DCE, Zero-DCE++).
+      ``flol``: FLOL; ``hvi_cidnet``: HVI-CIDNet; ``pairlie``: PairLIE; ``retinexnet``: RetinexNet;
+      ``sci``: SCI, SCI++; ``zero_dce``: Zero-DCE, Zero-DCE++).
     - ``mef``: multi-exposure fusion (``mertens``: Mertens et al. exposure fusion).
 """
 
