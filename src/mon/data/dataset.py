@@ -28,7 +28,6 @@ __all__ = [
 import os
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from types import MappingProxyType
 from typing import Any, ClassVar, Literal
 
 import torch
@@ -41,6 +40,7 @@ from mon.core.enums import Split, Task
 from mon.core.path import Path, datasets_dir
 from mon.core.registry import Registry
 from mon.core.size import Size
+from mon.core.utils import ReadOnlyDict
 from mon.data.io import ImageMode, read_image
 from mon.data.labels import _empty_target, read_voc, read_yolo
 from mon.data.structures import ClassList, Sample, SampleMeta
@@ -162,7 +162,7 @@ class FolderDataset(Dataset[Sample]):
             raise ValueError(f"{name} has no {self.split.value!r} split; available: {[s.value for s in self.layout]}")
         if on_missing not in ("error", "skip"):
             raise ValueError(f"on_missing must be 'error' or 'skip', got {on_missing!r}")
-        self.modalities: Mapping[str, Modality] = MappingProxyType(dict(self.layout[self.split]))
+        self.modalities: Mapping[str, Modality] = ReadOnlyDict(dict(self.layout[self.split]))
         self._validate_layout()
 
         if root is not None:
@@ -244,7 +244,7 @@ class FolderDataset(Dataset[Sample]):
 
         Optional modalities a sample lacks are absent from its mapping.
         """
-        return [(stem, MappingProxyType(dict(paths))) for stem, paths in self._items]
+        return [(stem, ReadOnlyDict(dict(paths))) for stem, paths in self._items]
 
     # --- Dataset protocol ---
 
@@ -278,7 +278,7 @@ class FolderDataset(Dataset[Sample]):
                 else:  # voc; the image's size wins over the XML's <size>
                     target = read_voc(path, self._voc_ids, canvas_size=size)
                 sample.update(target)
-        sample["meta"] = SampleMeta(index=index, stem=stem, split=self.split, paths=MappingProxyType(paths), orig_size=size)
+        sample["meta"] = SampleMeta(index=index, stem=stem, split=self.split, paths=ReadOnlyDict(paths), orig_size=size)
         return self.transform(sample) if self.transform is not None else sample
 
     def __repr__(self) -> str:
@@ -387,7 +387,7 @@ class ClassFolderDataset(Dataset[Sample]):
             index     = index,
             stem      = stem,
             split     = self.split,
-            paths     = MappingProxyType({"image": path}),
+            paths     = ReadOnlyDict({"image": path}),
             orig_size = Size.from_shape(image),
         )
         sample: Sample = {"image": image, "label": torch.tensor(label, dtype=torch.int64), "meta": meta}
@@ -492,7 +492,7 @@ class ImageFolder(Dataset[Sample]):
 
     def items(self) -> list[tuple[str, Mapping[str, Path]]]:
         """Each image's ``(stem, {"image": file})``, in sample order, without reading any file."""
-        return [(stem, MappingProxyType({"image": path})) for stem, path in self._items]
+        return [(stem, ReadOnlyDict({"image": path})) for stem, path in self._items]
 
     def __len__(self) -> int:
         return len(self._items)
@@ -504,7 +504,7 @@ class ImageFolder(Dataset[Sample]):
             index     = index,
             stem      = stem,
             split     = Split.PREDICT,
-            paths     = MappingProxyType({"image": path}),
+            paths     = ReadOnlyDict({"image": path}),
             orig_size = Size.from_shape(image),
         )
         sample: Sample = {"image": image, "meta": meta}

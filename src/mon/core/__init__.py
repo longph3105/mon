@@ -20,7 +20,7 @@ Submodules (kept in sync with the code by ``tests/core/test_init.py``):
     size          Unambiguous (height, width) image size.                  Size
     timing        Wall-clock timers that account for async GPU work.       Timer, Profiler
     type_aliases  Shared type aliases for annotations.                     TensorOrArray, Int2, OneOrPair
-    utils         Stdlib-only helpers for values, strings, and lists.      has_value, to_list, truncate_string
+    utils         Stdlib-only helpers: values, strings, lists, mappings.   has_value, to_list, ReadOnlyDict
     weights       Pretrained-weights descriptors, enums, and loading.      Weights, WeightsEnum, resolve_weights
     ============  =======================================================  =========================================
 
@@ -117,6 +117,7 @@ _EXPORTS: dict[str, str] = {
     "OneOrPair"            : "type_aliases",
     "TensorOrArray"        : "type_aliases",
     # utils
+    "ReadOnlyDict"         : "utils",
     "has_value"            : "utils",
     "is_int_like"          : "utils",
     "is_list_of"           : "utils",
@@ -157,6 +158,7 @@ __all__ = [
     "Profiler",
     "RAW_IMAGE_EXTENSIONS",
     "RUNS_DIR_ENV",
+    "ReadOnlyDict",
     "Registry",
     "RegistryKeyError",
     "RunMode",
@@ -229,5 +231,5 @@ if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
     from mon.core.size import Size
     from mon.core.timing import Profiler, Timer, synchronize
     from mon.core.type_aliases import Float3, Int2, Int3, OneOrPair, TensorOrArray
-    from mon.core.utils import has_value, is_int_like, is_list_of, to_list, truncate_string
+    from mon.core.utils import ReadOnlyDict, has_value, is_int_like, is_list_of, to_list, truncate_string
     from mon.core.weights import Weights, WeightsEnum, WeightsLike, resolve_weights

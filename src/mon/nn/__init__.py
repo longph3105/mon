@@ -5,20 +5,21 @@ Layers and losses are added when a ported model needs them; plain ``torch.nn`` a
 
 Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 
-    ======  ===============================================================  ===========================================
-    Module  Purpose                                                          Key names
-    ======  ===============================================================  ===========================================
-    losses  Loss functions shared by several models, one module per family.  ExposureControlLoss, SpatialConsistencyLoss
-    tiling  Tiled inference for large images, blended with a Hann window.    tiled_forward, tile_starts
-    utils   Model helpers: parameter counts, freezing, device lookup.        count_parameters, freeze, module_device
-    ======  ===============================================================  ===========================================
+    ========  ====================================================================  ===========================================
+    Module    Purpose                                                               Key names
+    ========  ====================================================================  ===========================================
+    losses    Loss functions shared by several models, one module per family.       ExposureControlLoss, SpatialConsistencyLoss
+    tiling    Tiled inference for large images, blended with a Hann window.         tiled_forward, tile_starts
+    training  Training recipes: a model's step, loss, init, and official defaults.  TrainRecipe
+    utils     Model helpers: parameter counts, freezing, device lookup.             count_parameters, freeze, module_device
+    ========  ====================================================================  ===========================================
 """
 
 from typing import TYPE_CHECKING
 
 from mon.core._lazy import make_lazy
 
-_SUBMODULES: tuple[str, ...] = ("losses", "tiling", "utils")
+_SUBMODULES: tuple[str, ...] = ("losses", "tiling", "training", "utils")
 
 # Public name -> submodule. Keep in sync with each submodule's ``__all__``.
 _EXPORTS: dict[str, str] = {
@@ -34,6 +35,9 @@ _EXPORTS: dict[str, str] = {
     "hann_window_2d"            : "tiling",
     "tile_starts"               : "tiling",
     "tiled_forward"             : "tiling",
+    # training
+    "StepOutput"                : "training",
+    "TrainRecipe"               : "training",
     # utils
     "count_parameters"          : "utils",
     "freeze"                    : "utils",
@@ -48,6 +52,8 @@ __all__ = [
     "IlluminationSmoothnessLoss",
     "Reduction",
     "SpatialConsistencyLoss",
+    "StepOutput",
+    "TrainRecipe",
     "check_reduction",
     "count_parameters",
     "freeze",
@@ -68,4 +74,5 @@ if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
         ColorConstancyLoss, ExposureControlLoss, IlluminationSmoothnessLoss, SpatialConsistencyLoss,
     )
     from mon.nn.tiling import hann_window_2d, tile_starts, tiled_forward
+    from mon.nn.training import StepOutput, TrainRecipe
     from mon.nn.utils import count_parameters, freeze, module_device, unfreeze

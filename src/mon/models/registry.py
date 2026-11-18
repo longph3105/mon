@@ -38,6 +38,8 @@ MODELS: "Registry[type[nn.Module]]" = Registry("models")
 dataset-trained alternatives, e.g. Zero-IG's), with ``fit`` = ``"module:function"`` of the function
 that fits a fresh network per image (``fn(image, **kwargs) -> Tensor``, ``image`` ``[B, C, H, W]``).
 
+``train`` = ``"module:RECIPE"`` names the model's ``mon.nn.training.TrainRecipe`` (``mon train``).
+
 A model class may set ``input_multiple: ClassVar[int]`` when ``H`` and ``W`` must be multiples of
 it; runners pad to it and crop back (default 1)."""
 
@@ -56,12 +58,15 @@ MODELS.add_lazy("flol"      , "mon.models.lle.flol:FLOL"         , tasks={Task.L
 MODELS.add_lazy("hvi_cidnet", "mon.models.lle.hvi_cidnet:HVICIDNet", tasks={Task.LLE}, arch="hvi_cidnet")
 MODELS.add_lazy("pairlie"   , "mon.models.lle.pairlie:PairLIE"   , tasks={Task.LLE}, arch="pairlie")
 MODELS.add_lazy("retinexnet", "mon.models.lle.retinexnet:RetinexNet", tasks={Task.LLE}, arch="retinexnet")
-MODELS.add_lazy("sci"       , "mon.models.lle.sci:SCI"           , tasks={Task.LLE}, arch="sci")
+MODELS.add_lazy("sci"       , "mon.models.lle.sci:SCI"           , tasks={Task.LLE}, arch="sci",
+                train="mon.models.lle.sci:SCI_RECIPE")
 MODELS.add_lazy("sci++"     , "mon.models.lle.sci:SCIPP"         , tasks={Task.LLE}, arch="sci")
-MODELS.add_lazy("zero_dce"  , "mon.models.lle.zero_dce:ZeroDCE"  , tasks={Task.LLE}, arch="zero_dce")
-MODELS.add_lazy("zero_dce++", "mon.models.lle.zero_dce:ZeroDCEPP", tasks={Task.LLE}, arch="zero_dce")
+MODELS.add_lazy("zero_dce"  , "mon.models.lle.zero_dce:ZeroDCE"  , tasks={Task.LLE}, arch="zero_dce",
+                train="mon.models.lle.zero_dce:ZERO_DCE_RECIPE")
+MODELS.add_lazy("zero_dce++", "mon.models.lle.zero_dce:ZeroDCEPP", tasks={Task.LLE}, arch="zero_dce",
+                train="mon.models.lle.zero_dce:ZERO_DCEPP_RECIPE")
 MODELS.add_lazy("zero_ig"   , "mon.models.lle.zero_ig:ZeroIG"    , tasks={Task.LLE}, arch="zero_ig",
-                zero_shot=True, fit="mon.models.lle.zero_ig:zero_ig_enhance")
+                zero_shot=True, fit="mon.models.lle.zero_ig:zero_ig_enhance", train="mon.models.lle.zero_ig:ZERO_IG_RECIPE")
 # mef
 MODELS.add_lazy("mertens"   , "mon.models.mef.mertens:Mertens"   , tasks={Task.MEF}, arch="mertens")
 

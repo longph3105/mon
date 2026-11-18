@@ -1,6 +1,7 @@
-"""Stdlib-only helpers for values, strings, and lists."""
+"""Stdlib-only helpers: values, strings, lists, mappings."""
 
 __all__ = [
+    "ReadOnlyDict",
     "has_value",
     "is_int_like",
     "is_list_of",
@@ -9,7 +10,7 @@ __all__ = [
 ]
 
 import numbers
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from typing import Any, Literal, overload
 
 _NONE_STRINGS = frozenset({"", "none", "null"})
@@ -162,3 +163,43 @@ def truncate_string(
     head = (keep + 1) // 2
     tail = keep - head
     return text[:head] + ellipsis + text[len(text) - tail:]
+
+
+# --- Mappings ---
+
+class ReadOnlyDict[K, V](Mapping[K, V]):
+    """A read-only copy of a mapping that, unlike ``types.MappingProxyType``, pickles.
+
+    For values that cross process boundaries, e.g. dataset attributes and sample metadata sent
+    to ``DataLoader`` workers (Python 3.14 starts them with ``forkserver``, which pickles).
+
+    Examples:
+        >>> import pickle
+        >>> d = ReadOnlyDict({"image": "a.png"})
+        >>> d["image"], pickle.loads(pickle.dumps(d)) == d
+        ('a.png', True)
+        >>> d["x"] = 1
+        Traceback (most recent call last):
+        ...
+        TypeError: 'ReadOnlyDict' object does not support item assignment
+    """
+
+    __slots__ = ("_data",)
+
+    def __init__(self, data: Mapping[K, V] | Iterable[tuple[K, V]] = ()) -> None:
+        self._data: dict[K, V] = dict(data)
+
+    def __getitem__(self, key: K) -> V:
+        return self._data[key]
+
+    def __iter__(self) -> Iterator[K]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self._data!r})"
+
+    def __reduce__(self) -> tuple[type["ReadOnlyDict[K, V]"], tuple[dict[K, V]]]:
+        return type(self), (self._data,)

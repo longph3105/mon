@@ -39,9 +39,11 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   parity) and `denoise.zs_n2n` (zero-shot, `mon_old` parity).
 - **In progress:** `mon.metrics`: `psnr`, `ssim`, `lpips` (full-reference), `niqe` (no-reference), lazy
   `METRICS` index; defaults follow pyiqa (parity tests), which is not a dependency.
-- **In progress:** `mon.runners`: `predictor` (`mon predict`) and `evaluator` (`mon evaluate`) done; train later.
+- **In progress:** `mon.runners`: `trainer` (`mon train`; recipes for `zero_dce`, `zero_dce++`, `sci`, `zero_ig`),
+  `predictor` (`mon predict`), `evaluator` (`mon evaluate`).
 - **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
-- **Next:** the train runner; more metrics when needed (BRISQUE, MUSIQ, …, model complexity); plotting.
+- **Next:** recipes for the other models (PairLIE: exposure-pair sampling; SCI++: two alternating optimizers; the
+  supervised models once their paper losses are ported); more metrics when needed; plotting.
   Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
   `core` module's entry.
 - **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the
@@ -91,6 +93,7 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 | Test, fast/CPU    | `uv run pytest -m "not slow and not gpu"`                  |
 | Type check        | `uv run mypy`                                              |
 | Check data paths  | `uv run python -m mon.core.path`                           |
+| Train             | `uv run mon train model=<name> [data=<id or folder>] …`    |
 | Predict           | `uv run mon predict model=<name> data=<path or id> …`      |
 | Evaluate          | `uv run mon evaluate pred=<run dir> data=<id or folder> …` |
 | Lint Markdown     | `npx markdownlint-cli2 "*.md" "docs/**/*.md" "logs/*.md"`  |
@@ -157,7 +160,13 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   (`"fr"`/`"nr"`) and `higher_better`, mirrored in their `METRICS` entry. Defaults reproduce pyiqa, which
   `mon_old` used (PSNR on RGB; SSIM and NIQE on luma rounded to 8-bit levels); pyiqa is non-commercial, so it
   is only a reference: never a dependency, never copied. Evaluate saved 8-bit outputs, not in-memory floats.
-- Runners take a dataclass config (`PredictConfig`, `EvaluateConfig`) loaded with `load_config` (YAML + dotlist),
+- Training: one generic loop (`mon.runners.trainer`); a model contributes a `TrainRecipe` (`mon.nn.training`: step,
+  loss, init, official defaults) named by its `MODELS` entry (`train=`). Recipe defaults reproduce the official script
+  and sit under the user's config; check a new recipe's loop against the official script (see
+  `tests/runners/test_trainer_parity.py`). Training resizes, never pads; checkpoints resume exactly.
+- Samples and datasets cross process boundaries (DataLoader workers; Python 3.14 uses `forkserver`, which pickles):
+  keep them picklable, e.g. `mon.core.utils.ReadOnlyDict`, never `types.MappingProxyType`.
+- Runners take a dataclass config (`PredictConfig`, `EvaluateConfig`, `TrainConfig`) loaded with `load_config` (YAML + dotlist),
   resolve it explicitly (`seed_everything`, `select_device`, run directory), and save the resolved config with the seed
   in the run directory (evaluation writes its files next to the predictions). Outputs go under `runs_dir() / "train"` or
   `runs_dir() / "predict"` (`$RUNS_DIR`, else `$DATA_DIR/runs`); an existing, non-empty run directory raises unless

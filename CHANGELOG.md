@@ -2,12 +2,24 @@
 
 ## 3.0.0.dev0 — Unreleased
 
+### Fixed
+
+- `DataLoader` workers crashed on Python 3.14 (`forkserver` pickles datasets and samples): `FolderDataset`,
+  `ImageFolder` and `SampleMeta.paths` used `types.MappingProxyType`, which doesn't pickle; now `ReadOnlyDict`.
+
 ### Removed
 
 - Unused runtime dependencies `tensordict` (samples are plain dicts) and `tensorboard` (returns with the runners).
 
 ### Added
 
+- `mon.runners.trainer`: `TrainConfig`, `resolve_train_config`, `train(cfg)` and `mon train`: one loop for every
+  model with a training recipe (AMP, gradient clipping, Adam/AdamW/SGD, step/multistep/cosine schedules,
+  validation with the evaluation protocol, `best.pt`/`epoch_NNNN.pt`/`last.ckpt`, exact resume, `log.csv`).
+- `mon.nn.training.TrainRecipe` and recipes `ZERO_DCE_RECIPE`, `ZERO_DCEPP_RECIPE`, `SCI_RECIPE`, `ZERO_IG_RECIPE`
+  (official optimizer, epochs, batch, image size, clipping, init), named by the models' `MODELS` entries (`train=`).
+  The Zero-DCE loop matches the official `lowlight_train.py` to float32 rounding (parity test).
+- `mon.core.utils.ReadOnlyDict`: a read-only mapping that pickles.
 - `mon.metrics`: `PSNR`/`psnr`, `SSIM`/`ssim` (`y_channel`, `crop_border`, `downsample`), `LPIPS` (AlexNet or
   VGG-16; official v0.1 layers as `LPIPS_Weights`, pinned URL and SHA-256), `NIQE` (port of BasicSR's, pristine
   model as `NIQE_Weights`), and the lazy `METRICS` index (`mode`, `higher_better`). Every metric returns one

@@ -42,6 +42,8 @@ References:
 """
 
 __all__ = [
+    "ZERO_DCEPP_RECIPE",
+    "ZERO_DCE_RECIPE",
     "ZeroDCE",
     "ZeroDCELoss",
     "ZeroDCEPP",
@@ -59,6 +61,7 @@ from torch.nn import functional as F
 
 from mon.core.weights import Weights, WeightsEnum
 from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
+from mon.nn.training import StepOutput, TrainRecipe
 from mon.nn.losses.zero_reference import (
     ColorConstancyLoss, ExposureControlLoss, IlluminationSmoothnessLoss, SpatialConsistencyLoss,
 )
@@ -285,3 +288,44 @@ class ZeroDCELoss(nn.Module):
         """Args: model outputs ``enhanced`` and ``curve``, and the low-light ``image`` input."""
         total: Tensor = sum(self.terms(enhanced, curve, image).values())  # type: ignore[assignment]
         return total
+
+
+# --- Training recipes ---
+
+def _train_step(model: nn.Module, loss: nn.Module, batch: dict[str, Tensor]) -> StepOutput:
+    assert isinstance(loss, ZeroDCELoss)
+    image = batch["image"]
+    out   = model(image)
+    terms = loss.terms(out["enhanced"], out["curve"], image)
+    total: Tensor = sum(terms.values())  # type: ignore[assignment]
+    return {"loss": total, **terms}
+
+
+_RESIZE_NOTE = ("inputs are resized with torchvision bicubic + antialias; the official loader uses PIL "
+                "ANTIALIAS (Lanczos), which torchvision tensors don't offer")
+
+ZERO_DCE_RECIPE = TrainRecipe(
+    loss     = ZeroDCELoss,
+    step     = _train_step,
+    defaults = {
+        "data": "sice_me", "split": "train", "resize": [256, 256], "batch_size": 8, "epochs": 100,
+        "optimizer": {"name": "adam", "lr": 1e-4, "weight_decay": 1e-4}, "grad_clip": 0.1,
+    },
+    source   = "Li-Chongyi/Zero-DCE Zero-DCE_code/lowlight_train.py (e0f4adc); 100 epochs = the released Epoch99.pth "
+               "(the script's default is 200)",
+    notes    = _RESIZE_NOTE,
+)
+"""Official Zero-DCE training: Adam 1e-4 (weight decay 1e-4), clip 0.1, batch 8, 256×256, 100 epochs on SICE-ME."""
+
+ZERO_DCEPP_RECIPE = TrainRecipe(
+    loss     = lambda: ZeroDCELoss(tv_weight=1600.0),
+    step     = _train_step,
+    defaults = {
+        "data": "sice_me", "split": "train", "resize": [512, 512], "batch_size": 8, "epochs": 100,
+        "model_args": {"scale_factor": 1.0},
+        "optimizer": {"name": "adam", "lr": 1e-4, "weight_decay": 1e-4}, "grad_clip": 0.1,
+    },
+    source   = "Li-Chongyi/Zero-DCE_extension Zero-DCE++/lowlight_train.py (09f202b)",
+    notes    = _RESIZE_NOTE,
+)
+"""Official Zero-DCE++ training: as Zero-DCE but 512×512, smoothness weight 1600, scale factor 1, default init."""

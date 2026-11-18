@@ -41,6 +41,7 @@ References:
 
 __all__ = [
     "SCI",
+    "SCI_RECIPE",
     "SCILoss",
     "SCIPP",
     "SCIPP_Weights",
@@ -55,6 +56,7 @@ from torch.nn import functional as F
 
 from mon.core.weights import Weights, WeightsEnum
 from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
+from mon.nn.training import StepOutput, TrainRecipe
 
 _REPO = "https://raw.githubusercontent.com/vis-opt-group/SCI"
 
@@ -350,3 +352,28 @@ class SCILoss(nn.Module):
     def forward(self, image: Tensor, illumination: Tensor) -> Tensor:
         fidelity = (illumination - image).pow(2).flatten(1).mean(dim=1)
         return reduce_loss(1.5 * fidelity + self.smoothness(image, illumination), self.reduction)
+
+
+# --- Training recipe ---
+
+def _train_step(model: nn.Module, loss: nn.Module, batch: dict[str, Tensor]) -> StepOutput:
+    assert isinstance(model, SCI)
+    stages = model.forward_stages(batch["image"])
+    terms: dict[str, Tensor] = {f"stage{k + 1}": loss(x, i)
+                                for k, (x, i) in enumerate(zip(stages["inputs"], stages["illuminations"]))}
+    return {"loss": torch.stack(list(terms.values())).sum(), **terms}
+
+
+SCI_RECIPE = TrainRecipe(
+    loss     = SCILoss,
+    step     = _train_step,
+    defaults = {
+        "batch_size": 1, "epochs": 1000, "seed": 2,
+        "optimizer": {"name": "adam", "lr": 3e-4, "betas": [0.9, 0.999], "weight_decay": 3e-4}, "grad_clip": 5.0,
+    },
+    source   = "vis-opt-group/SCI CVPR/train.py (f6f88fd): full images (its crop is commented out), batch 1",
+    notes    = "the official script names no training set ('Your train dataset'); pass data=…",
+)
+"""Official SCI (CVPR) training: Adam 3e-4 (weight decay 3e-4), clip 5, batch 1, full images, 1000 epochs, seed 2.
+
+SCI++ (TPAMI) alternates two optimizers (``ha``; ``hb`` + ``calibrate``) and has no recipe yet."""

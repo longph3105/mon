@@ -49,6 +49,7 @@ References:
 """
 
 __all__ = [
+    "ZERO_IG_RECIPE",
     "ZeroIG",
     "ZeroIGLoss",
     "ZeroIG_Weights",
@@ -64,6 +65,7 @@ from torch.nn import functional as F
 from mon.core.weights import Weights, WeightsEnum
 from mon.models.denoise.zs_n2n import pair_downsample
 from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
+from mon.nn.training import StepOutput, TrainRecipe
 
 _REPO = "https://raw.githubusercontent.com/Doyle59217/ZeroIG/5af4b8aca6b114732f05d7fea70e0fbc874d63ab/weights/"
 _NOTE  = "dataset-trained release; the official README says these are not the paper's models"
@@ -405,3 +407,29 @@ def zero_ig_enhance(
                 outputs.append(model.eval()(x)["enhanced"])
     out = torch.cat(outputs)
     return out if image.ndim == 4 else out[0]
+
+
+# --- Training recipe (on a dataset: how the released weights were made) ---
+
+def _init_enhancer(model: nn.Module) -> None:
+    assert isinstance(model, ZeroIG)
+    for part in (model.enhance.in_conv, model.enhance.conv, model.enhance.out_conv):
+        part.apply(_enhance_init)
+
+
+def _train_step(model: nn.Module, loss: nn.Module, batch: dict[str, Tensor]) -> StepOutput:
+    return {"loss": loss(model, batch["image"])}
+
+
+ZERO_IG_RECIPE = TrainRecipe(
+    loss     = ZeroIGLoss,
+    step     = _train_step,
+    init     = _init_enhancer,
+    defaults = {
+        "batch_size": 1, "epochs": 2001, "seed": 2, "shuffle": False,
+        "optimizer": {"name": "adam", "lr": 3e-4, "betas": [0.9, 0.999], "weight_decay": 3e-4}, "grad_clip": 5.0,
+    },
+    source   = "Doyle59217/ZeroIG train.py (5af4b8a): full images in file order, batch 1, 2001 epochs, seed 2",
+    notes    = "the official optimizer uses capturable=True on CUDA (same math); per-image fitting is zero_ig_enhance",
+)
+"""Official Zero-IG dataset training (the released ``LOL.pt``, …): Adam 3e-4 (weight decay 3e-4), clip 5, batch 1."""
