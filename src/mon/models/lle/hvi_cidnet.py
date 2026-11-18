@@ -320,6 +320,7 @@ class HVICIDNet(nn.Module):
     """
 
     weights_enum: ClassVar[type[WeightsEnum]] = HVICIDNet_Weights
+    input_multiple: ClassVar[int] = 8  # H, W must be multiples (three 2x downsamplings); runners pad
 
     def __init__(
         self,

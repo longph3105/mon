@@ -8,6 +8,14 @@
 
 ### Added
 
+- `mon.runners.predictor`: `PredictConfig` and `predict(cfg)`: run a model on a folder, file, list of files, or
+  dataset split; pad to the model's `input_multiple` and crop back; fit zero-shot models per image (registry
+  `fit`); optional tiling; save the main output (or all image-shaped ones) clamped to `[0, 1]`, mirroring the
+  input tree, plus `config.yaml` (with the seed) and `timing.yaml`. CLI: `mon predict [config.yaml] key=value …`
+  (`[project.scripts]`).
+- `mon.core.path.runs_dir()` (`$RUNS_DIR`, else `$DATA_DIR/runs`) and `RUNS_DIR_ENV`.
+- `input_multiple` class attribute on `DCCNet`, `HVICIDNet` (8) and `ZeroIG` (2); registry metadata `fit` on the
+  zero-shot models (`zs_n2n`, `colie`, `zero_ig`).
 - `mon.models.lle.zero_ig`: Zero-IG (`ZeroIG` network, `ZeroIGLoss(model, image)`, `zero_ig_enhance` fitting a
   fresh network per image with the official recipe), registered `zero_shot=True`, plus the official dataset-trained
   weights `ZeroIG_Weights.LOL_V1` (default) / `LSRW_HUAWEI` / `LSRW_NIKON` (pinned URLs, SHA-256). Inference and the

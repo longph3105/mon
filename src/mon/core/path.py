@@ -1,6 +1,6 @@
 """Path subclass plus model-zoo and weights lookup."""
 
-__all__ = ["Path", "datasets_dir", "find_weights", "zoo_dir"]
+__all__ = ["Path", "datasets_dir", "find_weights", "runs_dir", "zoo_dir"]
 
 import logging
 import os
@@ -15,6 +15,7 @@ from mon.core.constants import (
     DATASETS_DIR_ENV,
     IMAGE_EXTENSIONS,
     RAW_IMAGE_EXTENSIONS,
+    RUNS_DIR_ENV,
     VIDEO_EXTENSIONS,
     WEIGHTS_EXTENSIONS,
     ZOO_DIR_ENV,
@@ -260,6 +261,18 @@ def datasets_dir() -> Path:
         RuntimeError: If neither variable is set.
     """
     return _env_dir(DATASETS_DIR_ENV, "datasets", "datasets")
+
+
+def runs_dir() -> Path:
+    """Return the run-output directory: ``$RUNS_DIR``, then ``$DATA_DIR/runs``.
+
+    Runners write under ``runs_dir() / <mode>``, e.g. ``runs_dir() / "predict"``. The
+    directory is not required to exist.
+
+    Raises:
+        RuntimeError: If neither variable is set.
+    """
+    return _env_dir(RUNS_DIR_ENV, "runs", "runs")
 
 
 def zoo_dir() -> Path:

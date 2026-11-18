@@ -143,6 +143,16 @@ for batch in create_dataloader(inputs, batch_size=1):
     write_image(pred[0], out_dir / f"{meta.stem}.png")      # night/0001.jpg → night/0001.png
 ```
 
+`mon.runners.predict` does all of this for any registered model: it pads to the model's `input_multiple`, fits
+zero-shot models per image, and saves outputs clamped to `[0, 1]` with the resolved config. From the shell:
+
+```text
+uv run mon predict model=zero_dce weights=sice_me data=path/to/night   # or data=lol_v1 split=test
+```
+
+Outputs land in `$RUNS_DIR/predict/<model>[-<weights>]/<data>/` (`$DATA_DIR/runs` if `RUNS_DIR` is unset);
+pass `run_dir=…` to choose. `PredictConfig` lists every key (`device`, `tile`, `save_extra`, `fit_args`, …).
+
 ## 6. Classification datasets
 
 `cifar10`, `cifar100`, `mnist` and `fashion_mnist` are stored as `<split>/<class>/<index>.png` with a

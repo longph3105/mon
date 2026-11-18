@@ -154,6 +154,7 @@ class ZeroIG(nn.Module):
     """
 
     weights_enum: ClassVar[type[WeightsEnum]] = ZeroIG_Weights
+    input_multiple: ClassVar[int] = 2  # H, W must be multiples (pair downsampling needs even sizes); runners pad
 
     def __init__(self, layers: int = 3, channels: int = 64, embed: int = 48) -> None:
         super().__init__()

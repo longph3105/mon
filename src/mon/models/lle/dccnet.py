@@ -270,6 +270,7 @@ class DCCNet(nn.Module):
     """
 
     weights_enum: ClassVar[type[WeightsEnum]] = DCCNet_Weights
+    input_multiple: ClassVar[int] = 8  # H, W must be multiples (three stride-2 stages); runners pad
 
     def __init__(self, d_hist: int = 64) -> None:
         super().__init__()

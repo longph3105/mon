@@ -35,18 +35,22 @@ if TYPE_CHECKING:
 MODELS: "Registry[type[nn.Module]]" = Registry("models")
 """All models by name. Metadata: ``tasks`` (set of ``Task``), ``arch`` (shared by variants), and
 ``zero_shot=True`` for networks fitted to each input at test time (released weights, if any, are
-dataset-trained alternatives, e.g. Zero-IG's)."""
+dataset-trained alternatives, e.g. Zero-IG's), with ``fit`` = ``"module:function"`` of the function
+that fits a fresh network per image (``fn(image, **kwargs) -> Tensor``, ``image`` ``[B, C, H, W]``).
+
+A model class may set ``input_multiple: ClassVar[int]`` when ``H`` and ``W`` must be multiples of
+it; runners pad to it and crop back (default 1)."""
 
 # --- Index: one line per model, grouped by task, sorted by name ---
 
 # denoise
 MODELS.add_lazy("tv_denoise", "mon.models.denoise.tv_denoise:TVDenoise", tasks={Task.DENOISE}, arch="tv_denoise")
 MODELS.add_lazy("zs_n2n"    , "mon.models.denoise.zs_n2n:ZSN2N"        , tasks={Task.DENOISE}, arch="zs_n2n",
-                zero_shot=True)  # fit per image: zs_n2n_denoise
+                zero_shot=True, fit="mon.models.denoise.zs_n2n:zs_n2n_denoise")
 # lle
 MODELS.add_lazy("clode"     , "mon.models.lle.clode:CLODE"       , tasks={Task.LLE}, arch="clode")
 MODELS.add_lazy("colie"     , "mon.models.lle.colie:CoLIE"       , tasks={Task.LLE}, arch="colie",
-                zero_shot=True)  # fit per image: colie_enhance
+                zero_shot=True, fit="mon.models.lle.colie:colie_enhance")
 MODELS.add_lazy("dccnet"    , "mon.models.lle.dccnet:DCCNet"     , tasks={Task.LLE}, arch="dccnet")
 MODELS.add_lazy("flol"      , "mon.models.lle.flol:FLOL"         , tasks={Task.LLE}, arch="flol")
 MODELS.add_lazy("hvi_cidnet", "mon.models.lle.hvi_cidnet:HVICIDNet", tasks={Task.LLE}, arch="hvi_cidnet")
@@ -57,7 +61,7 @@ MODELS.add_lazy("sci++"     , "mon.models.lle.sci:SCIPP"         , tasks={Task.L
 MODELS.add_lazy("zero_dce"  , "mon.models.lle.zero_dce:ZeroDCE"  , tasks={Task.LLE}, arch="zero_dce")
 MODELS.add_lazy("zero_dce++", "mon.models.lle.zero_dce:ZeroDCEPP", tasks={Task.LLE}, arch="zero_dce")
 MODELS.add_lazy("zero_ig"   , "mon.models.lle.zero_ig:ZeroIG"    , tasks={Task.LLE}, arch="zero_ig",
-                zero_shot=True)  # fit per image: zero_ig_enhance
+                zero_shot=True, fit="mon.models.lle.zero_ig:zero_ig_enhance")
 # mef
 MODELS.add_lazy("mertens"   , "mon.models.mef.mertens:Mertens"   , tasks={Task.MEF}, arch="mertens")
 

@@ -14,7 +14,7 @@ Submodules (kept in sync with the code by ``tests/core/test_init.py``):
     constants     Global constants: file extensions, dir names, env vars.  IMAGE_EXTENSIONS, IMAGES_DIR, ZOO_DIR_ENV
     enums         Shared string enums with aliases.                        Task, Split, RunMode, BBoxFormat
     fileio        Atomic JSON/YAML/text I/O and verified downloads.        load_yaml, save_json, download_file
-    path          Path subclass plus model-zoo and weights lookup.         Path, zoo_dir, find_weights
+    path          Path subclass plus model-zoo and weights lookup.         Path, zoo_dir, find_weights, runs_dir
     registry      Name-to-object registries with metadata filtering.       Registry
     runtime       Device selection and global RNG seeding.                 select_device, seed_everything
     size          Unambiguous (height, width) image size.                  Size
@@ -70,6 +70,7 @@ _EXPORTS: dict[str, str] = {
     "IMAGE_EXTENSIONS"     : "constants",
     "LABELS_DIR"           : "constants",
     "RAW_IMAGE_EXTENSIONS" : "constants",
+    "RUNS_DIR_ENV"         : "constants",
     "VIDEO_EXTENSIONS"     : "constants",
     "WEIGHTS_EXTENSIONS"   : "constants",
     "ZOO_DIR_ENV"          : "constants",
@@ -93,6 +94,7 @@ _EXPORTS: dict[str, str] = {
     "Path"                 : "path",
     "datasets_dir"         : "path",
     "find_weights"         : "path",
+    "runs_dir"             : "path",
     "zoo_dir"              : "path",
     # registry
     "Entry"                : "registry",
@@ -154,6 +156,7 @@ __all__ = [
     "Path",
     "Profiler",
     "RAW_IMAGE_EXTENSIONS",
+    "RUNS_DIR_ENV",
     "Registry",
     "RegistryKeyError",
     "RunMode",
@@ -186,6 +189,7 @@ __all__ = [
     "print_dict",
     "progress_bar",
     "resolve_weights",
+    "runs_dir",
     "save_config",
     "save_json",
     "save_txt",
@@ -213,13 +217,13 @@ if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
         ANNS_DIR, CONFIG_EXTENSIONS, DATA_DIR_ENV, DATASETS_DIR_ENV, DEBUG_DIR, DEFAULT_CKPT_EXT,
         DEFAULT_IMAGE_EXT,
         DEFAULT_LABEL_EXT, DEFAULT_WEIGHTS_EXT, DEPTH_DIR, IMAGE_EXTENSIONS, IMAGES_DIR, LABELS_DIR,
-        RAW_IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, WEIGHTS_EXTENSIONS, ZOO_DIR_ENV,
+        RAW_IMAGE_EXTENSIONS, RUNS_DIR_ENV, VIDEO_EXTENSIONS, WEIGHTS_EXTENSIONS, ZOO_DIR_ENV,
     )
     from mon.core.enums import AliasStrEnum, BBoxFormat, RunMode, Split, Strategy, Task
     from mon.core.fileio import (
         download_file, load_json, load_txt, load_yaml, save_json, save_txt, save_yaml, sha256sum,
     )
-    from mon.core.path import Path, datasets_dir, find_weights, zoo_dir
+    from mon.core.path import Path, datasets_dir, find_weights, runs_dir, zoo_dir
     from mon.core.registry import Entry, Registry, RegistryKeyError
     from mon.core.runtime import available_devices, seed_everything, select_device
     from mon.core.size import Size

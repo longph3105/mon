@@ -59,6 +59,9 @@ gui             = [
     "PySide6-Essentials>=6.12",         # Official Qt bindings (LGPL): GUI apps and matplotlib's QtAgg backend.
 ]
 
+[project.scripts]
+mon = "mon.runners.cli:main"          # `mon predict [config.yaml] key=value ...`
+
 [project.urls]
 Homepage        = "https://github.com/longph3105/mon"
 Documentation   = "https://github.com/longph3105/mon/tree/main/docs"

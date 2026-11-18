@@ -15,6 +15,7 @@ __all__ = [
     "IMAGE_EXTENSIONS",
     "LABELS_DIR",
     "RAW_IMAGE_EXTENSIONS",
+    "RUNS_DIR_ENV",
     "VIDEO_EXTENSIONS",
     "WEIGHTS_EXTENSIONS",
     "ZOO_DIR_ENV",
@@ -23,10 +24,13 @@ __all__ = [
 # --- Environment Variables ---
 
 DATA_DIR_ENV    : str = "DATA_DIR"
-"""Data root; ``$DATA_DIR/zoo`` and ``$DATA_DIR/datasets`` are the fallbacks."""
+"""Data root; ``$DATA_DIR/zoo``, ``$DATA_DIR/datasets`` and ``$DATA_DIR/runs`` are the fallbacks."""
 
 DATASETS_DIR_ENV: str = "DATASETS_DIR"
 """Directory holding datasets; see ``mon.core.path.datasets_dir``."""
+
+RUNS_DIR_ENV    : str = "RUNS_DIR"
+"""Directory holding run outputs (training, prediction); see ``mon.core.path.runs_dir``."""
 
 ZOO_DIR_ENV     : str = "ZOO_DIR"
 """Directory holding pretrained weights; see ``mon.core.path.zoo_dir``."""
