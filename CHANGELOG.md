@@ -8,6 +8,11 @@
 
 ### Added
 
+- `mon.models.denoise.tv_denoise`: total-variation denoising (`tv_denoise`, parameter-free `TVDenoise`), same
+  iteration as scikit-image's `denoise_tv_chambolle`; batched, differentiable, any device.
+- `mon.models.denoise.zs_n2n`: Zero-Shot Noise2Noise (`ZSN2N` network, `ZSN2NLoss`, `pair_downsample`,
+  `zs_n2n_denoise` fitting a fresh network per image, seedable). Registered with `zero_shot=True`.
+- Dev dependency `scikit-image` (test reference for TV denoising).
 - `mon.models.mef.mertens`: Mertens exposure fusion (`Mertens` module, `exposure_fusion`, `fusion_weights`,
   `pyr_down`/`pyr_up`), registered as `mertens` (`Task.MEF`). Input `[B, N, C, H, W]` exposure stacks; GPU and
   autograd. Matches OpenCV's `MergeMertens` and fixes `mon_old`'s version (crashed on every input; well-exposedness

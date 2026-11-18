@@ -33,10 +33,15 @@ if TYPE_CHECKING:
     from torch import nn
 
 MODELS: "Registry[type[nn.Module]]" = Registry("models")
-"""All models by name. Metadata: ``tasks`` (set of ``Task``), ``arch`` (shared by variants)."""
+"""All models by name. Metadata: ``tasks`` (set of ``Task``), ``arch`` (shared by variants), and
+``zero_shot=True`` for networks fitted to each input at test time (no pretrained weights)."""
 
 # --- Index: one line per model, grouped by task, sorted by name ---
 
+# denoise
+MODELS.add_lazy("tv_denoise", "mon.models.denoise.tv_denoise:TVDenoise", tasks={Task.DENOISE}, arch="tv_denoise")
+MODELS.add_lazy("zs_n2n"    , "mon.models.denoise.zs_n2n:ZSN2N"        , tasks={Task.DENOISE}, arch="zs_n2n",
+                zero_shot=True)  # fit per image: zs_n2n_denoise
 # lle
 MODELS.add_lazy("zero_dce"  , "mon.models.lle.zero_dce:ZeroDCE"  , tasks={Task.LLE}, arch="zero_dce")
 MODELS.add_lazy("zero_dce++", "mon.models.lle.zero_dce:ZeroDCEPP", tasks={Task.LLE}, arch="zero_dce")

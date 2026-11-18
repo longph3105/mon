@@ -69,6 +69,7 @@ Issues          = "https://github.com/longph3105/mon/issues"
 dev             = [
     "mypy>=2.4",                        # Static type checker.
     "pytest>=9.2",                      # Test runner.
+    "scikit-image>=0.26",               # Test reference only (TV denoising parity).
     "types-PyYAML>=6.0.12",             # Type stubs for pyyaml.
 ]
 
