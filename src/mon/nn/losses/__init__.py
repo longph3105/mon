@@ -7,21 +7,26 @@ Names are re-exported lazily (see ``mon.core``).
 
 Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 
-    ==============  ==============================================================  ============================================
-    Module          Purpose                                                         Key names
-    ==============  ==============================================================  ============================================
-    zero_reference  Zero-reference low-light enhancement losses (Zero-DCE family).  ExposureControlLoss, SpatialConsistencyLoss
-    ==============  ==============================================================  ============================================
+    ==============  =================================================================================  ===========================================
+    Module          Purpose                                                                            Key names
+    ==============  =================================================================================  ===========================================
+    reduction       Reduction modes shared by every loss: per-sample values, then mean, sum, or none.  Reduction, reduce_loss
+    zero_reference  Zero-reference low-light enhancement losses (Zero-DCE family).                     ExposureControlLoss, SpatialConsistencyLoss
+    ==============  =================================================================================  ===========================================
 """
 
 from typing import TYPE_CHECKING
 
 from mon.core._lazy import make_lazy
 
-_SUBMODULES: tuple[str, ...] = ("zero_reference",)
+_SUBMODULES: tuple[str, ...] = ("reduction", "zero_reference")
 
 # Public name -> submodule. Keep in sync with each submodule's ``__all__``.
 _EXPORTS: dict[str, str] = {
+    # reduction
+    "Reduction"                 : "reduction",
+    "check_reduction"           : "reduction",
+    "reduce_loss"               : "reduction",
     # zero_reference
     "ColorConstancyLoss"        : "zero_reference",
     "ExposureControlLoss"       : "zero_reference",
@@ -34,13 +39,17 @@ __all__ = [
     "ColorConstancyLoss",
     "ExposureControlLoss",
     "IlluminationSmoothnessLoss",
+    "Reduction",
     "SpatialConsistencyLoss",
+    "check_reduction",
+    "reduce_loss",
 ]
 
 __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 
 
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
+    from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
     from mon.nn.losses.zero_reference import (
         ColorConstancyLoss, ExposureControlLoss, IlluminationSmoothnessLoss, SpatialConsistencyLoss,
     )

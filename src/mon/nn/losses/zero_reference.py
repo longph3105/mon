@@ -28,26 +28,11 @@ __all__ = [
     "SpatialConsistencyLoss",
 ]
 
-from typing import Literal
-
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-type Reduction = Literal["mean", "sum", "none"]
-
-
-def _check_reduction(reduction: str) -> None:
-    if reduction not in ("mean", "sum", "none"):
-        raise ValueError(f"reduction must be 'mean', 'sum', or 'none', got {reduction!r}")
-
-
-def _reduce(per_sample: Tensor, reduction: str) -> Tensor:
-    if reduction == "mean":
-        return per_sample.mean()
-    if reduction == "sum":
-        return per_sample.sum()
-    return per_sample
+from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
 
 
 def _check_image(x: Tensor, name: str = "input") -> None:
@@ -58,7 +43,7 @@ def _check_image(x: Tensor, name: str = "input") -> None:
 class _ZeroReferenceLoss(nn.Module):
     def __init__(self, reduction: Reduction = "mean") -> None:
         super().__init__()
-        _check_reduction(reduction)
+        check_reduction(reduction)
         self.reduction = reduction
 
     def extra_repr(self) -> str:
@@ -84,7 +69,7 @@ class ColorConstancyLoss(_ZeroReferenceLoss):
         d_rg = (mr - mg) ** 2
         d_rb = (mr - mb) ** 2
         d_gb = (mb - mg) ** 2
-        return _reduce(torch.sqrt(d_rg**2 + d_rb**2 + d_gb**2), self.reduction)
+        return reduce_loss(torch.sqrt(d_rg**2 + d_rb**2 + d_gb**2), self.reduction)
 
 
 class ExposureControlLoss(_ZeroReferenceLoss):
@@ -114,7 +99,7 @@ class ExposureControlLoss(_ZeroReferenceLoss):
         if min(pred.shape[-2:]) < self.patch_size:
             raise ValueError(f"image {tuple(pred.shape[-2:])} is smaller than patch_size={self.patch_size}")
         means = F.avg_pool2d(pred.mean(dim=1, keepdim=True), self.patch_size)
-        return _reduce(((means - self.target) ** 2).mean(dim=(1, 2, 3)), self.reduction)
+        return reduce_loss(((means - self.target) ** 2).mean(dim=(1, 2, 3)), self.reduction)
 
     def extra_repr(self) -> str:
         return f"patch_size={self.patch_size}, target={self.target}, {super().extra_repr()}"
@@ -160,7 +145,7 @@ class SpatialConsistencyLoss(_ZeroReferenceLoss):
         d_input = F.conv2d(F.avg_pool2d(input.mean(dim=1, keepdim=True), self.pool_size), kernels, padding=1)
         d_pred  = F.conv2d(F.avg_pool2d(pred.mean(dim=1, keepdim=True), self.pool_size), kernels, padding=1)
         energy  = ((d_input - d_pred) ** 2).sum(dim=1)  # sum over the 4 directions: [B, h, w]
-        return _reduce(energy.mean(dim=(1, 2)), self.reduction)
+        return reduce_loss(energy.mean(dim=(1, 2)), self.reduction)
 
     def extra_repr(self) -> str:
         return f"pool_size={self.pool_size}, {super().extra_repr()}"
@@ -184,4 +169,4 @@ class IlluminationSmoothnessLoss(_ZeroReferenceLoss):
             raise ValueError(f"curves must be at least 2×2, got {h}×{w}")
         h_tv = ((curves[..., 1:, :] - curves[..., :-1, :]) ** 2).sum(dim=(1, 2, 3))
         w_tv = ((curves[..., :, 1:] - curves[..., :, :-1]) ** 2).sum(dim=(1, 2, 3))
-        return _reduce(2 * (h_tv / ((h - 1) * w) + w_tv / (h * (w - 1))), self.reduction)
+        return reduce_loss(2 * (h_tv / ((h - 1) * w) + w_tv / (h * (w - 1))), self.reduction)

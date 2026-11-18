@@ -19,8 +19,10 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   `ImageFolder`), `loader`, `transforms`; `zoo` has `lol_v1`, `lol_v2_real`, `cifar10`, `cifar100`, `mnist`,
   `fashion_mnist`. Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference done; layers added per model.
+- **In progress:** `mon.models`: lazy `MODELS` index and `load` done; `lle.zero_dce` (Zero-DCE, Zero-DCE++) ported
+  with released weights and parity tests.
 - **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
-- **Next:** `mon.models` (lazy registry, weights enums, Zero-DCE first), runners (train/predict configs, run
+- **Next:** the other LLE models whose weights are in `data/zoo/lle/`, then runners (train/predict configs, run
   directories), plotting. Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
   `core` module's entry.
 - **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the
@@ -34,17 +36,18 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 
 ## Layout
 
-| Path            | Purpose                                                                                    |
-|-----------------|--------------------------------------------------------------------------------------------|
-| `docs/`         | Long-form documentation.                                                                   |
-| `logs/`         | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`.                                   |
-| `src/mon/`      | The importable package. All library code lives here.                                       |
-| `src/mon/core/` | Shared infrastructure; no deps on the rest of `mon`. Overview: `help(mon.core)`.           |
-| `src/mon/data/` | Files → samples → batches; may import only `mon.core`. Overview: `help(mon.data)`.         |
-| `src/mon/nn/`   | Losses, model helpers, tiled inference; imports only `mon.core`. Overview: `help(mon.nn)`. |
-| `tests/`        | Tests, mirroring the `src/mon/` module tree.                                               |
-| `CHANGELOG.md`  | User-facing changes, newest first.                                                         |
-| `README.md`     | Install, usage, citation.                                                                  |
+| Path              | Purpose                                                                                                              |
+|-------------------|----------------------------------------------------------------------------------------------------------------------|
+| `docs/`           | Long-form documentation.                                                                                             |
+| `logs/`           | Agent work logs for this repo: `logs/log_YYYY_MM_DD.md`.                                                             |
+| `src/mon/`        | The importable package. All library code lives here.                                                                 |
+| `src/mon/core/`   | Shared infrastructure; no deps on the rest of `mon`. Overview: `help(mon.core)`.                                     |
+| `src/mon/data/`   | Files → samples → batches; may import only `mon.core`. Overview: `help(mon.data)`.                                   |
+| `src/mon/models/` | Models by task (`lle/`, …), lazy `MODELS` index, `load`; imports `mon.core`, `mon.nn`. Overview: `help(mon.models)`. |
+| `src/mon/nn/`     | Losses, model helpers, tiled inference; imports only `mon.core`. Overview: `help(mon.nn)`.                           |
+| `tests/`          | Tests, mirroring the `src/mon/` module tree.                                                                         |
+| `CHANGELOG.md`    | User-facing changes, newest first.                                                                                   |
+| `README.md`       | Install, usage, citation.                                                                                            |
 
 Keep each fact in one place: link to `docs/` instead of restating it here or in `README.md`.
 
@@ -89,7 +92,9 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   consumes them; resolve devices, weights, and run dirs explicitly after loading (no property setters). Save the
   resolved config into each run directory.
 - Registries: one `Registry` (`mon.core.registry`) per kind, defined in the package that owns it. Register with an
-  explicit name when `cls.__name__.lower()` isn't the paper's name (`@MODELS.register("zero_dce++", arch=...)`).
+  explicit name when `cls.__name__.lower()` isn't the paper's name (`register("zero_dce++", ...)`). Models are not
+  decorated: each gets one `MODELS.add_lazy(name, "module:Class", tasks=..., arch=...)` line in
+  `mon/models/registry.py`, so listing models imports no model code (`tests/models/test_registry.py` checks the index).
 - Enums: subclass `AliasStrEnum` (`mon.core.enums`), not `aenum`. No `"default"` member or `None` fallback;
   put defaults in signatures (`split: Split = Split.TRAIN`).
 - Declare `__all__` at the top of every public module.
@@ -126,13 +131,19 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Models: plain `nn.Module`, tensors in and out (`forward(image) -> Tensor`, or a small dict of named outputs);
   no TensorDict, `in_keys`/`out_keys`, or `__call__` override. The runner maps sample dicts to model inputs; a
   model's paper loss is a separate module, not a method. Large-image inference uses
-  `mon.nn.tiling.tiled_forward`, never a per-model `forward_patch`.
+  `mon.nn.tiling.tiled_forward`, never a per-model `forward_patch`. Constructors take architecture arguments only;
+  pretrained weights go through `mon.models.load(name, weights=...)`, so a model class sets
+  `weights_enum: ClassVar[type[WeightsEnum]]`. Put a model family in `mon/models/<task>/<family>.py` (weights enums,
+  models, paper loss); loss class names end in `Loss`.
 - Losses: shared ones live in `mon.nn.losses.<family>` (e.g. `zero_reference`); a loss used by one model stays in
   that model's module until a second model needs it. Every loss returns per-sample values reduced by
   `reduction="mean"|"sum"|"none"`.
 - Losses and models ported from a paper follow its official code; test parity against a reference copy of
-  that code (losses) or against `mon_old` outputs with the same weights (models, `slow`; needs the old
-  `mon` conda env). Record known differences between `mon_old` copies in the docstring.
+  that code (losses) or, for models, against reference values with the released weights: a script next to the
+  test (e.g. `tests/models/lle/zero_dce_reference.py`) computes output statistics on a deterministic input from
+  the official code or `mon_old` (in its `mon` conda env), and the test keeps them as a literal. Don't copy
+  unlicensed official code into the repo and don't commit tensor files. Record known differences from the
+  official code and from `mon_old` in the module docstring.
 
 ---
 

@@ -215,3 +215,99 @@ def test_autoload_failure_is_retried():
         reg.names()
     with pytest.raises(ModuleNotFoundError):  # not silently marked as loaded
         len(reg)
+
+
+# --- Lazy entries ---
+
+@pytest.fixture
+def lazy_mod(tmp_path, monkeypatch: pytest.MonkeyPatch):
+    """A throwaway module ``mon_test_lazy`` defining ``Net`` and ``Outer.Inner``; tracks whether it was imported."""
+    (tmp_path / "mon_test_lazy.py").write_text(textwrap.dedent("""
+        class Net:
+            def __init__(self, width: int = 1) -> None:
+                self.width = width
+
+        class Outer:
+            class Inner: ...
+    """))
+    monkeypatch.syspath_prepend(str(tmp_path))
+    yield "mon_test_lazy"
+    sys.modules.pop("mon_test_lazy", None)
+
+
+def test_add_lazy_filters_without_importing(lazy_mod: str):
+    reg = Registry[type]("models")
+    reg.add_lazy("Net", f"{lazy_mod}:Net", tasks={Task.LLE})
+    assert reg.names(tasks=Task.LLE) == ["net"] and "net" in reg and len(reg) == 1 and list(reg) == ["net"]
+    assert repr(reg) == "Registry('models', 1 entries)"
+    assert lazy_mod not in sys.modules
+
+
+@pytest.mark.parametrize("lookup", [
+    lambda r: r.get("net"), lambda r: r.entry("NET").obj, lambda r: r.build("net", width=3), lambda r: r.entries(),
+])
+def test_lazy_lookups_import_and_cache(lazy_mod: str, lookup):
+    reg = Registry[type]("models")
+    reg.add_lazy("net", f"{lazy_mod}:Net", arch="x")
+    lookup(reg)
+    assert lazy_mod in sys.modules
+    entry = reg.entry("net")
+    assert entry.obj is sys.modules[lazy_mod].Net and entry.target == f"{lazy_mod}:Net" and entry.meta["arch"] == "x"
+    assert reg.entry("net") is entry  # resolved once, then cached
+
+
+def test_lazy_build_and_nested_attribute(lazy_mod: str):
+    reg = Registry[type]("models")
+    reg.add_lazy("net", f"{lazy_mod}:Net")
+    reg.add_lazy("inner", f"{lazy_mod}:Outer.Inner")
+    assert reg.build("net", width=3).width == 3
+    assert reg.get("inner").__qualname__ == "Outer.Inner"
+
+
+@pytest.mark.parametrize("target", ["mon_test_lazy", ":Net", "mon_test_lazy:", "", 3])
+def test_add_lazy_rejects_malformed_targets(target):
+    with pytest.raises(ValueError, match="package.module:Attr"):
+        Registry[type]("models").add_lazy("net", target)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(("target", "match"), [
+    ("mon_no_such_module_xyz:Net", "No module named"),
+    ("collections:NoSuchThing", "has no attribute"),
+])
+def test_bad_lazy_target_fails_on_lookup_with_context(target: str, match: str):
+    reg = Registry[type]("models")
+    reg.add_lazy("net", target)
+    assert reg.names() == ["net"]  # registering and filtering don't import
+    with pytest.raises(ImportError, match=rf"cannot load 'net' in 'models' from {target!r}: .*{match}"):
+        reg.get("net")
+    with pytest.raises(ImportError):  # not cached as broken or as resolved
+        reg.get("net")
+
+
+def test_add_lazy_duplicates(lazy_mod: str):
+    reg = Registry[type]("models")
+    reg.add_lazy("net", f"{lazy_mod}:Net", arch="x")
+    reg.add_lazy("net", f"{lazy_mod}:Net", arch="x")  # same call: no-op
+    with pytest.raises(RegistryKeyError, match=r"already registered .*mon_test_lazy:Net"):
+        reg.add_lazy("net", f"{lazy_mod}:Outer.Inner", arch="x")
+    with pytest.raises(RegistryKeyError):
+        reg.add_lazy("net", f"{lazy_mod}:Net", arch="y")
+    reg.get("net")
+    reg.add_lazy("net", f"{lazy_mod}:Net", arch="x")  # still a no-op once resolved
+    reg.add_lazy("net", f"{lazy_mod}:Outer.Inner", replace=True)
+    assert reg.get("net").__qualname__ == "Outer.Inner"
+    reg.add(dict, "eager")
+    with pytest.raises(RegistryKeyError, match="already registered"):
+        reg.add_lazy("eager", f"{lazy_mod}:Net")
+
+
+def test_eager_add_resolves_matching_pending_entry(lazy_mod: str):
+    reg = Registry[type]("models")
+    reg.add_lazy("net", f"{lazy_mod}:Net", arch="x")
+    import importlib
+    net = importlib.import_module(lazy_mod).Net
+    assert reg.add(net, "net", arch="x").target == f"{lazy_mod}:Net"  # e.g. a decorator in the target module
+    assert reg.get("net") is net
+    reg.add_lazy("other", f"{lazy_mod}:Net")
+    with pytest.raises(RegistryKeyError, match="lazily"):
+        reg.add(dict, "other")  # a different object than the pending target

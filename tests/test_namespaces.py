@@ -8,7 +8,7 @@ from types import ModuleType
 
 import pytest
 
-PACKAGES = ["mon.core", "mon.data", "mon.nn", "mon.nn.losses"]
+PACKAGES = ["mon.core", "mon.data", "mon.models", "mon.nn", "mon.nn.losses"]
 
 # (package, submodule, name) deliberately not re-exported.
 EXCLUDED = {("mon.core", "console", "console")}  # collides with the ``console`` submodule name
@@ -17,6 +17,7 @@ EXCLUDED = {("mon.core", "console", "console")}  # collides with the ``console``
 ALLOWED_IMPORTS = {
     "mon.core": {"mon.core"},
     "mon.data": {"mon.core", "mon.data"},
+    "mon.models": {"mon.core", "mon.models", "mon.nn"},
     "mon.nn"  : {"mon.core", "mon.nn"},
     "mon.nn.losses": {"mon.core", "mon.nn"},
 }

@@ -8,6 +8,15 @@
 
 ### Added
 
+- `mon.models` package: `MODELS` registry listing every model lazily (filtering imports no model code or
+  PyTorch) and `load(name, weights="default", device=, strict=, **kwargs)`, which returns the model in eval mode.
+  `mon.models.lle.zero_dce`: `ZeroDCE`, `ZeroDCEPP` (`forward(image) -> {"enhanced", "curve"}`), the released
+  weights (`ZeroDCE_Weights`/`ZeroDCEPP_Weights.SICE_ME`, pinned URLs and SHA-256), `ZeroDCELoss`, and
+  `apply_curves`. Outputs match the released models bit for bit; Zero-DCE++ accepts any input size with
+  `scale_factor > 1`.
+- `Registry.add_lazy(name, "module:Attr", **meta)`: entries imported on first lookup; `names()` never imports.
+  `Entry.target` records the import path.
+- `mon.nn.losses.reduction`: `Reduction`, `check_reduction`, `reduce_loss`, shared by all losses.
 - `.markdownlint.yaml` (120 columns; tables and code blocks exempt).
 - `mon.data.dataset.ClassFolderDataset` + `classification_layout`: classification from `<split>/<class>/<image>`
   with label ids from `classes.txt`; samples `{"image", "label", "meta"}`. `mon.data.zoo.classify`: `cifar10`,

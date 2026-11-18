@@ -1,7 +1,11 @@
 """Name-to-object registries with metadata filtering.
 
 Create one ``Registry`` per kind of object in the package that owns it, e.g.
-``MODELS = Registry[type[nn.Module]]("models")`` in ``mon.nn``.
+``MODELS = Registry[type[nn.Module]]("models")`` in ``mon.models``.
+
+Entries are added eagerly (``add``/``register``, the object already exists) or lazily
+(``add_lazy``, an import path resolved on first use), so a registry can list and filter
+many entries without importing the modules that define them.
 """
 
 __all__ = [
@@ -29,11 +33,45 @@ class RegistryKeyError(KeyError):
 
 @dataclass(frozen=True, slots=True)
 class Entry[T]:
-    """A registered object, its (lowercase) name, and read-only metadata."""
+    """A registered object, its (lowercase) name, and read-only metadata.
 
-    name: str
-    obj : T
-    meta: Mapping[str, Any]
+    ``target`` is the ``"module:attr"`` import path for entries added with ``add_lazy``.
+    """
+
+    name  : str
+    obj   : T
+    meta  : Mapping[str, Any]
+    target: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _Pending:
+    """A lazy entry whose ``target`` hasn't been imported yet."""
+
+    name  : str
+    target: str
+    meta  : Mapping[str, Any]
+
+
+def _check_target(target: str) -> str:
+    module, sep, attr = target.partition(":") if isinstance(target, str) else ("", "", "")
+    if not (sep and module.strip() and attr.strip()):
+        raise ValueError(f"lazy target must look like 'package.module:Attr', got {target!r}")
+    return target
+
+
+def _import_target(target: str) -> Any:
+    module_name, _, attr_path = target.partition(":")
+    obj: Any = importlib.import_module(module_name)
+    for attr in attr_path.split("."):
+        obj = getattr(obj, attr)
+    return obj
+
+
+def _target_of(obj: Any) -> str | None:
+    """``"module:qualname"`` of ``obj``, or ``None`` if it has no module or qualified name."""
+    module, qualname = getattr(obj, "__module__", None), getattr(obj, "__qualname__", None)
+    return f"{module}:{qualname}" if isinstance(module, str) and isinstance(qualname, str) else None
 
 
 def _normalize(name: str) -> str:
@@ -85,7 +123,7 @@ class Registry[T]:
         self.name      = name
         self._autoload = autoload
         self._loaded   = autoload is None
-        self._entries: dict[str, Entry[T]] = {}
+        self._entries: dict[str, Entry[T] | _Pending] = {}
 
     def _ensure_loaded(self) -> None:
         """Import ``autoload`` once, before the first lookup."""
@@ -143,7 +181,18 @@ class Registry[T]:
         entry = Entry(name=key, obj=obj, meta=MappingProxyType(dict(meta)))
 
         existing = self._entries.get(key)
-        if existing is not None and not replace:
+        if isinstance(existing, _Pending) and not replace:
+            # The lazy target's own module registers the same object: same target and metadata
+            # resolve the pending entry; anything else is a conflict.
+            if _target_of(obj) == existing.target and dict(existing.meta) == dict(meta):
+                entry = Entry(name=key, obj=obj, meta=existing.meta, target=existing.target)
+                self._entries[key] = entry
+                return entry
+            raise RegistryKeyError(
+                f"{key!r} is already registered in {self.name!r} (lazily, as {existing.target!r}); "
+                "pass replace=True to overwrite"
+            )
+        if isinstance(existing, Entry) and not replace:
             if existing.obj is obj and dict(existing.meta) == dict(meta):
                 return existing
             if existing.obj is not obj and _same_definition(existing.obj, obj):
@@ -156,6 +205,35 @@ class Registry[T]:
             )
         self._entries[key] = entry
         return entry
+
+    def add_lazy(self, name: str, target: str, *, replace: bool = False, **meta: Any) -> None:
+        """Register ``target`` (``"package.module:Attr"``) under ``name`` without importing it.
+
+        ``names`` filters by metadata without importing; ``get``, ``build``, ``entry``, and
+        ``entries`` import the target on first use and cache the object.
+
+        Raises:
+            ValueError: If ``target`` isn't of the form ``"module:attr"``.
+            RegistryKeyError: If the name is taken (by another target, other metadata, or an
+                eager entry) and not ``replace``. Repeating the same call is a no-op.
+
+        Examples:
+            >>> REG = Registry[type]("containers")
+            >>> REG.add_lazy("ordered_dict", "collections:OrderedDict", family="dict")
+            >>> REG.names(family="dict"), REG.entry("ordered_dict").target
+            (['ordered_dict'], 'collections:OrderedDict')
+        """
+        key      = _normalize(name)
+        pending  = _Pending(name=key, target=_check_target(target), meta=MappingProxyType(dict(meta)))
+        existing = self._entries.get(key)
+        if existing is not None and not replace:
+            if existing.target == target and dict(existing.meta) == dict(meta):
+                return
+            shown = existing.target or (existing.obj if isinstance(existing, Entry) else None)
+            raise RegistryKeyError(
+                f"{key!r} is already registered in {self.name!r} (as {shown!r}); pass replace=True to overwrite"
+            )
+        self._entries[key] = pending
 
     def register(self, name: str | None = None, *, replace: bool = False, **meta: Any) -> Callable[[T], T]:
         """Decorator form of ``add``; returns the decorated object unchanged.
@@ -189,11 +267,28 @@ class Registry[T]:
         key = _normalize(name)
         self._ensure_loaded()
         try:
-            return self._entries[key]
+            found = self._entries[key]
         except KeyError:
             close = difflib.get_close_matches(key, self._entries, n=3, cutoff=0.6)
             hint  = f"; did you mean {', '.join(repr(c) for c in close)}?" if close else ""
             raise RegistryKeyError(f"{name!r} is not registered in {self.name!r}{hint}") from None
+        return self._resolve(found)
+
+    def _resolve(self, found: Entry[T] | _Pending) -> Entry[T]:
+        """Import a pending entry's target (once) and return the real entry.
+
+        Raises:
+            ImportError: If the target's module or attribute can't be imported.
+        """
+        if isinstance(found, Entry):
+            return found
+        try:
+            obj = _import_target(found.target)
+        except (ImportError, AttributeError) as err:
+            raise ImportError(f"cannot load {found.name!r} in {self.name!r} from {found.target!r}: {err}") from err
+        entry = Entry(name=found.name, obj=obj, meta=found.meta, target=found.target)
+        self._entries[found.name] = entry
+        return entry
 
     def get(self, name: str) -> T:
         """Return the object registered as ``name``. See ``entry`` for errors."""
@@ -216,14 +311,15 @@ class Registry[T]:
 
         A criterion ``key=value`` matches when ``meta[key] == value``, or when
         ``meta[key]`` is a non-string collection containing ``value``. Entries lacking
-        ``key`` don't match.
+        ``key`` don't match. Matching lazy entries are imported; ``names`` filters without
+        importing.
         """
-        self._ensure_loaded()
-        return [
-            e for _, e in sorted(self._entries.items())
-            if all(_matches(e.meta.get(k, _ABSENT), v) for k, v in criteria.items())
-        ]
+        return [self._resolve(self._entries[name]) for name in self.names(**criteria)]
 
     def names(self, **criteria: Any) -> list[str]:
-        """Return sorted names of entries matching ``criteria`` (see ``entries``)."""
-        return [e.name for e in self.entries(**criteria)]
+        """Return sorted names of entries matching ``criteria`` (see ``entries``); never imports lazy targets."""
+        self._ensure_loaded()
+        return [
+            key for key, e in sorted(self._entries.items())
+            if all(_matches(e.meta.get(k, _ABSENT), v) for k, v in criteria.items())
+        ]

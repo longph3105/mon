@@ -71,6 +71,16 @@ seed = mc.seed_everything(cfg.get("seed"))
 
 Names load lazily, so `import mon.core` stays fast until a name that needs PyTorch is used.
 
+Models load by name with their released weights (downloaded if they aren't in the zoo):
+
+```python
+import mon.models
+
+mon.models.MODELS.names(tasks="lle")              # ['zero_dce', 'zero_dce++']
+model = mon.models.load("zero_dce", device="auto")  # weights="default" → released SICE weights
+enhanced = model(image)["enhanced"]                  # image: [B, 3, H, W] float in [0, 1]
+```
+
 Datasets, transforms and loaders: [docs/data.md](docs/data.md).
 
 ## Citation

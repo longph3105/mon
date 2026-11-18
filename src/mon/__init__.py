@@ -4,7 +4,7 @@ Subpackages load lazily on first attribute access, so ``import mon`` stays cheap
 ``mon.core.Path`` works without a separate ``import mon.core``.
 """
 
-__all__ = ["__version__", "core", "data", "nn"]
+__all__ = ["__version__", "core", "data", "models", "nn"]
 
 import importlib
 from importlib.metadata import version as _version
@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 __version__ = _version("mon")
 
-_SUBPACKAGES: tuple[str, ...] = ("core", "data", "nn")
+_SUBPACKAGES: tuple[str, ...] = ("core", "data", "models", "nn")
 
 
 # Self-contained (not ``mon.core._lazy``) so ``import mon`` doesn't import any subpackage.
@@ -27,4 +27,4 @@ def __dir__() -> list[str]:
 
 
 if TYPE_CHECKING:
-    from mon import core, data, nn
+    from mon import core, data, models, nn

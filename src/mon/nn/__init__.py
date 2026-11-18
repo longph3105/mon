@@ -26,7 +26,10 @@ _EXPORTS: dict[str, str] = {
     "ColorConstancyLoss"        : "losses",
     "ExposureControlLoss"       : "losses",
     "IlluminationSmoothnessLoss": "losses",
+    "Reduction"                 : "losses",
     "SpatialConsistencyLoss"    : "losses",
+    "check_reduction"           : "losses",
+    "reduce_loss"               : "losses",
     # tiling
     "hann_window_2d"            : "tiling",
     "tile_starts"               : "tiling",
@@ -43,11 +46,14 @@ __all__ = [
     "ColorConstancyLoss",
     "ExposureControlLoss",
     "IlluminationSmoothnessLoss",
+    "Reduction",
     "SpatialConsistencyLoss",
+    "check_reduction",
     "count_parameters",
     "freeze",
     "hann_window_2d",
     "module_device",
+    "reduce_loss",
     "tile_starts",
     "tiled_forward",
     "unfreeze",
@@ -57,6 +63,7 @@ __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 
 
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
+    from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
     from mon.nn.losses.zero_reference import (
         ColorConstancyLoss, ExposureControlLoss, IlluminationSmoothnessLoss, SpatialConsistencyLoss,
     )
