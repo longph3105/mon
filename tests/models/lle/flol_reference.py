@@ -5,7 +5,12 @@
 Needs ``kornia``. Running it executes third-party code: get the owner's go-ahead first.
 Regenerate with:
 
-    uv run --with kornia python -I tests/models/lle/flol_reference.py <checkout> <checkout>/weights
+    uv run --with kornia==0.9.2 python -I tests/models/lle/flol_reference.py <checkout> <checkout>/weights [float64]
+
+The default dtype is float64: in float32 the SNR mask (``blur / (|luma - blur| + 1e-4)`` over its
+max) carries rounding error that the spatial branch amplifies to ~1e-3, so float32 literals only
+match on the machine that made them. A float64 run needs one patch in the checkout, a no-op in
+float32: in ``model/flol.py`` ``get_mask``, ``return mask.float()`` → ``return mask``.
 """
 
 import pprint
@@ -42,22 +47,24 @@ def stats(t: torch.Tensor) -> dict[str, Any]:
     }
 
 
-def main(checkout: str, weights_dir: str) -> None:
+def main(checkout: str, weights_dir: str, dtype_name: str = "float64") -> None:
     sys.path.insert(0, str(Path(checkout).resolve()))
     from model.flol import create_model  # official code
 
-    x = reference_input()
+    dtype = getattr(torch, dtype_name)
+    x = reference_input().to(dtype)
     h, w = x.shape[-2:]
     result: dict[str, Any] = {}
     for name in FILES:
         model = create_model().eval()
         model.load_state_dict(torch.load(Path(weights_dir) / name, map_location="cpu", weights_only=True)["params"])
+        model = model.to(dtype)
         with torch.no_grad():
             enhanced, x_center = model(x, side=True)
         result[name] = {"enhanced": stats(enhanced), "amplitude_enhanced": stats(x_center[:, :, :h, :w])}
-    print(f"# Generated from the official code with torch {torch.__version__}.")
+    print(f"# Generated from the official code with torch {torch.__version__}, {dtype_name}.")
     print("OFFICIAL: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(*sys.argv[1:4])

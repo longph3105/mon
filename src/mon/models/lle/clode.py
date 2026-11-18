@@ -23,7 +23,8 @@ files also hold modules that ``forward`` never uses (``conv1``, ``e_conv1``–``
 Differences from the official code (``network/conv_node.py``, ``inference.py``):
 
 - Uses PyPI ``torchdiffeq`` (MIT); the official code vendors a git snapshot between 0.2.3 and
-  0.2.4 whose ``dopri5`` path matches 0.2.5 (no ``min_step``/``max_step``, finite steps).
+  0.2.4 whose ``dopri5`` path matches 0.2.5 (no ``min_step``/``max_step``, finite steps). In
+  float64 the outputs are identical for ``T > 0`` and differ by up to 4e-9 for ``T < 0``.
 - Without gradients, or with ``adjoint=False``, integrates with ``odeint`` instead of
   ``odeint_adjoint``; their forward passes are identical.
 - Unused modules, the ``device``/``img_size``/``augment_dim``/``time_dependent`` arguments, the

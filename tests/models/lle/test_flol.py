@@ -17,54 +17,58 @@ _spec.loader.exec_module(_ref)
 reference_input, stats = _ref.reference_input, _ref.stats
 
 # Official model/flol.py (cidautai/FLOL d6b66c3, kornia 0.9.2) with the released weights, CPU.
-# Output of flol_reference.py.
-# Generated from the official code with torch 2.15.0+cu132.
+# Output of flol_reference.py, in float64 (see its docstring: in float32 the SNR mask's rounding is
+# amplified to ~1e-3 in `enhanced`, so float32 literals only match on the machine that made them).
+# Generated from the official code with torch 2.15.0, float64.
 OFFICIAL: dict = {'flolv2_all_111439.pt': {'enhanced': {'shape': [2, 3, 22, 30],
-                                       'sum': 1872.4481925019063,
-                                       'sumsq': 953.6275359144203,
-                                       'values': [0.40828925371170044,
-                                                  0.6201051473617554,
-                                                  0.2658578157424927,
-                                                  0.0067361402325332165,
-                                                  0.5391191840171814,
-                                                  0.2617218494415283,
-                                                  0.6037068963050842]},
+                                       'sum': 1871.6337882994771,
+                                       'sumsq': 952.9419889122137,
+                                       'values': [0.40847318785774106,
+                                                  0.6194765350931614,
+                                                  0.2652154046896732,
+                                                  0.005871604918570135,
+                                                  0.5391348238690856,
+                                                  0.2591141925186481,
+                                                  0.6040954091060242]},
                           'amplitude_enhanced': {'shape': [2, 3, 22, 30],
-                                                 'sum': 2901.2385897636414,
-                                                 'sumsq': 2203.949258466169,
-                                                 'values': [0.7251858711242676,
-                                                            0.8235344886779785,
-                                                            0.6751294732093811,
-                                                            0.38058677315711975,
-                                                            0.6890318393707275,
-                                                            0.6188235282897949,
-                                                            0.786794900894165]}},
+                                                 'sum': 2901.238249621736,
+                                                 'sumsq': 2203.948743544997,
+                                                 'values': [0.7251857115089704,
+                                                            0.823534342601713,
+                                                            0.6751293867624961,
+                                                            0.38058667104449273,
+                                                            0.6890318068822785,
+                                                            0.6188235212895438,
+                                                            0.7867948277287665]}},
  'flolv2_UHDLL.pt': {'enhanced': {'shape': [2, 3, 22, 30],
-                                  'sum': 1783.4893008489162,
-                                  'sumsq': 880.4524187735456,
-                                  'values': [0.42292511463165283,
-                                             0.591598629951477,
-                                             0.4015513062477112,
-                                             -0.0036818990483880043,
-                                             0.4744880795478821,
-                                             0.31817618012428284,
-                                             0.4260120987892151]},
+                                  'sum': 1783.411994296215,
+                                  'sumsq': 880.3566797590265,
+                                  'values': [0.423368096701919,
+                                             0.5920589573538488,
+                                             0.40176415562015033,
+                                             -0.00358530846052141,
+                                             0.4744760608509345,
+                                             0.3188294134457659,
+                                             0.4256484812702502]},
                      'amplitude_enhanced': {'shape': [2, 3, 22, 30],
-                                            'sum': 1891.6072997748852,
-                                            'sumsq': 944.7342975471201,
-                                            'values': [0.4250595271587372,
-                                                       0.5189805030822754,
-                                                       0.41266894340515137,
-                                                       0.23027151823043823,
-                                                       0.4250575602054596,
-                                                       0.4272274076938629,
-                                                       0.4881051182746887]}}}
+                                            'sum': 1891.6074370398403,
+                                            'sumsq': 944.7344315501076,
+                                            'values': [0.42505961055143804,
+                                                       0.5189805291552655,
+                                                       0.41266897534262936,
+                                                       0.23027150886102976,
+                                                       0.42505758070596306,
+                                                       0.42722741850806134,
+                                                       0.4881051036971298]}}}
 
 # Official file → zoo weights (same tensors).
 ZOO = {"flolv2_all_111439.pt": FLOL_Weights.LOL_V2_REAL, "flolv2_UHDLL.pt": FLOL_Weights.UHD_LL}
 
 
-def assert_matches(actual: torch.Tensor, expected: dict, atol: float = 1e-6) -> None:
+# Parity runs in float64, where mon and the official code agree to 0 on this machine.
+ATOL = 1e-8
+
+def assert_matches(actual: torch.Tensor, expected: dict, atol: float = ATOL) -> None:
     got = stats(actual)
     assert got["shape"] == expected["shape"]
     n = math.prod(expected["shape"])
@@ -86,9 +90,11 @@ def released(member: FLOL_Weights) -> dict:
 def test_released_weights_load_strictly_and_match_official(name):
     model = FLOL().eval()
     model.load_state_dict(released(ZOO[name]))
+    model = model.double()
     with torch.no_grad():
-        out = model(reference_input())
+        out = model(reference_input().double())
     for key in ("enhanced", "amplitude_enhanced"):
+        assert out[key].dtype == torch.float64
         assert_matches(out[key], OFFICIAL[name][key])
 
 

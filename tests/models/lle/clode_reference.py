@@ -6,7 +6,13 @@ its README: ``lowlight.pth``, ``sice.pth``, ``universal.pth``). Needs ``network/
 ``network/torchdiffeq/`` and ``losses.py`` from a checkout, and matplotlib (``uv sync --extra gui``).
 Running it executes third-party code: get the owner's go-ahead first. Regenerate with:
 
-    uv run python -I tests/models/lle/clode_reference.py <checkout> <dir with the three .pth files>
+    uv run python -I tests/models/lle/clode_reference.py <checkout> <dir with the three .pth files> [float64]
+
+The default dtype is float64: in float32 the outputs depend on the platform's rounding (the
+adaptive solver's step sizes, and so ``curve_map``, move with it), so float32 literals only match
+on the machine that made them. A float64 run needs one patch in the checkout, a no-op in float32:
+in ``network/conv_node.py`` ``pair_downsampler``, ``.to(img.device)`` → ``.to(img)`` (its filters
+are ``torch.FloatTensor``).
 """
 
 import pprint
@@ -44,18 +50,20 @@ def stats(t: torch.Tensor) -> dict[str, Any]:
     }
 
 
-def main(checkout: str, weights_dir: str) -> None:
+def main(checkout: str, weights_dir: str, dtype_name: str = "float64") -> None:
     sys.path.insert(0, str(Path(checkout).resolve()))
     from network.conv_node import NODE  # official code
 
-    x = reference_input()
+    dtype = getattr(torch, dtype_name)
+    x = reference_input().to(dtype)
     result: dict[str, Any] = {}
     for stem, t_end in CASES:
         model = NODE("cpu", (3, 256, 256), 32, augment_dim=0, time_dependent=True, adjoint=True).eval()
         sd = torch.load(Path(weights_dir) / f"{stem}.pth", map_location="cpu", weights_only=True)
         missing, _ = model.load_state_dict(sd, strict=False)
         assert not missing, missing
-        t = torch.tensor([0, t_end]).float()
+        model = model.to(dtype)
+        t = torch.tensor([0, t_end]).to(dtype)
         with torch.no_grad():
             out   = model(x, t, inference=True)
             curve = model.odefunc.last_curve_map
@@ -65,9 +73,9 @@ def main(checkout: str, weights_dir: str) -> None:
             noise = model.odefunc.denoise(raw["output"])
         result[f"{stem}@{t_end}"] = {"enhanced": stats(out["output"]), "curve_map": stats(curve),
                                      "noise": stats(noise), "state": stats(state), "nfe": nfe}
-    print(f"# Generated from the official code with torch {torch.__version__}.")
+    print(f"# Generated from the official code with torch {torch.__version__}, {dtype_name}.")
     print("OFFICIAL: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(*sys.argv[1:4])
