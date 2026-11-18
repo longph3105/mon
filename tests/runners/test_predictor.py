@@ -149,6 +149,6 @@ def test_cli_predict(images: StdPath, tmp_path: StdPath, capsys: pytest.CaptureF
 
 
 def test_cli_usage(capsys: pytest.CaptureFixture[str]):
-    assert main(["--help"]) == 0 and "usage: mon predict" in capsys.readouterr().out
+    assert main(["--help"]) == 0 and "usage: mon {predict,evaluate}" in capsys.readouterr().out
     assert main([]) == 2
     assert main(["train"]) == 2 and "unknown command" in capsys.readouterr().err

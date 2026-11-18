@@ -153,6 +153,13 @@ uv run mon predict model=zero_dce weights=sice_me data=path/to/night   # or data
 Outputs land in `$RUNS_DIR/predict/<model>[-<weights>]/<data>/` (`$DATA_DIR/runs` if `RUNS_DIR` is unset);
 pass `run_dir=…` to choose. `PredictConfig` lists every key (`device`, `tile`, `save_extra`, `fit_args`, …).
 
+Score the saved outputs with `mon evaluate`; it pairs files with targets by stem and writes `metrics.csv` and
+`metrics.yaml` into the run directory (`gt_mean=true` adds the GT-mean protocol):
+
+```text
+uv run mon evaluate pred=$RUNS_DIR/predict/zero_dce-sice_me/lol_v1_test data=lol_v1 "metrics=[psnr,ssim,lpips]"
+```
+
 ## 6. Classification datasets
 
 `cifar10`, `cifar100`, `mnist` and `fashion_mnist` are stored as `<split>/<class>/<index>.png` with a

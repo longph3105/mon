@@ -8,6 +8,14 @@
 
 ### Added
 
+- `mon.metrics`: `PSNR`/`psnr`, `SSIM`/`ssim` (`y_channel`, `crop_border`, `downsample`), `LPIPS` (AlexNet or
+  VGG-16; official v0.1 layers as `LPIPS_Weights`, pinned URL and SHA-256), `NIQE` (port of BasicSR's, pristine
+  model as `NIQE_Weights`), and the lazy `METRICS` index (`mode`, `higher_better`). Every metric returns one
+  float64 score per image. Defaults match pyiqa (parity tests on synthetic and LOL-v1 images; LPIPS exact).
+- `mon.runners.evaluator`: `EvaluateConfig` and `evaluate(cfg)`, scoring a folder of saved predictions against a
+  dataset's targets or a target folder (by stem), or with no-reference metrics alone; optional GT-mean
+  protocol; writes `metrics.csv` and `metrics.yaml`. CLI: `mon evaluate [config.yaml] key=value …`.
+- `FolderDataset.items()` and `ImageFolder.items()`: each sample's stem and files, without reading them.
 - `mon.runners.predictor`: `PredictConfig` and `predict(cfg)`: run a model on a folder, file, list of files, or
   dataset split; pad to the model's `input_multiple` and crop back; fit zero-shot models per image (registry
   `fit`); optional tiling; save the main output (or all image-shaped ones) clamped to `[0, 1]`, mirroring the

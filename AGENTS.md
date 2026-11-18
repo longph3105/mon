@@ -37,10 +37,11 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   `lle.zero_ig` (zero-shot, official dataset-trained weights; official inference, loss and gradient parity);
   `mef.mertens` (exposure fusion, classical) with OpenCV parity tests; `denoise.tv_denoise` (scikit-image
   parity) and `denoise.zs_n2n` (zero-shot, `mon_old` parity).
-- **In progress:** `mon.runners`: `predictor` (`PredictConfig`, `predict`) and the `mon predict` CLI done;
-  train and evaluate runners later.
+- **In progress:** `mon.metrics`: `psnr`, `ssim`, `lpips` (full-reference), `niqe` (no-reference), lazy
+  `METRICS` index; defaults follow pyiqa (parity tests), which is not a dependency.
+- **In progress:** `mon.runners`: `predictor` (`mon predict`) and `evaluator` (`mon evaluate`) done; train later.
 - **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
-- **Next:** metrics (full-reference and no-reference) and an evaluate runner, then the train runner, plotting.
+- **Next:** the train runner; more metrics when needed (BRISQUE, MUSIQ, …, model complexity); plotting.
   Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
   `core` module's entry.
 - **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the
@@ -63,6 +64,7 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 | `src/mon/`         | The importable package. All library code lives here.                                                                  |
 | `src/mon/core/`    | Shared infrastructure; no deps on the rest of `mon`. Overview: `help(mon.core)`.                                      |
 | `src/mon/data/`    | Files → samples → batches; may import only `mon.core`. Overview: `help(mon.data)`.                                    |
+| `src/mon/metrics/` | Image-quality metrics and the lazy `METRICS` index; may import only `mon.core`. Overview: `help(mon.metrics)`.        |
 | `src/mon/models/`  | Models by task (`lle/`, …), lazy `MODELS` index, `load`; imports `mon.core`, `mon.nn`. Overview: `help(mon.models)`.  |
 | `src/mon/nn/`      | Losses, model helpers, tiled inference; imports only `mon.core`. Overview: `help(mon.nn)`.                            |
 | `src/mon/runners/` | Runners (predict; later train, evaluate) and the `mon` CLI; imports any `mon` package. Overview: `help(mon.runners)`. |
@@ -76,21 +78,22 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 
 ## Commands
 
-| Task              | Command                                                   |
-|-------------------|-----------------------------------------------------------|
-| Install           | `uv sync`                                                 |
-| Install + display | `uv sync --extra gui`                                     |
-| Add a dependency  | `uv add <pkg>`                                            |
-| Update the lock   | `uv lock`                                                 |
-| Run in the env    | `uv run python …`                                         |
-| Build sdist/wheel | `uv build`                                                |
-| Bump version      | `uv version --bump <part>`                                |
-| Test              | `uv run pytest`                                           |
-| Test, fast/CPU    | `uv run pytest -m "not slow and not gpu"`                 |
-| Type check        | `uv run mypy`                                             |
-| Check data paths  | `uv run python -m mon.core.path`                          |
-| Predict           | `uv run mon predict model=<name> data=<path or id> …`     |
-| Lint Markdown     | `npx markdownlint-cli2 "*.md" "docs/**/*.md" "logs/*.md"` |
+| Task              | Command                                                    |
+|-------------------|------------------------------------------------------------|
+| Install           | `uv sync`                                                  |
+| Install + display | `uv sync --extra gui`                                      |
+| Add a dependency  | `uv add <pkg>`                                             |
+| Update the lock   | `uv lock`                                                  |
+| Run in the env    | `uv run python …`                                          |
+| Build sdist/wheel | `uv build`                                                 |
+| Bump version      | `uv version --bump <part>`                                 |
+| Test              | `uv run pytest`                                            |
+| Test, fast/CPU    | `uv run pytest -m "not slow and not gpu"`                  |
+| Type check        | `uv run mypy`                                              |
+| Check data paths  | `uv run python -m mon.core.path`                           |
+| Predict           | `uv run mon predict model=<name> data=<path or id> …`      |
+| Evaluate          | `uv run mon evaluate pred=<run dir> data=<id or folder> …` |
+| Lint Markdown     | `npx markdownlint-cli2 "*.md" "docs/**/*.md" "logs/*.md"`  |
 
 - The lock must resolve for macOS arm64 and Linux x86_64 (`tool.uv.required-environments`).
 - OpenCV is `opencv-python-headless` only; never add `opencv-python` (both install `cv2/` and clobber
@@ -150,12 +153,16 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Stride-multiple sizes: training resizes (`ResizeToMultiple`); inference pads (`PadToMultiple`, or
   `pad_to_multiple` on a batch) and crops predictions back with `crop_to(pred, meta.orig_size)`. Predictors
   default to padding; never resize an output back for evaluation.
-- Runners take a dataclass config (`PredictConfig`) loaded with `load_config` (YAML + dotlist), resolve it
-  explicitly (`seed_everything`, `select_device`, run directory), and save the resolved config with the seed in
-  the run directory. Outputs go under `runs_dir() / "train"` or `runs_dir() / "predict"` (`$RUNS_DIR`, else
-  `$DATA_DIR/runs`); an existing, non-empty run directory raises unless `exist_ok`, and is never deleted. A
-  model's stride requirement is `input_multiple: ClassVar[int]` (runners pad to it); a zero-shot model's fit
-  function is the registry's `fit`.
+- Metrics are `Metric` modules scoring each image (`[B]` float64, no reduction) with class attributes `mode`
+  (`"fr"`/`"nr"`) and `higher_better`, mirrored in their `METRICS` entry. Defaults reproduce pyiqa, which
+  `mon_old` used (PSNR on RGB; SSIM and NIQE on luma rounded to 8-bit levels); pyiqa is non-commercial, so it
+  is only a reference: never a dependency, never copied. Evaluate saved 8-bit outputs, not in-memory floats.
+- Runners take a dataclass config (`PredictConfig`, `EvaluateConfig`) loaded with `load_config` (YAML + dotlist),
+  resolve it explicitly (`seed_everything`, `select_device`, run directory), and save the resolved config with the seed
+  in the run directory (evaluation writes its files next to the predictions). Outputs go under `runs_dir() / "train"` or
+  `runs_dir() / "predict"` (`$RUNS_DIR`, else `$DATA_DIR/runs`); an existing, non-empty run directory raises unless
+  `exist_ok`, and is never deleted. A model's stride requirement is `input_multiple: ClassVar[int]` (runners pad to it);
+  a zero-shot model's fit function is the registry's `fit`.
 - Models: plain `nn.Module`, tensors in and out (`forward(image) -> Tensor`, or a small dict of named outputs);
   no TensorDict, `in_keys`/`out_keys`, or `__call__` override. The runner maps sample dicts to model inputs; a
   model's paper loss is a separate module, not a method. Large-image inference uses

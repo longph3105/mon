@@ -239,6 +239,13 @@ class FolderDataset(Dataset[Sample]):
             for k in keys if k not in incomplete
         ]
 
+    def items(self) -> list[tuple[str, Mapping[str, Path]]]:
+        """Each sample's ``(stem, modality → file)``, in sample order, without reading any file.
+
+        Optional modalities a sample lacks are absent from its mapping.
+        """
+        return [(stem, MappingProxyType(dict(paths))) for stem, paths in self._items]
+
     # --- Dataset protocol ---
 
     def __len__(self) -> int:
@@ -482,6 +489,10 @@ class ImageFolder(Dataset[Sample]):
                 raise ValueError(f"two inputs share the stem {path.stem!r}: {items[path.stem]}, {path}; pass their folder instead")
             items[path.stem] = path
         return list(items.items())  # given order kept
+
+    def items(self) -> list[tuple[str, Mapping[str, Path]]]:
+        """Each image's ``(stem, {"image": file})``, in sample order, without reading any file."""
+        return [(stem, MappingProxyType({"image": path})) for stem, path in self._items]
 
     def __len__(self) -> int:
         return len(self._items)
