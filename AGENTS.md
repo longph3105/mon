@@ -9,6 +9,17 @@ The rewrite is a single package with a `src/` layout.
 
 ---
 
+## Session Start
+
+At the start of every session (new, after a manual `/clear` or reset, or resumed after a long idle gap),
+make your first reply, before any other work:
+
+1. **Agent:** tool/harness and version if known, model name and ID.
+2. **Machine:** `hostname -s` and OS.
+3. **Purpose:** ask what this session is for; wait for the answer before starting work.
+4. **Fetch:** ask the owner whether to fetch first (`git fetch`, then compare with `origin`) before reading or
+   editing anything in this repo. Work is often pushed from other machines, so the local branch may be stale.
+
 ## Status
 
 Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
