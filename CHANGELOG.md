@@ -8,6 +8,11 @@
 
 ### Added
 
+- `mon.models.lle.hvi_cidnet`: `HVICIDNet` (`forward(image) -> {"enhanced", "hvi"}`; `H, W` divisible by 8;
+  `saturation_gain` / `output_gain` = the official eval gates), `rgb_to_hvi` / `hvi_to_rgb`, and nine released
+  weights `HVICIDNet_Weights` (zoo files with the same tensors as the official Hugging Face releases; default
+  `LOL_V1_WO_PERC`). Matches the official network; reproduces the README's LOLv1 and LOLv2-real PSNRs (±0.003
+  dB). Training loss not ported yet.
 - `mon.models.lle.flol`: `FLOL` (`forward(image) -> {"enhanced", "amplitude_enhanced"}`; even `H, W`, padded to 8
   inside), released weights `FLOL_Weights.LOL_V2_REAL` (default; official file, pinned URL, SHA-256) and
   `UHD_LL` (official tensors, unwrapped). BasicSR `{"params": ...}` checkpoints are unwrapped on load. Matches the

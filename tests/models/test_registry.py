@@ -59,7 +59,7 @@ def test_every_public_model_class_is_indexed_once():
 
 
 def test_entries_by_task_and_arch():
-    assert MODELS.names(tasks=Task.LLE) == ["clode", "colie", "dccnet", "flol", "pairlie", "sci", "sci++", "zero_dce", "zero_dce++"]
+    assert MODELS.names(tasks=Task.LLE) == ["clode", "colie", "dccnet", "flol", "hvi_cidnet", "pairlie", "sci", "sci++", "zero_dce", "zero_dce++"]
     assert MODELS.names(arch="zero_dce") == ["zero_dce", "zero_dce++"]
     assert MODELS.get("Zero_DCE++").__name__ == "ZeroDCEPP"
 

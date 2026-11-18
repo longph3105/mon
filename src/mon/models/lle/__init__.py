@@ -6,6 +6,7 @@ One module per model family; each is listed in ``mon.models.MODELS`` and importe
 - ``colie``: CoLIE (implicit illumination fitted per image; no weights).
 - ``dccnet``: DCC-Net (gray, color, and restoration branches with pyramid color embedding).
 - ``flol``: FLOL (FFT-amplitude enhancement, then SNR-guided spatial/frequency restoration).
+- ``hvi_cidnet``: HVI-CIDNet (two cross-attending branches in the HVI color space).
 - ``pairlie``: PairLIE (Retinex decomposition learned from low-light pairs).
 - ``sci``: SCI and SCI++ (self-calibrated illumination).
 - ``zero_dce``: Zero-DCE and Zero-DCE++ (zero-reference curve estimation).
