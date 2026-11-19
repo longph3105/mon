@@ -4,6 +4,8 @@
 
 ### Added
 
+- Data zoo: `lsrw_huawei` (2,450 / 30) and `lsrw_nikon` (3,150 / 20), LSRW (R2RNet) per camera
+  (`mon.data.zoo.lsrw`): the training data of Zero-IG's released `LSRW_HUAWEI` / `LSRW_NIKON` weights.
 - Data zoo: `mot20` (MOT20, `mon.data.zoo.track`), like `mot16`: per-frame train samples with the clipped pedestrian
   boxes MOT evaluation counts (1,134,614 in 8,931 frames), test frames without labels.
 - Data zoo: `mit_5k` (MIT-Adobe FiveK, `mon.data.zoo.fivek`): input → Expert C pairs, 3,500 train / 500 val /
