@@ -228,3 +228,89 @@ def test_readme_psnr(dataset: str, member: HVICIDNet_Weights, gains: dict, expec
             y8 = (model(x[None])["enhanced"][0].clamp(0, 1) * 255).to(torch.uint8).double()
             psnrs.append(10 * math.log10(255.0**2 / (((y8 - target) ** 2).mean().item() + 1e-8)))
     assert sum(psnrs) / len(psnrs) == pytest.approx(expected, abs=5e-3)
+
+
+# --- Loss ---
+
+def _loss(**kw):
+    from mon.models.lle.hvi_cidnet import HVICIDNetLoss
+
+    return HVICIDNetLoss(pretrained_backbone=False, **kw)
+
+
+def test_loss_is_zero_for_identical_images_and_reduces_per_sample():
+    torch.manual_seed(0)
+    k = torch.tensor([0.2])
+    a, b = torch.rand(2, 3, 32, 40), torch.rand(2, 3, 32, 40)
+    loss = _loss()  # one instance: the random VGG differs between instances
+    assert loss(a, a, k).item() == pytest.approx(0.0, abs=1e-6)
+    mean = loss(a, b, k).item()
+    loss.reduction = "none"
+    per = loss(a, b, k)
+    assert per.shape == (2,) and (per > 0).all()
+    assert mean == pytest.approx(per.mean().item(), rel=1e-6)
+    loss.reduction = "sum"
+    assert loss(a, b, k).item() == pytest.approx(per.sum().item(), rel=1e-6)
+
+
+def test_loss_terms_and_weights():
+    torch.manual_seed(1)
+    a, b, k = torch.rand(1, 3, 24, 24), torch.rand(1, 3, 24, 24), torch.tensor([0.2])
+    loss  = _loss()
+    terms = loss.terms(a, b)
+    assert set(terms) == {"l1", "ssim", "edge", "perceptual"}
+    assert terms["l1"].item() == pytest.approx((a - b).abs().mean().item(), rel=1e-6)
+    hvi   = loss.terms(rgb_to_hvi(a, k), rgb_to_hvi(b, k))
+    total = sum(t.item() for t in terms.values()) + sum(t.item() for t in hvi.values())
+    assert loss(a, b, k).item() == pytest.approx(total, rel=1e-5)
+    only_rgb = _loss(hvi_weight=0.0)(a, b, k).item()
+    assert only_rgb == pytest.approx(sum(t.item() for t in terms.values()), rel=1e-5)
+    assert _loss(perceptual=0.0).vgg is None  # no VGG built when the term is off
+
+
+def test_ssim_term_and_laplacian_band():
+    from mon.models.lle.hvi_cidnet import _gaussian_window, _laplacian, _ssim_per_sample
+
+    w = _gaussian_window()
+    assert w.shape == (11, 11) and w.sum().item() == pytest.approx(1.0, abs=1e-6)
+    x = torch.rand(1, 3, 20, 20)
+    assert _ssim_per_sample(x, x, w).item() == pytest.approx(1.0, abs=1e-5)
+    k1 = torch.tensor([0.05, 0.25, 0.4, 0.25, 0.05])
+    band = _laplacian(torch.full((1, 3, 20, 20), 0.7), torch.outer(k1, k1))
+    assert band[..., 4:-4, 4:-4].abs().max().item() < 1e-6  # a flat image has no band-pass content inside
+
+
+def test_loss_gradients_reach_the_network_and_density_k():
+    model = HVICIDNet()
+    x, y = torch.rand(1, 3, 16, 16), torch.rand(1, 3, 16, 16)
+    _loss()(model(x)["enhanced"], y, model.trans.density_k).backward()
+    assert model.trans.density_k.grad is not None and model.trans.density_k.grad.abs().item() > 0
+    assert model.IE_block0[1].weight.grad is not None
+
+
+def test_vgg_taps_are_the_official_pre_relu_convs():
+    from torch import nn
+
+    from mon.models.lle.hvi_cidnet import _VGG19_LAYERS, _VGG19Features
+
+    vgg = _VGG19Features(pretrained=False)
+    convs = [vgg.features[i] for i in _VGG19_LAYERS.values()]
+    assert all(isinstance(c, nn.Conv2d) for c in convs)
+    assert [c.out_channels for c in convs] == [64, 128, 256, 512]
+    assert len(vgg.features) == 26 and not any(p.requires_grad for p in vgg.parameters())
+    vgg.train()
+    assert not vgg.training  # stays frozen in eval mode
+    assert [f.shape[1] for f in vgg(torch.rand(1, 3, 32, 32))] == [64, 128, 256, 512]
+
+
+@pytest.mark.slow
+def test_loss_with_pretrained_vgg19():
+    hub = Path(torch.hub.get_dir()) / "checkpoints" / "vgg19-dcbb9e9d.pth"
+    if not hub.is_file():
+        pytest.skip(f"{hub} not downloaded (torchvision VGG19_Weights.IMAGENET1K_V1)")
+    from mon.models.lle.hvi_cidnet import HVICIDNetLoss
+
+    a = torch.rand(1, 3, 32, 32)
+    loss = HVICIDNetLoss()
+    assert loss(a, a, torch.tensor([0.2])).item() == pytest.approx(0.0, abs=1e-6)
+    assert loss(a, a.flip(-1), torch.tensor([0.2])).item() > 0

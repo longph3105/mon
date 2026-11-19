@@ -51,8 +51,8 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 - **In progress:** `mon.runners`: `trainer` (`mon train`; recipes for `zero_dce`, `zero_dce++`, `sci`, `sci++`,
   `zero_ig`), `predictor` (`mon predict`), `evaluator` (`mon evaluate`), `benchmarker` (`mon benchmark`).
 - **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
-- **Next:** recipes for the other models (PairLIE: exposure-pair sampling; the supervised models once their paper
-  losses are ported); more metrics when needed; plotting.
+- **Next:** recipes for the other models (PairLIE: exposure-pair sampling; HVI-CIDNet and RetinexNet, whose losses
+  are ported; FLOL and DCC-Net losses wait on an LPIPS-loss home and the DCC-Net paper); more metrics; plotting.
   Decisions deferred to these ports are recorded in `logs/archive/log_2026_11_17.md` under each
   `core` module's entry.
 - **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the

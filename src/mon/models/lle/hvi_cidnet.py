@@ -31,8 +31,8 @@ gradient through the inverse transform).
 Differences from the official code (``net/*.py``, ``eval.py``): ``einops`` replaced by reshapes;
 ``HVIT`` starts hue from zeros instead of an uninitialized tensor; the ``gated``/``gated2`` flags
 are constructor arguments; ``forward`` returns a dict (adds the HVI output); the Hugging Face
-mixin is dropped. The training loss (L1 + SSIM + edge + VGG perceptual, in RGB and HVI) isn't
-ported yet. ``mon_old`` (``models/enhance/lle/hvi_cidnet``) vendored the official network.
+mixin is dropped. The training loss is ``HVICIDNetLoss`` (L1 + SSIM + edge + VGG perceptual, in RGB and
+HVI). ``mon_old`` (``models/enhance/lle/hvi_cidnet``) vendored the official network.
 
 Examples:
     >>> import torch
@@ -51,6 +51,7 @@ References:
 
 __all__ = [
     "HVICIDNet",
+    "HVICIDNetLoss",
     "HVICIDNet_Weights",
     "hvi_to_rgb",
     "rgb_to_hvi",
@@ -64,6 +65,7 @@ from torch import Tensor, nn
 from torch.nn import functional as F
 
 from mon.core.weights import Weights, WeightsEnum
+from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
 
 _EPS = 1e-8
 
@@ -409,3 +411,149 @@ class HVICIDNet(nn.Module):
         if self.output_gain != 1.0:
             rgb = rgb * self.output_gain
         return {"enhanced": rgb, "hvi": out_hvi}
+
+
+# --- Loss ---
+
+# Pre-ReLU VGG-19 features the official perceptual term uses, by index in torchvision's ``vgg19().features``.
+_VGG19_LAYERS = {"conv1_2": 2, "conv2_2": 7, "conv3_4": 16, "conv4_4": 25}
+_IMAGENET_MEAN = (0.485, 0.456, 0.406)
+_IMAGENET_STD  = (0.229, 0.224, 0.225)
+
+
+def _gaussian_window(size: int = 11, sigma: float = 1.5) -> Tensor:
+    x = torch.arange(size, dtype=torch.float32) - size // 2
+    g = torch.exp(-(x**2) / (2 * sigma**2))
+    g = g / g.sum()
+    return torch.outer(g, g)
+
+
+def _ssim_per_sample(a: Tensor, b: Tensor, window: Tensor) -> Tensor:
+    """Mean SSIM per sample: 11×11 Gaussian (σ 1.5), zero padding, per channel, C1 = 0.01², C2 = 0.03²."""
+    c, pad = a.shape[1], window.shape[-1] // 2
+    w = window.to(a).expand(c, 1, *window.shape)
+
+    def blur(x: Tensor) -> Tensor:
+        return F.conv2d(x, w, padding=pad, groups=c)
+
+    mu_a, mu_b = blur(a), blur(b)
+    var_a  = blur(a * a) - mu_a.pow(2)
+    var_b  = blur(b * b) - mu_b.pow(2)
+    cov    = blur(a * b) - mu_a * mu_b
+    c1, c2 = 0.01**2, 0.03**2
+    ssim   = ((2 * mu_a * mu_b + c1) * (2 * cov + c2)) / ((mu_a.pow(2) + mu_b.pow(2) + c1) * (var_a + var_b + c2))
+    return ssim.flatten(1).mean(1)
+
+
+def _laplacian(x: Tensor, kernel: Tensor) -> Tensor:
+    """``x`` minus its blurred, 2×-decimated, zero-filled and re-blurred copy (one Laplacian-pyramid band)."""
+    c = x.shape[1]
+    k = kernel.to(x).expand(c, 1, *kernel.shape)
+
+    def blur(y: Tensor) -> Tensor:
+        return F.conv2d(F.pad(y, (2, 2, 2, 2), mode="replicate"), k, groups=c)
+
+    filtered = blur(x)
+    up = torch.zeros_like(filtered)
+    up[..., ::2, ::2] = filtered[..., ::2, ::2] * 4
+    return x - blur(up)
+
+
+class _VGG19Features(nn.Module):
+    """Frozen VGG-19 up to ``conv4_4``; returns the pre-ReLU features in ``_VGG19_LAYERS``."""
+
+    mean: Tensor
+    std : Tensor
+
+    def __init__(self, pretrained: bool = True) -> None:
+        super().__init__()
+        from torchvision import models  # lazy: only training needs it
+
+        weights  = models.VGG19_Weights.IMAGENET1K_V1 if pretrained else None
+        features = models.vgg19(weights=weights).features
+        self.features = nn.Sequential(*list(features)[: max(_VGG19_LAYERS.values()) + 1])
+        self.register_buffer("mean", torch.tensor(_IMAGENET_MEAN).view(1, 3, 1, 1), persistent=False)
+        self.register_buffer("std", torch.tensor(_IMAGENET_STD).view(1, 3, 1, 1), persistent=False)
+        self.requires_grad_(False)
+        self.eval()
+
+    def train(self, mode: bool = True) -> "_VGG19Features":
+        return super().train(False)  # always frozen, as the official extractor
+
+    def forward(self, x: Tensor) -> list[Tensor]:
+        x = ((x + 1) / 2 - self.mean) / self.std  # official range_norm=True on [0, 1] inputs, then ImageNet norm
+        taps, out = set(_VGG19_LAYERS.values()), []
+        for i, layer in enumerate(self.features):
+            x = layer(x)
+            if i in taps:
+                out.append(x)
+        return out
+
+
+class HVICIDNetLoss(nn.Module):
+    """The HVI-CIDNet training objective (official ``train.py`` with ``data/options.py`` defaults).
+
+    ``loss(rgb) + hvi_weight·loss(HVIT(rgb))``, each ``loss = l1·L1 + ssim·(1 − SSIM) + edge·MSE(lap(p), lap(t))
+    + perceptual·Σ_l MSE(φ_l(p), φ_l(t))`` between the RGB output and the target, and between both mapped
+    to HVI with the model's learned ``density_k`` (gradient reaches ``k`` through both, except in the
+    perceptual term, which detaches the target as the official code does). ``φ_l``: VGG-19 (torchvision
+    ImageNet weights) pre-ReLU ``conv1_2``, ``conv2_2``, ``conv3_4``, ``conv4_4``; ``lap``: one Laplacian-
+    pyramid band (5-tap ``[.05, .25, .4, .25, .05]`` kernel, replicate padding).
+
+    Kept from the official code: the perceptual input goes through ``range_norm`` (``(x + 1)/2``) although
+    images are in ``[0, 1]``, so VGG sees ``[0.5, 1]`` before ImageNet normalization; HVI channels go
+    through the same RGB normalization. The official script clips gradients before ``zero_grad`` (no
+    effect on the update).
+
+    Args:
+        hvi_weight, l1, ssim, edge, perceptual: Term weights (official: 1, 1, 0.5, 50, 0.01).
+        pretrained_backbone: Load the VGG-19 ImageNet weights (``False``: random, for tests).
+        reduction: ``"mean"`` (equals the official value), ``"sum"``, or ``"none"`` (per-sample ``[B]``).
+    """
+
+    window     : Tensor
+    edge_kernel: Tensor
+
+    def __init__(
+        self,
+        hvi_weight         : float = 1.0,
+        l1                 : float = 1.0,
+        ssim               : float = 0.5,
+        edge               : float = 50.0,
+        perceptual         : float = 0.01,
+        pretrained_backbone: bool = True,
+        reduction          : Reduction = "mean",
+    ) -> None:
+        super().__init__()
+        check_reduction(reduction)
+        self.hvi_weight = hvi_weight
+        self.weights    = {"l1": l1, "ssim": ssim, "edge": edge, "perceptual": perceptual}
+        self.reduction  = reduction
+        self.vgg        = _VGG19Features(pretrained_backbone) if perceptual else None
+        self.register_buffer("window", _gaussian_window(), persistent=False)
+        edge_1d = torch.tensor([0.05, 0.25, 0.4, 0.25, 0.05])
+        self.register_buffer("edge_kernel", torch.outer(edge_1d, edge_1d), persistent=False)
+
+    def terms(self, pred: Tensor, target: Tensor) -> dict[str, Tensor]:
+        """Weighted per-sample terms ``[B]`` between ``pred`` and ``target`` in one color space."""
+        def mse(a: Tensor, b: Tensor) -> Tensor:
+            return (a - b).pow(2).flatten(1).mean(1)
+
+        w = self.weights
+        out = {
+            "l1"  : w["l1"] * (pred - target).abs().flatten(1).mean(1),
+            "ssim": w["ssim"] * (1 - _ssim_per_sample(pred, target, self.window)),
+            "edge": w["edge"] * mse(_laplacian(pred, self.edge_kernel), _laplacian(target, self.edge_kernel)),
+        }
+        if self.vgg is not None:
+            feats_p, feats_t = self.vgg(pred), self.vgg(target.detach())
+            per_layer = [mse(a, b) for a, b in zip(feats_p, feats_t, strict=True)]
+            out["perceptual"] = w["perceptual"] * torch.stack(per_layer).sum(0)
+        return out
+
+    def forward(self, pred: Tensor, target: Tensor, density_k: Tensor) -> Tensor:
+        """Args: the RGB output (``forward(...)["enhanced"]``), the RGB target, and ``model.trans.density_k``."""
+        rgb = self.terms(pred, target)
+        hvi = self.terms(rgb_to_hvi(pred, density_k), rgb_to_hvi(target, density_k))
+        total = torch.stack(list(rgb.values())).sum(0) + self.hvi_weight * torch.stack(list(hvi.values())).sum(0)
+        return reduce_loss(total, self.reduction)

@@ -238,3 +238,88 @@ def test_lol_v1_psnr_regression(member: RetinexNet_Weights, expected: float, reg
             y8 = (model(x)["enhanced"][0].clamp(0, 1) * 255).to(torch.uint8).double()
             psnrs.append(10 * math.log10(255.0**2 / ((y8 - target) ** 2).mean().item()))
     assert sum(psnrs) / len(psnrs) == pytest.approx(expected, abs=5e-3)
+
+
+# --- Loss ---
+
+def _naive_gradient(x: torch.Tensor, direction: str) -> torch.Tensor:
+    """|x[i, j] − x[i, j−1]| (x) or |x[i, j] − x[i−1, j]| (y) on an [H+1, W+1] grid, zeros outside."""
+    b, c, h, w = x.shape
+    out = torch.zeros(b, c, h + 1, w + 1, dtype=x.dtype)
+
+    def at(i: int, j: int) -> torch.Tensor:
+        return x[..., i, j] if 0 <= i < h and 0 <= j < w else torch.zeros(b, c, dtype=x.dtype)
+
+    for i in range(h + 1):
+        for j in range(w + 1):
+            out[..., i, j] = (at(i, j) - (at(i, j - 1) if direction == "x" else at(i - 1, j))).abs()
+    return out
+
+
+def _naive_smoothness(illum: torch.Tensor, refl: torch.Tensor) -> torch.Tensor:
+    gray = 0.299 * refl[:, 0:1] + 0.587 * refl[:, 1:2] + 0.114 * refl[:, 2:3]
+    total = torch.zeros(illum.shape[0], dtype=illum.dtype)
+    for d in ("x", "y"):
+        g = _naive_gradient(gray, d)
+        padded = torch.nn.functional.pad(g, (1, 1, 1, 1))
+        avg = sum(padded[..., di : di + g.shape[-2], dj : dj + g.shape[-1]] for di in range(3) for dj in range(3)) / 9
+        total = total + (_naive_gradient(illum, d) * torch.exp(-10 * avg)).flatten(1).mean(1)
+    return total
+
+
+def test_loss_smoothness_matches_the_described_padding():
+    from mon.models.lle.retinexnet import _gradient, _smoothness
+
+    torch.manual_seed(0)
+    illum, refl = torch.rand(2, 1, 5, 6, dtype=torch.float64), torch.rand(2, 3, 5, 6, dtype=torch.float64)
+    assert torch.allclose(_gradient(illum, "x"), _naive_gradient(illum, "x"))
+    assert torch.allclose(_gradient(illum, "y"), _naive_gradient(illum, "y"))
+    assert torch.allclose(_smoothness(illum, refl), _naive_smoothness(illum, refl))
+
+
+def test_loss_decomposition_and_relight_values():
+    from mon.models.lle.retinexnet import RetinexNetLoss, _smoothness
+
+    torch.manual_seed(1)
+    low, high = torch.rand(2, 3, 8, 8), torch.rand(2, 3, 8, 8)
+    r_l, r_h = torch.rand(2, 3, 8, 8), torch.rand(2, 3, 8, 8)
+    l_l, l_h, l_adj = torch.rand(2, 1, 8, 8), torch.rand(2, 1, 8, 8), torch.rand(2, 1, 8, 8)
+
+    def l1(a, b):  # noqa: ANN001, ANN202
+        return (a - b).abs().flatten(1).mean(1)
+
+    expected = (l1(r_l * l_l, low) + l1(r_h * l_h, high) + 0.001 * (l1(r_h * l_l, low) + l1(r_l * l_h, high))
+                + 0.1 * (_smoothness(l_l, r_l) + _smoothness(l_h, r_h)) + 0.01 * l1(r_l, r_h))
+    loss = RetinexNetLoss(reduction="none")
+    assert torch.allclose(loss.decomposition(low, high, r_l, l_l, r_h, l_h), expected)
+    assert torch.allclose(loss.relight(high, r_l, l_adj), l1(r_l * l_adj, high) + 3 * _smoothness(l_adj, r_l))
+    out = RetinexNetLoss()(low, high, {"reflectance": r_l, "illumination": l_l, "illumination_adjusted": l_adj},
+                           {"reflectance": r_h, "illumination": l_h})
+    assert out["decomposition"].item() == pytest.approx(expected.mean().item(), rel=1e-6)
+
+
+def test_loss_equal_reflectance_term_stops_the_gradient_to_the_normal_light_image():
+    from mon.models.lle.retinexnet import RetinexNetLoss
+
+    low = high = torch.rand(1, 3, 6, 6)
+    r_l, r_h = torch.rand(1, 3, 6, 6, requires_grad=True), torch.rand(1, 3, 6, 6, requires_grad=True)
+    ones = torch.ones(1, 1, 6, 6)
+    loss = RetinexNetLoss()
+    full = loss.decomposition(low, high, r_l, ones, r_h, ones)
+    without = full - 0.01 * (r_l - r_h).abs().mean()  # subtracting the term with r_h *not* detached
+    g_full, = torch.autograd.grad(full, r_h, retain_graph=True)
+    g_without, = torch.autograd.grad(without, r_h)
+    assert not torch.allclose(g_full, g_without)  # the detached term contributes no gradient to r_h ...
+    g_ref, = torch.autograd.grad(loss.decomposition(low, high, r_l, ones, r_h, ones) - 0.01 * (r_l - r_h.detach()).abs().mean(), r_h)
+    assert torch.allclose(g_full, g_ref)  # ... so removing it leaves the r_h gradient unchanged
+
+
+def test_loss_trains_the_model_end_to_end():
+    from mon.models.lle.retinexnet import RetinexNetLoss
+
+    model, loss = RetinexNet(), RetinexNetLoss()
+    low, high = torch.rand(1, 3, 12, 12) * 0.2, torch.rand(1, 3, 12, 12)
+    out_low, out_high = model(low), model(high)
+    terms = loss(low, high, out_low, out_high)
+    (terms["decomposition"] + terms["relight"]).backward()
+    assert model.decom_net.net1_conv0.weight.grad is not None and model.enhance_net.net2_output.weight.grad is not None

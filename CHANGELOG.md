@@ -4,6 +4,9 @@
 
 ### Added
 
+- Losses: `HVICIDNetLoss` (official HVI-CIDNet objective: L1 + SSIM + Laplacian edge + VGG-19 perceptual, in RGB
+  and in HVI through the learned `density_k`) and `RetinexNetLoss` (decomposition and relighting objectives of the
+  PyTorch reimplementation `mon` follows; TensorFlow differences documented).
 - Training: `sci++` recipe (`SCIPP_RECIPE`, official `TPAMI/train.py`): two Adam optimizers (`ha`; `hb` +
   `calibrate`) alternated as the official loop effectively does (6 + 2 updates per 10 steps), 3,000 epochs, file
   order. `TrainRecipe` gains `optimizers` and `schedule` for recipes that alternate optimizers; checkpoints of such

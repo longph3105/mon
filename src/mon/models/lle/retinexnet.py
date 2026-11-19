@@ -15,7 +15,7 @@ TensorFlow zero-pads (``same``). This module follows the reimplementation; param
 ``mon_old`` (``decom_net.*``, ``enhance_net.*``).
 
 ``forward`` accepts any ``H, W >= 2`` (decoder upsampling goes to the encoder's sizes). The
-training losses (decomposition and relighting, with illumination smoothness) aren't ported yet.
+training losses (decomposition and relighting, with illumination smoothness) are ``RetinexNetLoss``.
 
 Examples:
     >>> import torch
@@ -35,6 +35,7 @@ References:
 
 __all__ = [
     "RetinexNet",
+    "RetinexNetLoss",
     "RetinexNet_Weights",
 ]
 
@@ -45,6 +46,7 @@ from torch import Tensor, nn
 from torch.nn import functional as F
 
 from mon.core.weights import Weights, WeightsEnum
+from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
 
 _REIMPL = "https://raw.githubusercontent.com/aasharma90/RetinexNet_PyTorch/22675105f52432715a7935db16562f5117c9d369/"
 
@@ -155,3 +157,75 @@ class RetinexNet(nn.Module):
         adjusted = self.enhance_net(reflectance, illumination)
         return {"enhanced": reflectance * adjusted, "reflectance": reflectance, "illumination": illumination,
                 "illumination_adjusted": adjusted}
+
+
+# --- Loss ---
+
+_GRAY = (0.299, 0.587, 0.114)
+
+
+def _gradient(x: Tensor, direction: str) -> Tensor:
+    """``|∂x|`` by a 2×2 difference kernel, zero-padded by 1 on every side (output ``[H+1, W+1]``)."""
+    kx = x.new_tensor([[0.0, 0.0], [-1.0, 1.0]]).view(1, 1, 2, 2)
+    kernel = kx if direction == "x" else kx.transpose(2, 3)
+    return F.conv2d(x, kernel, padding=1).abs()
+
+
+def _smoothness(illumination: Tensor, reflectance: Tensor) -> Tensor:
+    """Per-sample ``mean(|∇L|·exp(−10·avg3(|∇gray(R)|)))`` over both directions (structure-aware)."""
+    gray = (reflectance[:, :3] * reflectance.new_tensor(_GRAY).view(1, 3, 1, 1)).sum(1, keepdim=True)
+    total = illumination.new_zeros(illumination.shape[0])
+    for d in ("x", "y"):
+        guide = F.avg_pool2d(_gradient(gray, d), kernel_size=3, stride=1, padding=1)
+        total = total + (_gradient(illumination, d) * torch.exp(-10 * guide)).flatten(1).mean(1)
+    return total
+
+
+class RetinexNetLoss(nn.Module):
+    """RetinexNet's two training objectives (decomposition, then relighting), as in the PyTorch reimplementation.
+
+    Decomposition (``DecomNet`` on a low/normal-light pair): ``|R_l·L_l − I_l| + |R_h·L_h − I_h|
+    + 0.001·(|R_h·L_l − I_l| + |R_l·L_h − I_h|) + 0.1·(S(L_l, R_l) + S(L_h, R_h)) + 0.01·|R_l − sg(R_h)|``.
+    Relighting: ``|R_l·L̂ − I_h| + 3·S(L̂, R_l)``. ``|·|`` is the mean absolute error, ``sg`` a
+    stop-gradient, ``S`` the illumination smoothness weighted by ``exp(−10·`` 3×3-averaged gradients of
+    the reflectance's luma ``)``.
+
+    Differences of the reimplementation from the official TensorFlow code (kept here): the equal-``R``
+    term stops the gradient to ``R_h`` (TensorFlow: both), gradients are zero-padded by one pixel on every
+    side (``SAME``: bottom/right only), and the 3×3 average counts the zero padding (``SAME`` pooling
+    excludes it).
+
+    Args:
+        reduction: ``"mean"`` (equals the reimplementation's values), ``"sum"``, or ``"none"`` (``[B]``).
+    """
+
+    def __init__(self, reduction: Reduction = "mean") -> None:
+        super().__init__()
+        check_reduction(reduction)
+        self.reduction = reduction
+
+    def decomposition(self, low: Tensor, high: Tensor, r_low: Tensor, l_low: Tensor, r_high: Tensor,
+                      l_high: Tensor) -> Tensor:
+        """Decomposition loss from both images' reflectance ``[B, 3, H, W]`` and illumination ``[B, 1, H, W]``."""
+        def l1(a: Tensor, b: Tensor) -> Tensor:
+            return (a - b).abs().flatten(1).mean(1)
+
+        loss = (l1(r_low * l_low, low) + l1(r_high * l_high, high)
+                + 0.001 * l1(r_high * l_low, low) + 0.001 * l1(r_low * l_high, high)
+                + 0.1 * _smoothness(l_low, r_low) + 0.1 * _smoothness(l_high, r_high)
+                + 0.01 * l1(r_low, r_high.detach()))
+        return reduce_loss(loss, self.reduction)
+
+    def relight(self, high: Tensor, r_low: Tensor, l_adjusted: Tensor) -> Tensor:
+        """Relighting loss from the low image's reflectance and the adjusted illumination ``L̂``."""
+        loss = (r_low * l_adjusted - high).abs().flatten(1).mean(1) + 3 * _smoothness(l_adjusted, r_low)
+        return reduce_loss(loss, self.reduction)
+
+    def forward(self, low: Tensor, high: Tensor, out_low: dict[str, Tensor], out_high: dict[str, Tensor]) -> dict[str, Tensor]:
+        """Both losses from ``RetinexNet.forward`` on the low image and (its ``reflectance``/``illumination``)
+        on the normal-light image: ``{"decomposition": …, "relight": …}``."""
+        return {
+            "decomposition": self.decomposition(low, high, out_low["reflectance"], out_low["illumination"],
+                                                out_high["reflectance"], out_high["illumination"]),
+            "relight": self.relight(high, out_low["reflectance"], out_low["illumination_adjusted"]),
+        }
