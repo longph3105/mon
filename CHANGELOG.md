@@ -4,13 +4,15 @@
 
 ### Added
 
+- Data zoo: `widerface` (WIDER FACE, `mon.data.zoo.widerface`): 12,880 train / 3,226 val images with face boxes (YOLO,
+  rebuilt from the official ground truth), 16,097 test images.
 - Data zoo: `lsrw_huawei` (2,450 / 30) and `lsrw_nikon` (3,150 / 20), LSRW (R2RNet) per camera
   (`mon.data.zoo.lsrw`): the training data of Zero-IG's released `LSRW_HUAWEI` / `LSRW_NIKON` weights.
-- Data zoo: `mot20` (MOT20, `mon.data.zoo.track`), like `mot16`: per-frame train samples with the clipped pedestrian
+- Data zoo: `mot20` (MOT20, `mon.data.zoo.mot`), like `mot16`: per-frame train samples with the clipped pedestrian
   boxes MOT evaluation counts (1,134,614 in 8,931 frames), test frames without labels.
-- Data zoo: `mit_5k` (MIT-Adobe FiveK, `mon.data.zoo.fivek`): input → Expert C pairs, 3,500 train / 500 val /
+- Data zoo: `mit_5k` (MIT-Adobe FiveK, `mon.data.zoo.mit_5k`): input → Expert C pairs, 3,500 train / 500 val /
   1,000 test (yuukicammy split), 768 px.
-- Data zoo: `mot16` (MOT16, `mon.data.zoo.track`), tagged tracking and detection: per-frame samples, train with
+- Data zoo: `mot16` (MOT16, `mon.data.zoo.mot`), tagged tracking and detection: per-frame samples, train with
   the pedestrian boxes MOT evaluation counts (YOLO view, clipped to the frame), test frames without labels.
 - Data zoo: `uhd_ll` (UHD-LL, UHDFour ICLR 2023): 2,000 train / 150 test 4K pairs from the official release.
 - Data zoo: `ntire_2025_llie` (NTIRE 2025 Low Light Image Enhancement challenge): 219 train pairs and the 46 val / 30
@@ -20,9 +22,10 @@
 - Data zoo: `loli_street` (LoLI-Street, ACCV 2024): 30,000 train / 3,000 val synthetic low-light images at three
   darkness levels per scene (`<n>/<level>`, paired with the scene's target) and 1,000 real test images (no targets).
 - Data zoo: `exdark` (ExDark, official split, 12 classes) and `darkface` (DARK FACE, seeded 5000/1000 hold-out, `face`)
-  as detection datasets, also tagged LLE (`{"image", "boxes", "labels"}` from YOLO labels; `detection_layout`), and
-  `nightcity` (NightCity with NightLab's re-annotated val) as a segmentation dataset, also tagged LLE (`{"image",
-  "mask"}`, Cityscapes train ids, 255 = ignore; `CITYSCAPES_CLASSES`, `cityscapes_train_ids`).
+  as detection datasets, also tagged LLE (`{"image", "boxes", "labels"}` from YOLO labels;
+  `mon.data.dataset.detection_layout`), and `nightcity` (NightCity with NightLab's re-annotated val) as a segmentation
+  dataset, also tagged LLE (`{"image", "mask"}`, Cityscapes train ids, 255 = ignore; `CITYSCAPES_CLASSES`,
+  `cityscapes_train_ids` in `mon.data.zoo.cityscapes`).
 - `FolderDataset.postprocess(sample)`: a hook to fix a sample as read from disk, before `transform` (`NightCity` uses it
   for its masks instead of swapping out `self.transform` in `__getitem__`).
 - `docs/efficiency.md`: params, MACs, latency and peak memory of every LLE model on `testkit_efficiency` (RTX 3090),
@@ -144,8 +147,8 @@
 - `mon.nn.losses.reduction`: `Reduction`, `check_reduction`, `reduce_loss`, shared by all losses.
 - `.markdownlint.yaml` (120 columns; tables and code blocks exempt).
 - `mon.data.dataset.ClassFolderDataset` + `classification_layout`: classification from `<split>/<class>/<image>`
-  with label ids from `classes.txt`; samples `{"image", "label", "meta"}`. `mon.data.zoo.classify`: `cifar10`,
-  `cifar100`, `mnist`, `fashion_mnist` (`Task.CLASSIFY`).
+  with label ids from `classes.txt`; samples `{"image", "label", "meta"}`. `mon.data.zoo.cifar`: `cifar10`,
+  `cifar100`; `mon.data.zoo.mnist`: `mnist`, `fashion_mnist` (`Task.CLASSIFY`).
 - `mon.nn` package (lazy namespace). `mon.nn.losses` (one module per family). `mon.nn.losses.zero_reference`:
   Zero-DCE's zero-reference losses (`ColorConstancyLoss`, `ExposureControlLoss`, `SpatialConsistencyLoss`,
   `IlluminationSmoothnessLoss`), matching the official code, with `reduction="mean"|"sum"|"none"`.
@@ -219,6 +222,10 @@
 
 ### Changed
 
+- `mon.data.zoo` has one module per dataset family, named after its id, instead of mixing task modules:
+  `classify` → `cifar`, `mnist`; `detect` → `exdark`, `darkface`, `ydld`, `widerface`; `segment` → `nightcity` (labels in
+  `cityscapes`); `track` → `mot`; `fivek` → `mit_5k`. `detection_layout` moved to `mon.data.dataset` (exported from
+  `mon.data`). Dataset ids and `DATASETS` are unchanged; only direct module imports change.
 - `mon benchmark` on a zero-shot model (`colie`, `zero_ig`, `zs_n2n`) now times its per-image fit (the registry `fit`,
   with `fit_args`), as `mon predict` runs it: latency per fit, peak memory during the fits, MACs of the whole fit
   (forward and backward, every step). `warmup`/`runs` default to 0/1 there (5/20 for a forward pass);

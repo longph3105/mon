@@ -34,8 +34,8 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   `loader`, `transforms`; `zoo` has `lol_v1`, `lol_v2_real`, `loli_street`, `ntire_2025_llie`, `sice`, `sice_me`,
   `uhd_ll`, `mit_5k`, `lsrw_huawei`, `lsrw_nikon`, the six `unpaired_lol` sets, `cifar10`, `cifar100`, `mnist`,
   `fashion_mnist`, `exdark`, `darkface` and `ydld` (detection + LLE, YOLO boxes), `nightcity` (segmentation + LLE,
-  Cityscapes train ids), `mot16` and `mot20` (tracking + detection, per-frame person boxes), and the `testkit_*` test
-  fixtures (`testkit_efficiency`: a 256²–8K resolution ladder for `mon benchmark`).
+  Cityscapes train ids), `mot16` and `mot20` (tracking + detection, per-frame person boxes), `widerface` (face
+  detection), and the `testkit_*` test fixtures (`testkit_efficiency`: a 256²–8K resolution ladder for `mon benchmark`).
   Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference, complexity (params, FLOPs/MACs,
   latency, peak memory) done; layers added per model.
@@ -154,13 +154,14 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 - Pretrained weights: declare a `WeightsEnum` of `Weights("<task>/<model>/<file>.pt")` (path under `zoo_dir()`; layout
   and file naming: workspace `data/README.md`, Zoo) per model with `url` and `sha256`, and accept user input
   through `resolve_weights(spec, Enum)`; a missing file must raise, never skip loading.
-- Datasets: subclass `FolderDataset` (or `ClassFolderDataset` for `<split>/<class>/` folders), set `folder`
-  (the dataset id, under `datasets_dir()`) and `layout` (the normalized layout of its task family, e.g.
-  `paired_layout(...)`, `classification_layout(...)`; ids and layouts: workspace
-  `data/README.md`), register with `register_dataset` under the same id in a `mon.data.zoo` module, and import
-  that module in `zoo/__init__.py`. Record known train/test overlaps with other datasets in the docstring.
-  Build loaders with `create_dataloader` (seeded). `uint16` tensors (16-bit images) support only some torch ops:
-  convert with `.float()`/`v2.ToDtype` before arithmetic.
+- Datasets: subclass `FolderDataset` (or `ClassFolderDataset` for `<split>/<class>/` folders), set `folder` (the dataset
+  id, under `datasets_dir()`) and `layout` (the normalized layout of its task family, e.g. `paired_layout(...)`,
+  `detection_layout(...)`, `classification_layout(...)`; ids and layouts: workspace `data/README.md`), register with
+  `register_dataset` under the same id in the `mon.data.zoo` module of its dataset family (one module per family, named
+  after its id, e.g. `lol` for `lol_v1`/`lol_v2_real`; never one per task: tasks are the `register_dataset` tags), and
+  import that module in `zoo/__init__.py`. Record known train/test overlaps with other datasets in the docstring. Build
+  loaders with `create_dataloader` (seeded). `uint16` tensors (16-bit images) support only some torch ops: convert with
+  `.float()`/`v2.ToDtype` before arithmetic.
 - Image/video I/O: `mon.data.io` (OpenCV). Don't use `torchvision.io` codecs: deprecated in torchvision 0.29.
 - Samples are dicts. Wrap every image-like value explicitly (`tv_tensors.Image`/`Mask`/`Video`); v2 treats only
   the first *plain* tensor as an image and silently skips the rest. Class-id maps are `Mask` (nearest resize);

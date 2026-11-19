@@ -1,4 +1,4 @@
-"""Night-time semantic segmentation datasets: NightCity (with NightLab's re-annotated val).
+"""NightCity: night-time semantic segmentation (with NightLab's re-annotated val), Cityscapes classes.
 
 Also tagged ``Task.LLE``: night images with no reference, used to evaluate enhancement
 (no-reference metrics) and enhancement-for-segmentation.
@@ -6,7 +6,8 @@ Also tagged ``Task.LLE``: night images with no reference, used to evaluate enhan
 Stored in the normalized segmentation layout (workspace ``data/README.md``): ``<split>/images/``
 and single-channel PNG class maps in ``<split>/labels/``, with Cityscapes ``labelId`` values.
 Samples are ``{"image", "mask", "meta"}``; ``mask`` holds Cityscapes **train ids** (0–18, the
-19 evaluated classes of ``classes``; every other ``labelId`` and 255 → ``ignore_index`` 255).
+19 evaluated classes of ``classes``; every other ``labelId`` and 255 → ``IGNORE_INDEX`` 255; label
+definitions in ``mon.data.zoo.cityscapes``).
 
 Warning:
     NightCity's ``val/labels`` is NightLab's re-annotation (NightCity+), which recent papers
@@ -38,10 +39,7 @@ References:
 """
 
 __all__ = [
-    "CITYSCAPES_CLASSES",
-    "IGNORE_INDEX",
     "NightCity",
-    "cityscapes_train_ids",
 ]
 
 import torch
@@ -50,50 +48,8 @@ from torchvision import tv_tensors
 
 from mon.core.enums import Split, Task
 from mon.data.dataset import FolderDataset, Modality, register_dataset
-from mon.data.structures import ClassDef, ClassList, Sample
-
-IGNORE_INDEX = 255
-"""Mask value for pixels outside the evaluated classes (Cityscapes convention)."""
-
-CITYSCAPES_CLASSES = ClassList(
-    ClassDef(name=name, id=i, color=color, source_id=label_id)
-    for i, (name, label_id, color) in enumerate([
-        ("road",          7,  (128, 64, 128)),
-        ("sidewalk",      8,  (244, 35, 232)),
-        ("building",      11, (70, 70, 70)),
-        ("wall",          12, (102, 102, 156)),
-        ("fence",         13, (190, 153, 153)),
-        ("pole",          17, (153, 153, 153)),
-        ("traffic_light", 19, (250, 170, 30)),
-        ("traffic_sign",  20, (220, 220, 0)),
-        ("vegetation",    21, (107, 142, 35)),
-        ("terrain",       22, (152, 251, 152)),
-        ("sky",           23, (70, 130, 180)),
-        ("person",        24, (220, 20, 60)),
-        ("rider",         25, (255, 0, 0)),
-        ("car",           26, (0, 0, 142)),
-        ("truck",         27, (0, 0, 70)),
-        ("bus",           28, (0, 60, 100)),
-        ("train",         31, (0, 80, 100)),
-        ("motorcycle",    32, (0, 0, 230)),
-        ("bicycle",       33, (119, 11, 32)),
-    ])
-)
-"""The 19 evaluated Cityscapes classes: ``id`` = train id, ``source_id`` = ``labelId``, Cityscapes colors."""
-
-_LUT = torch.full((256,), IGNORE_INDEX, dtype=torch.uint8)
-for _c in CITYSCAPES_CLASSES:
-    _LUT[_c.source_id] = _c.id
-
-
-def cityscapes_train_ids(label_ids: torch.Tensor) -> torch.Tensor:
-    """Map a Cityscapes ``labelId`` map (uint8) to train ids; other ids → ``IGNORE_INDEX``.
-
-    Examples:
-        >>> cityscapes_train_ids(torch.tensor([[7, 0, 33, 255]], dtype=torch.uint8)).tolist()
-        [[0, 255, 18, 255]]
-    """
-    return _LUT[label_ids.long()]
+from mon.data.structures import Sample
+from mon.data.zoo.cityscapes import CITYSCAPES_CLASSES, cityscapes_train_ids
 
 
 @register_dataset("nightcity", tasks={Task.SEGMENT, Task.LLE})

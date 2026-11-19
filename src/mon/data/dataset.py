@@ -20,6 +20,7 @@ __all__ = [
     "Modality",
     "ModalityKind",
     "classification_layout",
+    "detection_layout",
     "paired_layout",
     "register_dataset",
     "unpaired_layout",
@@ -565,6 +566,34 @@ def register_dataset[C: DatasetClass](name: str, *, tasks: Iterable[Task]) -> Ca
 
 # --- Normalized layouts ---
 
+def _parse_splits(caller: str, splits: tuple[Split | str, ...]) -> list[Split]:
+    """``splits`` as ``Split``s, in order; at least one, no duplicates (``caller`` names the layout in errors)."""
+    if not splits:
+        raise ValueError(f"{caller} needs at least one split")
+    parsed = [Split(s) for s in splits]
+    if len(set(parsed)) != len(parsed):
+        raise ValueError(f"duplicate splits: {[s.value for s in parsed]}")
+    return parsed
+
+def detection_layout(*splits: Split | str) -> dict[Split, dict[str, Modality]]:
+    """Layout for detection datasets: ``<split>/images/`` → ``image``, ``<split>/labels/`` (YOLO) → boxes.
+
+    Samples are ``{"image", "boxes", "labels", "meta"}``: ``boxes`` in pixels (``XYXY``), ``labels`` the 0-based
+    class ids of the dataset's ``classes``; an empty label file yields empty ``boxes``. A COCO
+    ``<split>/annotations.json`` next to the labels (workspace ``data/README.md``) is not read.
+
+    Examples:
+        >>> layout = detection_layout("train", "test")
+        >>> layout[Split.TEST]["objects"].dir, layout[Split.TEST]["objects"].kind
+        ('test/labels', 'yolo')
+    """
+    parsed = _parse_splits("detection_layout", splits)
+    return {
+        s: {"image": Modality(f"{s.value}/images"), "objects": Modality(f"{s.value}/labels", kind="yolo")}
+        for s in parsed
+    }
+
+
 def paired_layout(*splits: Split | str) -> dict[Split, dict[str, Modality]]:
     """Layout for paired restoration datasets: ``<split>/images/`` → ``image``, ``<split>/targets/`` → ``target``.
 
@@ -573,11 +602,7 @@ def paired_layout(*splits: Split | str) -> dict[Split, dict[str, Modality]]:
         >>> layout[Split.TEST]["target"].dir
         'test/targets'
     """
-    if not splits:
-        raise ValueError("paired_layout needs at least one split")
-    parsed = [Split(s) for s in splits]
-    if len(set(parsed)) != len(parsed):
-        raise ValueError(f"duplicate splits: {[s.value for s in parsed]}")
+    parsed = _parse_splits("paired_layout", splits)
     return {
         s: {"image": Modality(f"{s.value}/images"), "target": Modality(f"{s.value}/targets")}
         for s in parsed
@@ -591,11 +616,7 @@ def unpaired_layout(*splits: Split | str) -> dict[Split, dict[str, Modality]]:
         >>> unpaired_layout("test")[Split.TEST]["image"].dir
         'test/images'
     """
-    if not splits:
-        raise ValueError("unpaired_layout needs at least one split")
-    parsed = [Split(s) for s in splits]
-    if len(set(parsed)) != len(parsed):
-        raise ValueError(f"duplicate splits: {[s.value for s in parsed]}")
+    parsed = _parse_splits("unpaired_layout", splits)
     return {s: {"image": Modality(f"{s.value}/images")} for s in parsed}
 
 
@@ -606,9 +627,5 @@ def classification_layout(*splits: Split | str) -> dict[Split, str]:
         >>> classification_layout("train", "test")[Split.TEST]
         'test'
     """
-    if not splits:
-        raise ValueError("classification_layout needs at least one split")
-    parsed = [Split(s) for s in splits]
-    if len(set(parsed)) != len(parsed):
-        raise ValueError(f"duplicate splits: {[s.value for s in parsed]}")
+    parsed = _parse_splits("classification_layout", splits)
     return {s: s.value for s in parsed}

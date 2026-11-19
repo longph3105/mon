@@ -1,19 +1,15 @@
-"""Tests for ``ClassFolderDataset`` and ``mon.data.zoo.classify`` (synthetic + 100-image real-data samples)."""
+"""Tests for ``ClassFolderDataset`` and ``classification_layout`` (synthetic class folders)."""
 
-import random
-from collections import Counter
 from pathlib import Path as StdPath
 
 import pytest
 import torch
 from torchvision import tv_tensors
 
-from mon.core.enums import Split, Task
-from mon.core.path import datasets_dir
-from mon.data.dataset import DATASETS, ClassFolderDataset, classification_layout
+from mon.core.enums import Split
+from mon.data.dataset import ClassFolderDataset, classification_layout
 from mon.data.io import write_image
 from mon.data.loader import create_dataloader
-from mon.data.zoo.classify import CIFAR10, CIFAR100, MNIST, FashionMNIST
 
 
 class Toy(ClassFolderDataset):
@@ -92,52 +88,3 @@ def test_classification_layout():
         classification_layout("train", "train")
     with pytest.raises(ValueError, match="at least one"):
         classification_layout()
-
-
-# --- Zoo registration ---
-
-ZOO = {"cifar10": CIFAR10, "cifar100": CIFAR100, "mnist": MNIST, "fashion_mnist": FashionMNIST}
-
-
-@pytest.mark.parametrize(("name", "cls"), ZOO.items())
-def test_registered(name: str, cls: type):
-    assert DATASETS.get(name) is cls and cls.folder == name
-    assert DATASETS.entry(name).meta["tasks"] == {Task.CLASSIFY}
-    assert DATASETS.entry(name).meta["splits"] == {Split.TRAIN, Split.TEST}
-
-
-# --- Real data: full index (no decoding), 100 decoded samples per split ---
-
-EXPECTED = {  # name: (train, test, classes, channels, side, per-class train counts (min, max))
-    "cifar10"      : (50000, 10000, 10, 3, 32, (5000, 5000)),
-    "cifar100"     : (50000, 10000, 100, 3, 32, (500, 500)),
-    "mnist"        : (60000, 10000, 10, 1, 28, (5421, 6742)),
-    "fashion_mnist": (60000, 10000, 10, 1, 28, (6000, 6000)),
-}
-
-
-def _real_root(name: str) -> StdPath:
-    try:
-        root = datasets_dir() / name
-    except RuntimeError:
-        pytest.skip("DATA_DIR / DATASETS_DIR not set")
-    if not root.is_dir():
-        pytest.skip(f"{root} not on this machine")
-    return root
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("name", EXPECTED)
-def test_real_dataset(name: str):
-    root = _real_root(name)
-    n_train, n_test, n_classes, channels, side, (lo, hi) = EXPECTED[name]
-    train, test = ZOO[name]("train", root=root), ZOO[name]("test", root=root)
-    assert (len(train), len(test), train.classes.num_classes) == (n_train, n_test, n_classes)
-    counts = Counter(train.labels)
-    assert len(counts) == n_classes and (min(counts.values()), max(counts.values())) == (lo, hi)
-    rng = random.Random(0)
-    for ds in (train, test):
-        for i in rng.sample(range(len(ds)), 100):
-            s = ds[i]
-            assert s["image"].shape == (channels, side, side) and s["image"].dtype == torch.uint8
-            assert ds.classes.names[int(s["label"])] == s["meta"].paths["image"].parent.name

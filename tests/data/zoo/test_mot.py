@@ -1,4 +1,4 @@
-"""Tests for ``mon.data.zoo.track``: a synthetic folder, plus checks on the real data when present."""
+"""Tests for ``mon.data.zoo.mot``: a synthetic folder, plus checks on the real data when present."""
 
 from pathlib import Path as StdPath
 
@@ -9,7 +9,7 @@ from mon.core.enums import Split, Task
 from mon.core.path import datasets_dir
 from mon.data.dataset import DATASETS
 from mon.data.io import write_image
-from mon.data.zoo.track import MOT16, MOT20
+from mon.data.zoo.mot import MOT16, MOT20
 
 
 CLASSES = {"mot16": MOT16, "mot20": MOT20}

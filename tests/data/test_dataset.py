@@ -14,7 +14,7 @@ from torchvision.transforms import v2
 from mon.core.constants import DATA_DIR_ENV, DATASETS_DIR_ENV
 from mon.core.enums import Split, Task
 from mon.core.size import Size
-from mon.data.dataset import DATASETS, FolderDataset, Modality, register_dataset
+from mon.data.dataset import DATASETS, FolderDataset, Modality, detection_layout, register_dataset
 from mon.data.io import write_image
 from mon.data.structures import ClassList, SampleMeta
 
@@ -269,3 +269,13 @@ def test_zoo_loads_only_on_first_lookup():
     """)
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True).stdout.split()
     assert out == ["False", "True", "True"]
+
+
+def test_detection_layout():
+    layout = detection_layout("train", Split.TEST)
+    assert list(layout) == [Split.TRAIN, Split.TEST]
+    assert [(m.dir, m.kind) for m in layout[Split.TEST].values()] == [("test/images", "image"), ("test/labels", "yolo")]
+    with pytest.raises(ValueError, match="at least one"):
+        detection_layout()
+    with pytest.raises(ValueError, match="duplicate"):
+        detection_layout("train", Split.TRAIN)

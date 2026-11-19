@@ -46,9 +46,8 @@ __all__ = [
 ]
 
 from mon.core.enums import Split, Task
-from mon.data.dataset import FolderDataset, Modality, register_dataset
+from mon.data.dataset import FolderDataset, Modality, detection_layout, register_dataset
 from mon.data.structures import ClassList
-from mon.data.zoo.detect import detection_layout
 
 
 @register_dataset("mot16", tasks={Task.TRACK, Task.DETECT})

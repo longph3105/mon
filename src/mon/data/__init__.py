@@ -34,6 +34,7 @@ _EXPORTS: dict[str, str] = {
     "Modality"             : "dataset",
     "ModalityKind"         : "dataset",
     "classification_layout": "dataset",
+    "detection_layout"     : "dataset",
     "paired_layout"        : "dataset",
     "register_dataset"     : "dataset",
     "unpaired_layout"      : "dataset",
@@ -93,6 +94,7 @@ __all__ = [
     "collate",
     "create_dataloader",
     "crop_to",
+    "detection_layout",
     "iter_video_frames",
     "pad_to_multiple",
     "paired_layout",
@@ -114,7 +116,7 @@ __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
     from mon.data.dataset import (
         DATASETS, ClassFolderDataset, FolderDataset, ImageFolder, Modality, ModalityKind, classification_layout,
-        paired_layout, register_dataset, unpaired_layout,
+        detection_layout, paired_layout, register_dataset, unpaired_layout,
     )
     from mon.data.io import (
         VideoInfo, VideoWriter, iter_video_frames, read_image, to_numpy_hwc, video_info, write_image,

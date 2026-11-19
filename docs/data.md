@@ -187,7 +187,7 @@ loss = F.cross_entropy(classifier(batch["image"]), batch["label"])
 
 - MNIST and Fashion-MNIST load as 1-channel gray images (`image_mode = "gray"`); CIFAR as RGB.
 - `meta.stem` is `"<class>/<index>"`; `<index>` is the image's position in the upstream split.
-- CIFAR-100 has 26 groups of byte-identical images, some with conflicting labels; see `mon.data.zoo.classify`.
+- CIFAR-100 has 26 groups of byte-identical images, some with conflicting labels; see `mon.data.zoo.cifar`.
 
 ## 7. Adding a dataset
 

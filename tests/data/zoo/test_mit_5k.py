@@ -1,4 +1,4 @@
-"""Tests for ``mon.data.zoo.fivek``: a synthetic folder, plus checks on the real data when present."""
+"""Tests for ``mon.data.zoo.mit_5k``: a synthetic folder, plus checks on the real data when present."""
 
 from pathlib import Path as StdPath
 
@@ -9,7 +9,7 @@ from mon.core.enums import Split, Task
 from mon.core.path import datasets_dir
 from mon.data.dataset import DATASETS
 from mon.data.io import write_image
-from mon.data.zoo.fivek import MIT5K
+from mon.data.zoo.mit_5k import MIT5K
 
 EXPECTED = {Split.TRAIN: 3500, Split.VAL: 500, Split.TEST: 1000}
 
