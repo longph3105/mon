@@ -164,6 +164,8 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   loss, init, official defaults) named by its `MODELS` entry (`train=`). Recipe defaults reproduce the official script
   and sit under the user's config; check a new recipe's loop against the official script (see
   `tests/runners/test_trainer_parity.py`). Training resizes, never pads; checkpoints resume exactly.
+- Retraining a model from its paper always uses the recipe as is (owner's rule): no `batch_size=auto` or other
+  changes to the optimization; speed-ups that keep the math identical (`cache=true`, `cache_device=device`) are fine.
 - Samples and datasets cross process boundaries (DataLoader workers; Python 3.14 uses `forkserver`, which pickles):
   keep them picklable, e.g. `mon.core.utils.ReadOnlyDict`, never `types.MappingProxyType`.
 - Runners take a dataclass config (`PredictConfig`, `EvaluateConfig`, `TrainConfig`) loaded with `load_config` (YAML + dotlist),

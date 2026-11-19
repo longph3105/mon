@@ -152,3 +152,53 @@ def test_cli_train(folder: StdPath, tmp_path: StdPath, capsys: pytest.CaptureFix
 def test_full_config_instance_overrides_recipe(folder: StdPath, tmp_path: StdPath):
     cfg = resolve_train_config(TrainConfig(model="zero_dce", data=str(folder)))
     assert cfg.optimizer.lr == 1e-3 and cfg.resize is None  # schema defaults, not the recipe's
+
+
+def test_cache_gives_identical_training(folder: StdPath, tmp_path: StdPath):
+    plain  = train(_cfg(folder, tmp_path, epochs=2, run_dir=str(tmp_path / "plain")))
+    cached = train(_cfg(folder, tmp_path, epochs=2, cache=True, num_workers=2, run_dir=str(tmp_path / "cached")))
+    a = torch.load(plain / "last.ckpt", weights_only=True)["model"]
+    b = torch.load(cached / "last.ckpt", weights_only=True)["model"]
+    assert all(torch.equal(v, b[k]) for k, v in a.items())
+    with pytest.raises(ValueError, match="deterministic"):
+        resolve_train_config({"model": "zero_dce", "cache": True, "hflip": True})
+
+
+@pytest.mark.gpu
+def test_device_cache_matches_ram_cache(folder: StdPath, tmp_path: StdPath):
+    if not torch.cuda.is_available():
+        pytest.skip("no CUDA")
+    ram = train(_cfg(folder, tmp_path, device="cuda", cache=True, run_dir=str(tmp_path / "ram")))
+    gpu = train(_cfg(folder, tmp_path, device="cuda", cache=True, cache_device="device", run_dir=str(tmp_path / "gpu")))
+    a = torch.load(ram / "last.ckpt", weights_only=True)["model"]
+    b = torch.load(gpu / "last.ckpt", weights_only=True)["model"]
+    assert all(torch.allclose(v, b[k], atol=1e-6) for k, v in a.items())
+
+
+def test_auto_batch_size_is_opt_in(folder: StdPath, tmp_path: StdPath):
+    assert resolve_train_config({"model": "zero_dce"}).batch_size == 8  # the recipe's, unless asked
+    assert resolve_train_config({"model": "zero_dce", "batch_size": "auto"}).batch_size == "auto"
+    with pytest.raises(ValueError, match="batch_size must be"):
+        resolve_train_config({"model": "zero_dce", "batch_size": 0})
+    with pytest.raises(ValueError, match="needs a CUDA device"):
+        train(_cfg(folder, tmp_path, batch_size="auto"))
+
+
+@pytest.mark.gpu
+def test_auto_batch_size_on_cuda(folder: StdPath, tmp_path: StdPath, caplog: pytest.LogCaptureFixture):
+    if not torch.cuda.is_available():
+        pytest.skip("no CUDA")
+    run = train(_cfg(folder, tmp_path, device="cuda", batch_size="auto"))
+    chosen = yaml.safe_load((run / "config.yaml").read_text())["batch_size"]
+    assert chosen == 4  # capped by the 4 training images; a power of two
+    assert "does not reproduce the paper" in caplog.text  # recipe batch 8 != 4
+
+
+@pytest.mark.gpu
+def test_resume_on_cuda(folder: StdPath, tmp_path: StdPath):
+    """The checkpoint loads onto the GPU; its RNG states must still restore (they need CPU tensors)."""
+    if not torch.cuda.is_available():
+        pytest.skip("no CUDA")
+    part = train(_cfg(folder, tmp_path, epochs=1, device="cuda", run_dir=str(tmp_path / "gpu")))
+    resumed = train({"resume": str(part), "epochs": 2})
+    assert torch.load(resumed / "last.ckpt", weights_only=True)["epoch"] == 2

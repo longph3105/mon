@@ -27,6 +27,7 @@ __all__ = [
     "train",
 ]
 
+import copy
 import csv
 import importlib
 import io
@@ -50,7 +51,7 @@ from mon.core.console import get_logger, progress_bar
 from mon.core.path import Path, runs_dir
 from mon.core.runtime import seed_everything, select_device
 from mon.data.dataset import DATASETS, ImageFolder
-from mon.data.loader import create_dataloader
+from mon.data.loader import collate, create_dataloader
 from mon.data.structures import Sample
 from mon.data.transforms import ResizeToMultiple, crop_to, pad_to_multiple
 from mon.metrics.base import Metric
@@ -100,7 +101,17 @@ class TrainConfig:
         crop: Random square crop side after resizing; ``None``: none.
         hflip: Random horizontal flips.
         shuffle: Shuffle each epoch (order seeded by ``seed + epoch``, so resuming repeats it).
-        batch_size, num_workers: ``DataLoader`` settings.
+        cache: Decode and transform the training set once (with ``num_workers`` workers) and keep it in
+            memory as float32; epochs then read RAM in the main process. The same tensors as without it,
+            so only for deterministic transforms (no ``crop``/``hflip``). Memory: ``N·3·H·W·4`` bytes.
+        cache_device: Where the cache lives: ``"cpu"`` (RAM), or ``"device"`` (the training device's
+            memory, e.g. GPU VRAM: no host-to-device copy per batch).
+        batch_size: Images per batch, or ``"auto"``: the largest power of two whose training step
+            (forward + backward) peaks under ``AUTO_BATCH_MEMORY`` of the GPU, probed on a copy of the
+            model before training (CUDA only; the result is saved in ``config.yaml``). Recipes keep
+            their official batch size unless ``auto`` is asked for explicitly: it departs from the
+            paper's recipe (the learning rate is not rescaled).
+        num_workers: ``DataLoader`` workers.
         epochs: Training epochs.
         optimizer, scheduler: See ``OptimizerConfig``, ``SchedulerConfig``.
         grad_clip: Max gradient norm (``clip_grad_norm_``); ``None``: no clipping.
@@ -129,7 +140,9 @@ class TrainConfig:
     crop        : int | None = None
     hflip       : bool = False
     shuffle     : bool = True
-    batch_size  : int = 1
+    cache       : bool = False
+    cache_device: str = "cpu"
+    batch_size  : Any = 1  # int, or "auto"
     num_workers : int = 4
     epochs      : int = 1
     optimizer   : OptimizerConfig = field(default_factory=OptimizerConfig)
@@ -153,6 +166,9 @@ class TrainConfig:
 
 
 _RESUME_KEYS = {"resume", "epochs", "device", "num_workers"}
+
+AUTO_BATCH_MEMORY = 0.85
+"""Fraction of GPU memory ``batch_size="auto"`` may use at the step's peak (the rest: optimizer state, slack)."""
 
 
 # --- Config ---
@@ -202,12 +218,18 @@ def resolve_train_config(cfg: TrainConfig | DictConfig | Mapping[str, Any]) -> T
 
 
 def _validate(cfg: TrainConfig) -> None:
-    if cfg.epochs < 1 or cfg.batch_size < 1 or cfg.val_every < 1 or cfg.save_every < 0:
-        raise ValueError("epochs, batch_size and val_every must be >= 1, save_every >= 0")
+    if not (cfg.batch_size == "auto" or (isinstance(cfg.batch_size, int) and cfg.batch_size >= 1)):
+        raise ValueError(f"batch_size must be an int >= 1 or 'auto', got {cfg.batch_size!r}")
+    if cfg.epochs < 1 or cfg.val_every < 1 or cfg.save_every < 0:
+        raise ValueError("epochs and val_every must be >= 1, save_every >= 0")
     if cfg.optimizer.name not in ("adam", "adamw", "sgd"):
         raise ValueError(f"optimizer.name must be adam, adamw or sgd, got {cfg.optimizer.name!r}")
     if cfg.scheduler.name not in ("none", "step", "multistep", "cosine"):
         raise ValueError(f"scheduler.name must be none, step, multistep or cosine, got {cfg.scheduler.name!r}")
+    if cfg.cache_device not in ("cpu", "device"):
+        raise ValueError(f"cache_device must be 'cpu' or 'device', got {cfg.cache_device!r}")
+    if cfg.cache and (cfg.crop is not None or cfg.hflip):
+        raise ValueError("cache needs deterministic transforms: drop crop and hflip, or cache=false")
     if cfg.resize is not None and len(cfg.resize) != 2:
         raise ValueError(f"resize must be [H, W], got {cfg.resize}")
     for name in cfg.val_metrics:
@@ -248,6 +270,60 @@ def _dataset(data: str, split: str, transform: v2.Transform) -> tuple[Dataset[Sa
     if data not in DATASETS:
         raise FileNotFoundError(f"data {data!r} is neither a folder nor a dataset id (datasets: {', '.join(DATASETS.names())})")
     return DATASETS.build(data, split, transform=transform), f"{data}_{split}"
+
+
+class _CachedDataset(Dataset[Sample]):
+    """Every sample of ``dataset``, transformed once and kept in memory."""
+
+    def __init__(self, dataset: Dataset[Sample], num_workers: int, device: torch.device | None = None) -> None:
+        loader = create_dataloader(dataset, None, num_workers=num_workers, seed=0)  # single samples
+        with progress_bar(transient=True) as pbar:
+            # Copy (to ``device``, or a clone in RAM): tensors from workers live in shared memory, and holding
+            # thousands of them exhausts file descriptors.
+            self.samples: list[Sample] = [
+                {k: (v.to(device) if device is not None else v.clone()) if isinstance(v, Tensor) else v
+                 for k, v in sample.items()}
+                for sample in pbar.track(loader, total=len(cast(Any, dataset)), description="Caching")
+            ]
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, index: int) -> Sample:
+        sample: Sample = self.samples[index]
+        return sample
+
+
+def _auto_batch_size(model: nn.Module, loss_fn: nn.Module, recipe: TrainRecipe, sample: Sample,
+                     device: torch.device, amp: bool, limit: int) -> int:
+    """Largest power-of-two batch whose training step peaks under ``AUTO_BATCH_MEMORY`` of the GPU."""
+    total = torch.cuda.get_device_properties(device).total_memory
+    probe = copy.deepcopy(model).train()
+    best, size = 0, 1
+    with torch.random.fork_rng(devices=[device]):
+        while size <= limit:
+            torch.cuda.empty_cache()
+            torch.cuda.reset_peak_memory_stats(device)
+            try:
+                batch = _to_device(collate([sample] * size), device)
+                with torch.autocast(device.type, dtype=torch.float16, enabled=amp):
+                    out = recipe.step(probe, loss_fn, batch)
+                out["loss"].backward()  # type: ignore[no-untyped-call]
+                peak = torch.cuda.max_memory_allocated(device)
+            except torch.cuda.OutOfMemoryError:
+                break
+            finally:
+                probe.zero_grad(set_to_none=True)
+                batch = out = None  # type: ignore[assignment]
+            logger.info("batch_size=auto: %d -> peak %.2f GiB of %.2f GiB", size, peak / 2**30, total / 2**30)
+            if peak > AUTO_BATCH_MEMORY * total:
+                break
+            best, size = size, size * 2
+    del probe
+    torch.cuda.empty_cache()
+    if best == 0:
+        raise RuntimeError("batch_size=auto: even one image doesn't fit; use a smaller resize or crop")
+    return best
 
 
 def _train_transform(cfg: TrainConfig, multiple: int) -> v2.Transform:
@@ -299,13 +375,14 @@ def _rng_state() -> dict[str, Any]:
 
 
 def _set_rng_state(state: dict[str, Any]) -> None:
-    torch.set_rng_state(state["torch"])
+    # RNG states must be CPU ByteTensors; the checkpoint may have been loaded onto the training device.
+    torch.set_rng_state(state["torch"].cpu())
     kind, keys, pos, has_gauss, gauss = state["numpy"]
-    np.random.set_state((kind, keys.numpy(), pos, has_gauss, gauss))
+    np.random.set_state((kind, keys.cpu().numpy(), pos, has_gauss, gauss))
     version, internal, gauss_next = state["python"]
     random.setstate((version, tuple(internal), gauss_next))
     if "cuda" in state and torch.cuda.is_available():
-        torch.cuda.set_rng_state_all(state["cuda"])
+        torch.cuda.set_rng_state_all([t.cpu() for t in state["cuda"]])
 
 
 def _save(obj: Any, path: Path) -> None:
@@ -424,8 +501,27 @@ def train(cfg: TrainConfig | DictConfig | Mapping[str, Any]) -> Path:
     run_dir.mkdir(parents=True, exist_ok=True)
     save_config(config, run_dir / "config.yaml")
 
+    workers, pin = config.num_workers, None
+    if config.cache:
+        on_device = config.cache_device == "device" and device.type != "cpu"
+        train_set = _CachedDataset(train_set, config.num_workers, device if on_device else None)
+        workers   = 0  # in-memory samples: workers would only copy them
+        pin       = False if on_device else None  # device tensors can't be pinned
+        logger.info("Cached %d training samples on %s", len(train_set), device if on_device else "cpu")
+    if config.batch_size == "auto":
+        if device.type != "cuda":
+            raise ValueError("batch_size='auto' needs a CUDA device")
+        if config.resize is None and config.crop is None:
+            logger.warning("batch_size=auto probes the first image's size; images of other sizes can't share a batch")
+        chosen = _auto_batch_size(model, loss_fn, recipe, train_set[0], device, config.amp, len(cast(Any, train_set)))
+        official = recipe.defaults.get("batch_size")
+        if official is not None and official != chosen:
+            logger.warning("batch_size=auto chose %d; the official %s recipe uses %d (learning rate not rescaled): "
+                           "this run does not reproduce the paper", chosen, config.model, official)
+        config = replace(config, batch_size=chosen)
+        save_config(config, run_dir / "config.yaml")
     loader = create_dataloader(train_set, config.batch_size, shuffle=config.shuffle, seed=seed,
-                               num_workers=config.num_workers, drop_last=False)
+                               num_workers=workers, drop_last=False, pin_memory=pin)
     columns: list[str] | None = None
     logger.info("Training %s on %s (%d images) for %d epochs on %s -> %s", config.model, label,
                 len(cast(Any, train_set)), config.epochs, device, run_dir)

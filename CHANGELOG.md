@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- `mon train resume=…` on CUDA crashed (`RNG state must be a torch.ByteTensor`): the checkpoint loads onto the GPU and
+  the saved RNG states are now moved back to the CPU before restoring.
 - `DataLoader` workers crashed on Python 3.14 (`forkserver` pickles datasets and samples): `FolderDataset`,
   `ImageFolder` and `SampleMeta.paths` used `types.MappingProxyType`, which doesn't pickle; now `ReadOnlyDict`.
 
@@ -16,6 +18,9 @@
 - `mon.runners.trainer`: `TrainConfig`, `resolve_train_config`, `train(cfg)` and `mon train`: one loop for every
   model with a training recipe (AMP, gradient clipping, Adam/AdamW/SGD, step/multistep/cosine schedules,
   validation with the evaluation protocol, `best.pt`/`epoch_NNNN.pt`/`last.ckpt`, exact resume, `log.csv`).
+  `cache=true` keeps the transformed training set in RAM or, with `cache_device=device`, in GPU memory
+  (identical tensors; deterministic transforms only); `batch_size=auto` probes the largest power-of-two batch under
+  85% of GPU memory (opt-in; recipes keep their official batch size).
 - `mon.nn.training.TrainRecipe` and recipes `ZERO_DCE_RECIPE`, `ZERO_DCEPP_RECIPE`, `SCI_RECIPE`, `ZERO_IG_RECIPE`
   (official optimizer, epochs, batch, image size, clipping, init), named by the models' `MODELS` entries (`train=`).
   The Zero-DCE loop matches the official `lowlight_train.py` to float32 rounding (parity test).
