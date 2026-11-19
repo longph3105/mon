@@ -33,7 +33,7 @@ References:
       IEEE TIP 2018. https://github.com/csjcai/SICE
     - SICE-ME split: Guo et al., "Zero-Reference Deep Curve Estimation for Low-Light Image
       Enhancement", CVPR 2020, Sec. 4 (https://arxiv.org/abs/2001.06826). Built by the
-      workspace ``scripts/make_sice_me.sh`` (seed 1143, 2,422 train / 599 val).
+      ``make_sice_me.sh`` inside the dataset folder (seed 1143, 2,422 train / 599 val).
 """
 
 __all__ = [

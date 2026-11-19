@@ -2,6 +2,13 @@
 
 ## 3.0.0.dev0 — Unreleased
 
+### Added
+
+- Data zoo: `exdark` (ExDark, official split, 12 classes) and `darkface` (DARK FACE, seeded 5000/1000 hold-out, `face`)
+  as detection datasets, also tagged LLE (`{"image", "boxes", "labels"}` from YOLO labels; `detection_layout`), and
+  `nightcity` (NightCity with NightLab's re-annotated val) as a segmentation dataset, also tagged LLE (`{"image",
+  "mask"}`, Cityscapes train ids, 255 = ignore; `CITYSCAPES_CLASSES`, `cityscapes_train_ids`).
+
 ### Changed
 
 - `mon benchmark` on a zero-shot model (`colie`, `zero_ig`, `zs_n2n`) now times its per-image fit (the registry `fit`,
