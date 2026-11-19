@@ -14,7 +14,7 @@ Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 - Python ≥ 3.13 (except 3.14.1)
 - PyTorch ≥ 2.15 (installed automatically)
-- Platforms: developed and tested on macOS arm64 (MPS); Linux x86_64 (CUDA) resolves but is not tested yet
+- Platforms: developed on macOS arm64 (MPS); Linux x86_64 (CUDA) runs training and the GPU tests
 
 ## Installation
 
@@ -40,11 +40,11 @@ Use the `gui` extra and matplotlib to display images.
 
 ## Configuration
 
-Pretrained weights are looked up in `$ZOO_DIR` and datasets in `$DATASETS_DIR`; if unset, they default to
-`$DATA_DIR/zoo` and `$DATA_DIR/datasets`:
+Pretrained weights are looked up in `$ZOO_DIR`, datasets in `$DATASETS_DIR`, and run outputs go to `$RUNS_DIR`;
+if unset, they default to `$DATA_DIR/zoo`, `$DATA_DIR/datasets` and `$DATA_DIR/runs`:
 
 ```shell
-export DATA_DIR=/path/to/data       # or set ZOO_DIR / DATASETS_DIR individually
+export DATA_DIR=/path/to/data       # or set ZOO_DIR / DATASETS_DIR / RUNS_DIR individually
 ```
 
 Set them where every process sees them, not only interactive terminals:
@@ -76,9 +76,18 @@ Models load by name with their released weights (downloaded if they aren't in th
 ```python
 import mon.models
 
-mon.models.MODELS.names(tasks="lle")              # ['zero_dce', 'zero_dce++']
+mon.models.MODELS.names(tasks="lle")                # ['clode', 'colie', 'dccnet', ..., 'zero_dce++', 'zero_ig']
 model = mon.models.load("zero_dce", device="auto")  # weights="default" → released SICE weights
-enhanced = model(image)["enhanced"]                  # image: [B, 3, H, W] float in [0, 1]
+enhanced = model(image)["enhanced"]                 # image: [B, 3, H, W] float in [0, 1]
+```
+
+Train, predict and evaluate from the command line (OmegaConf dotlist arguments; each run saves its resolved
+config in its run directory under `$RUNS_DIR`):
+
+```shell
+uv run mon train model=zero_dce device=cuda:0
+uv run mon predict model=zero_dce data=sice_me split=val device=cuda:0
+uv run mon evaluate pred=<run dir> data=sice_me split=val "metrics=[psnr,ssim,lpips]"
 ```
 
 Datasets, transforms and loaders: [docs/data.md](docs/data.md).
