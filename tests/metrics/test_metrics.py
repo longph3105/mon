@@ -140,7 +140,7 @@ def test_niqe_needs_two_blocks():
 # --- Registry ---
 
 def test_registry_metadata_matches_classes():
-    assert METRICS.names() == ["lpips", "niqe", "psnr", "ssim"]
+    assert METRICS.names() == ["brisque", "lpips", "niqe", "nrqm", "pi", "psnr", "ssim"]
     for entry in METRICS.entries():
         assert entry.meta["mode"] == entry.obj.mode
         assert entry.meta["higher_better"] == entry.obj.higher_better

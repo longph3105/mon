@@ -20,6 +20,10 @@
 
 ### Added
 
+- No-reference metrics `brisque` (lower is better), `nrqm` (Ma et al., higher is better) and `pi` (PIRM perceptual
+  index, lower is better), matching pyiqa 0.1.16 (BRISQUE within 0.1, NRQM and PI within 2e-3 on LOL-v1). NRQM's
+  official forests need a one-time conversion: `uv run --with scipy python -m mon.metrics.nrqm convert model.mat`.
+  `NIQE(color_space="ycbcr")` and `rgb_to_y` for the YCbCr Y channel (used by PI).
 - `lle.sgz` (SGZ, WACV 2022): the Zero-DCE++ network with SGZ's released weights (`sice_me`; the official test uses
   `model_args.scale_factor=12`), checked against the official forward pass.
 - `lle.ruas` (RUAS, CVPR 2021) with the three released checkpoints (`lol_v1`, `upe` default, `darkface`); matches the

@@ -8,7 +8,7 @@ Examples:
     >>> METRICS.names(mode="fr")
     ['lpips', 'psnr', 'ssim']
     >>> METRICS.names(mode="nr"), METRICS.entry("niqe").meta["higher_better"]
-    (['niqe'], False)
+    (['brisque', 'niqe', 'nrqm', 'pi'], False)
     >>> METRICS.build("psnr", y_channel=True)
     PSNR(y_channel=True, crop_border=0)
 """
@@ -29,7 +29,10 @@ METRICS: "Registry[type[Metric]]" = Registry("metrics")
 
 # --- Index: one line per metric, sorted by name ---
 
-METRICS.add_lazy("lpips", "mon.metrics.lpips:LPIPS"   , mode="fr", higher_better=False)
-METRICS.add_lazy("niqe" , "mon.metrics.niqe:NIQE"     , mode="nr", higher_better=False)
-METRICS.add_lazy("psnr" , "mon.metrics.fidelity:PSNR" , mode="fr", higher_better=True)
-METRICS.add_lazy("ssim" , "mon.metrics.fidelity:SSIM" , mode="fr", higher_better=True)
+METRICS.add_lazy("brisque", "mon.metrics.brisque:BRISQUE", mode="nr", higher_better=False)
+METRICS.add_lazy("lpips"  , "mon.metrics.lpips:LPIPS"    , mode="fr", higher_better=False)
+METRICS.add_lazy("niqe"   , "mon.metrics.niqe:NIQE"      , mode="nr", higher_better=False)
+METRICS.add_lazy("nrqm"   , "mon.metrics.nrqm:NRQM"      , mode="nr", higher_better=True)
+METRICS.add_lazy("pi"     , "mon.metrics.pi:PI"          , mode="nr", higher_better=False)
+METRICS.add_lazy("psnr"   , "mon.metrics.fidelity:PSNR"  , mode="fr", higher_better=True)
+METRICS.add_lazy("ssim"   , "mon.metrics.fidelity:SSIM"  , mode="fr", higher_better=True)

@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from mon.core.weights import Weights, WeightsEnum, WeightsLike, resolve_weights
-from mon.metrics.base import Metric, MetricMode, crop_border, rgb_to_luma, to_8bit_levels
+from mon.metrics.base import Metric, MetricMode, YColorSpace, crop_border, rgb_to_y, to_8bit_levels
 from mon.metrics.fidelity import gaussian_window
 
 
@@ -66,8 +66,12 @@ def _cubic(x: Tensor) -> Tensor:
             + (-0.5 * a**3 + 2.5 * a**2 - 4 * a + 2) * ((a > 1) & (a <= 2)))
 
 
-def matlab_resize_matrix(in_len: int, scale: float, *, antialiasing: bool = True) -> Tensor:
-    """``[ceil(in_len * scale), in_len]`` float64 matrix of MATLAB ``imresize`` (bicubic) along one axis.
+def matlab_resize_matrix(in_len: int, scale: float | None = None, *, out_len: int | None = None,
+                         antialiasing: bool = True) -> Tensor:
+    """``[out_len, in_len]`` float64 matrix of MATLAB ``imresize`` (bicubic) along one axis.
+
+    Give ``scale`` (``out_len = ceil(in_len * scale)``) or ``out_len`` (``scale = out_len / in_len``,
+    as ``imresize(x, [h w])``).
 
     Rows hold the normalized kernel weights; taps beyond the edges are mirrored (symmetric, edge
     sample repeated) as in MATLAB. ``M_h @ img @ M_w.T`` resizes a 2-D image.
@@ -77,7 +81,13 @@ def matlab_resize_matrix(in_len: int, scale: float, *, antialiasing: bool = True
         >>> m.shape, torch.allclose(m.sum(1), torch.ones(4, dtype=torch.float64))
         (torch.Size([4, 8]), True)
     """
-    out_len = math.ceil(in_len * scale)
+    if (scale is None) == (out_len is None):
+        raise ValueError("give exactly one of scale and out_len")
+    if scale is None:
+        assert out_len is not None
+        scale = out_len / in_len
+    else:
+        out_len = math.ceil(in_len * scale)
     width   = 4.0 / scale if (scale < 1 and antialiasing) else 4.0
     x       = torch.arange(1, out_len + 1, dtype=torch.float64)
     u       = x / scale + 0.5 * (1 - 1 / scale)
@@ -167,6 +177,8 @@ class NIQE(Metric):
 
     Args:
         crop_border: Pixels cropped on every side first.
+        color_space: Gray channel: ``"yiq"`` (luma, the default, as MATLAB and pyiqa) or ``"ycbcr"``
+            (BT.601 Y, as the PIRM perceptual index; see ``mon.metrics.pi``).
         weights: Pristine model: ``"default"`` (``NIQE_Weights.PRISTINE``), a member, or a ``.npz``
             path with ``mu_pris_param`` and ``cov_pris_param``.
 
@@ -181,9 +193,13 @@ class NIQE(Metric):
     cov_pris     : Tensor
     window       : Tensor
 
-    def __init__(self, *, crop_border: int = 0, weights: WeightsLike = "default") -> None:
+    def __init__(self, *, crop_border: int = 0, color_space: YColorSpace = "yiq",
+                 weights: WeightsLike = "default") -> None:
         super().__init__()
+        if color_space not in ("yiq", "ycbcr"):
+            raise ValueError(f"color_space must be 'yiq' or 'ycbcr', got {color_space!r}")
         self.crop_border = crop_border
+        self.color_space = color_space
         spec = resolve_weights(weights, NIQE_Weights)
         if spec is None:
             raise ValueError("NIQE needs its pristine model; weights=None is not supported")
@@ -195,11 +211,11 @@ class NIQE(Metric):
         self.register_buffer("window", gaussian_window(7, 7 / 6)[None, None], persistent=False)
 
     def extra_repr(self) -> str:
-        return f"crop_border={self.crop_border}"
+        return f"crop_border={self.crop_border}" + ("" if self.color_space == "yiq" else f", color_space={self.color_space!r}")
 
     def forward(self, pred: Tensor) -> Tensor:
         if pred.ndim != 4 or pred.shape[1] not in (1, 3) or not pred.is_floating_point():
             raise ValueError(f"pred must be a float [B, 1 or 3, H, W] batch, got {tuple(pred.shape)} {pred.dtype}")
-        levels = to_8bit_levels(rgb_to_luma(crop_border(pred, self.crop_border).double()))
+        levels = to_8bit_levels(rgb_to_y(crop_border(pred, self.crop_border).double(), self.color_space))
         mu, cov, win = self.mu_pris.to(levels.device), self.cov_pris.to(levels.device), self.window.to(levels.device)
         return torch.stack([_niqe_one(levels[i, 0], mu, cov, win) for i in range(levels.shape[0])])

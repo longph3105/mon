@@ -6,16 +6,18 @@ reduce. Inputs are RGB (or gray) floats in ``[0, 1]``, ``[B, C, H, W]``.
 
 Luma is ``0.299 R + 0.587 G + 0.114 B`` (ITU-R BT.601 weights without offset, as MATLAB
 ``rgb2gray`` and pyiqa's ``test_y_channel``), not the ``[16, 235]`` Y of YCbCr that
-super-resolution papers use.
+super-resolution papers use; ``rgb_to_y(x, "ycbcr")`` gives that one (the PIRM perceptual index uses it).
 """
 
 __all__ = [
     "LUMA_WEIGHTS",
     "Metric",
     "MetricMode",
+    "YColorSpace",
     "check_pair",
     "crop_border",
     "rgb_to_luma",
+    "rgb_to_y",
     "to_8bit_levels",
 ]
 
@@ -29,6 +31,9 @@ type MetricMode = Literal["fr", "nr"]
 
 LUMA_WEIGHTS: tuple[float, float, float] = (0.299, 0.587, 0.114)
 """RGB weights of luma (MATLAB ``rgb2gray``; pyiqa's ``yiq`` Y)."""
+
+type YColorSpace = Literal["yiq", "ycbcr"]
+"""Gray channel a metric scores: ``"yiq"`` = luma (``LUMA_WEIGHTS``); ``"ycbcr"`` = BT.601 Y in ``[16, 235] / 255``."""
 
 
 class Metric(nn.Module):
@@ -67,6 +72,26 @@ def rgb_to_luma(x: Tensor) -> Tensor:
         return x
     w = torch.tensor(LUMA_WEIGHTS, dtype=x.dtype, device=x.device).view(1, 3, 1, 1)
     return (x * w).sum(dim=1, keepdim=True)
+
+
+def rgb_to_y(x: Tensor, color_space: YColorSpace = "yiq") -> Tensor:
+    """``[B, 3, H, W]`` RGB in ``[0, 1]`` → ``[B, 1, H, W]`` Y of ``color_space`` in ``[0, 1]`` (pyiqa's ``to_y_channel``).
+
+    ``"ycbcr"`` is MATLAB ``rgb2ycbcr``'s Y: ``(65.481 R + 128.553 G + 24.966 B + 16) / 255``. 1-channel input is
+    returned as is.
+
+    Examples:
+        >>> round(rgb_to_y(torch.ones(1, 3, 1, 1, dtype=torch.float64), "ycbcr").item() * 255, 9)
+        235.0
+    """
+    if color_space == "yiq":
+        return rgb_to_luma(x)
+    if color_space != "ycbcr":
+        raise ValueError(f"color_space must be 'yiq' or 'ycbcr', got {color_space!r}")
+    if x.shape[1] == 1:
+        return x
+    w = torch.tensor((65.481, 128.553, 24.966), dtype=x.dtype, device=x.device).view(1, 3, 1, 1)
+    return ((x * w).sum(dim=1, keepdim=True) + 16) / 255
 
 
 def to_8bit_levels(x: Tensor) -> Tensor:
