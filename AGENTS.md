@@ -48,12 +48,12 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 - **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
 - **Next:** recipes for the other models (PairLIE: exposure-pair sampling; SCI++: two alternating optimizers; the
   supervised models once their paper losses are ported); more metrics when needed; plotting.
-  Decisions deferred to these ports are recorded in `logs/log_2026_11_17.md` under each
+  Decisions deferred to these ports are recorded in `logs/archive/log_2026_11_17.md` under each
   `core` module's entry.
 - **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the
   `dev` group. Markdown: markdownlint (`.markdownlint.yaml`, 120 columns). No Python linter or formatter yet.
 - **Resuming work:** read the latest "Session handoff" section at the end of the newest log (`logs/*/log_*.md`;
-  up to 2026-11-19, `logs/log_*.md`).
+  up to 2026-11-19, `logs/archive/log_*.md`).
 - **Work log entries:** one file per machine, `logs/<host>/log_YYYY_MM_DD.md` (`<host>` = lowercase
   `hostname -s`; the folder syncs, and two machines writing one file make Resilio conflict copies). Head each
   with the local time and the machine the agent runs on: `## HH:MM TZ · <machine> — <title>`
@@ -69,7 +69,7 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 | Path               | Purpose                                                                                                               |
 |--------------------|-----------------------------------------------------------------------------------------------------------------------|
 | `docs/`            | Long-form documentation.                                                                                              |
-| `logs/`            | Agent work logs, one file per machine: `logs/<host>/log_YYYY_MM_DD.md` (to 2026-11-19: `logs/log_*.md`).              |
+| `logs/`            | Agent work logs, one file per machine: `logs/<host>/log_YYYY_MM_DD.md` (to 2026-11-19: `logs/archive/`).              |
 | `src/mon/`         | The importable package. All library code lives here.                                                                  |
 | `src/mon/core/`    | Shared infrastructure; no deps on the rest of `mon`. Overview: `help(mon.core)`.                                      |
 | `src/mon/data/`    | Files → samples → batches; may import only `mon.core`. Overview: `help(mon.data)`.                                    |
