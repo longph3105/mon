@@ -9,6 +9,10 @@
 
 ### Fixed
 
+- FLOL gave platform-dependent outputs (~1e-3 apart on arm64 vs x86_64): FFT bins that are real for real input
+  carried ±1e-17 or exactly 0 imaginary parts, flipping their phase between ±π before the learned phase MLP. They
+  are now set to exactly 0 (equal to the official code on x86); the parity literal was regenerated there.
+
 - `mon train resume=…` on CUDA crashed (`RNG state must be a torch.ByteTensor`): the checkpoint loads onto the GPU and
   the saved RNG states are now moved back to the CPU before restoring.
 - `DataLoader` workers crashed on Python 3.14 (`forkserver` pickles datasets and samples): `FolderDataset`,

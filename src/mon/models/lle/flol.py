@@ -25,6 +25,9 @@ Differences from the official code (``model/flol.py``, ``utils/utils.py``, ``inf
 - Unused modules (``SpaBlock``; ``ProcessBlock`` always runs without its spatial path, as in the
   official ``SFNet``) and the ``side`` output flag were removed; ``forward`` returns a dict.
 - No training code was released (no loss to port).
+- The frequency blocks set the imaginary part of the real-valued ``rfft2`` bins to exactly 0 before ``angle``:
+  the official output depends on whether the FFT library returns ``±1e-17`` or 0 there (``-π`` vs ``+π`` phase,
+  ~1e-3 apart in ``enhanced``). Exactly 0 is what x86 produces, so this matches the official code on x86.
 
 ``mon_old`` (``models/enhance/lle/flol``) copied the official network; its predictor resized inputs
 to 512 (``mon`` pads instead, as the official ``inference.py`` does).
@@ -147,12 +150,28 @@ class _FreBlock(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         h, w   = x.shape[-2:]
-        x_freq = torch.fft.rfft2(self.fpre(x), norm="backward")
+        x_freq = _exact_real_bins(torch.fft.rfft2(self.fpre(x), norm="backward"), h, w)
         mag    = self.process1(torch.abs(x_freq))
         pha    = self.process2(torch.angle(x_freq))
         out: Tensor = torch.fft.irfft2(torch.complex(mag * torch.cos(pha), mag * torch.sin(pha)), s=(h, w),
                                        norm="backward")
         return out + x
+
+
+def _exact_real_bins(x_freq: Tensor, h: int, w: int) -> Tensor:
+    """Zero the imaginary part of the ``rfft2`` bins that are real for real input (rows 0 and ``h/2``, columns 0
+    and ``w/2``; even sizes only).
+
+    FFT libraries leave ``±1e-17`` there or exactly 0, so ``angle`` gives ``+π`` or ``-π`` for a negative real
+    value depending on the platform, and the learned phase MLP turns that into ~1e-3 output differences. Exactly 0
+    gives ``+π`` everywhere (what x86 already produces).
+    """
+    rows = [0] + ([h // 2] if h % 2 == 0 else [])
+    cols = [0] + ([w // 2] if w % 2 == 0 else [])
+    mask = torch.zeros(x_freq.shape[-2:], dtype=torch.bool, device=x_freq.device)
+    for r in rows:
+        mask[r, cols] = True
+    return torch.complex(x_freq.real, x_freq.imag.masked_fill(mask, 0.0))
 
 
 class _SFBlock(nn.Module):

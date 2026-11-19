@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from mon.models.lle.flol import FLOL, FLOL_Weights, _gaussian_blur5
+from mon.models.lle.flol import FLOL, FLOL_Weights, _exact_real_bins, _gaussian_blur5
 from mon.models.registry import MODELS, load
 
 _spec = importlib.util.spec_from_file_location("flol_reference", Path(__file__).with_name("flol_reference.py"))
@@ -19,47 +19,49 @@ reference_input, stats = _ref.reference_input, _ref.stats
 # Official model/flol.py (cidautai/FLOL d6b66c3, kornia 0.9.2) with the released weights, CPU.
 # Output of flol_reference.py, in float64 (see its docstring: in float32 the SNR mask's rounding is
 # amplified to ~1e-3 in `enhanced`, so float32 literals only match on the machine that made them).
-# Generated from the official code with torch 2.15.0, float64.
+# Generated from the official code with torch 2.15.0+cu132, float64, on x86_64 (Linux). On arm64 the official
+# output differs by ~1e-3: FFT bins that are real come out ±1e-17 there, flipping their phase between ±π;
+# mon zeroes them (`_exact_real_bins`), which equals x86, so this literal holds on every platform.
 OFFICIAL: dict = {'flolv2_all_111439.pt': {'enhanced': {'shape': [2, 3, 22, 30],
-                                       'sum': 1871.6337882994771,
-                                       'sumsq': 952.9419889122137,
-                                       'values': [0.40847318785774106,
-                                                  0.6194765350931614,
-                                                  0.2652154046896732,
-                                                  0.005871604918570135,
-                                                  0.5391348238690856,
-                                                  0.2591141925186481,
-                                                  0.6040954091060242]},
+                                       'sum': 1872.4747737510759,
+                                       'sumsq': 953.6528089839439,
+                                       'values': [0.40828975264277567,
+                                                  0.620106360918379,
+                                                  0.26585639442697956,
+                                                  0.006739327914620424,
+                                                  0.5391137218077029,
+                                                  0.2617158548350651,
+                                                  0.6037064471379506]},
                           'amplitude_enhanced': {'shape': [2, 3, 22, 30],
-                                                 'sum': 2901.238249621736,
-                                                 'sumsq': 2203.948743544997,
-                                                 'values': [0.7251857115089704,
-                                                            0.823534342601713,
-                                                            0.6751293867624961,
-                                                            0.38058667104449273,
-                                                            0.6890318068822785,
-                                                            0.6188235212895438,
-                                                            0.7867948277287665]}},
+                                                 'sum': 2901.2382496217347,
+                                                 'sumsq': 2203.948743544996,
+                                                 'values': [0.7251857115089706,
+                                                            0.8235343426017129,
+                                                            0.675129386762496,
+                                                            0.38058667104449284,
+                                                            0.6890318068822787,
+                                                            0.6188235212895434,
+                                                            0.7867948277287662]}},
  'flolv2_UHDLL.pt': {'enhanced': {'shape': [2, 3, 22, 30],
-                                  'sum': 1783.411994296215,
-                                  'sumsq': 880.3566797590265,
-                                  'values': [0.423368096701919,
-                                             0.5920589573538488,
-                                             0.40176415562015033,
-                                             -0.00358530846052141,
-                                             0.4744760608509345,
-                                             0.3188294134457659,
-                                             0.4256484812702502]},
+                                  'sum': 1783.4897192814612,
+                                  'sumsq': 880.4528336011574,
+                                  'values': [0.4229250267387353,
+                                             0.591598684554831,
+                                             0.4015512426599179,
+                                             -0.0036821542345285285,
+                                             0.474488168199505,
+                                             0.3181762565368015,
+                                             0.42601220901952697]},
                      'amplitude_enhanced': {'shape': [2, 3, 22, 30],
-                                            'sum': 1891.6074370398403,
-                                            'sumsq': 944.7344315501076,
-                                            'values': [0.42505961055143804,
-                                                       0.5189805291552655,
+                                            'sum': 1891.60743703984,
+                                            'sumsq': 944.7344315501073,
+                                            'values': [0.425059610551438,
+                                                       0.5189805291552654,
                                                        0.41266897534262936,
-                                                       0.23027150886102976,
-                                                       0.42505758070596306,
-                                                       0.42722741850806134,
-                                                       0.4881051036971298]}}}
+                                                       0.23027150886102996,
+                                                       0.4250575807059632,
+                                                       0.42722741850806095,
+                                                       0.4881051036971296]}}}
 
 # Official file → zoo weights (same tensors).
 ZOO = {"flolv2_all_111439.pt": FLOL_Weights.LOL_V2_REAL, "flolv2_UHDLL.pt": FLOL_Weights.UHD_LL}
@@ -181,3 +183,17 @@ def test_lol_v2_real_psnr_regression(regression_device: torch.device):
             psnr_8bit.append(10 * torch.log10(1 / F.mse_loss(y8, target)).item())
     assert sum(psnr_official) / len(psnr_official) == pytest.approx(21.752, abs=5e-3)
     assert sum(psnr_8bit) / len(psnr_8bit) == pytest.approx(22.100, abs=5e-3)
+
+
+def test_real_fft_bins_are_exact_and_platform_independent():
+    torch.manual_seed(0)
+    x = torch.randn(2, 4, 6, 10, dtype=torch.float64)
+    f = torch.fft.rfft2(x)
+    jitter = torch.complex(f.real, f.imag + 1e-17 * torch.randn_like(f.imag))   # what arm64 FFTs leave
+    a, b = _exact_real_bins(f, 6, 10), _exact_real_bins(jitter, 6, 10)
+    for r in (0, 3):
+        for c in (0, 5):
+            assert (a.imag[..., r, c] == 0).all() and torch.equal(torch.angle(a)[..., r, c], torch.angle(b)[..., r, c])
+    assert torch.equal(a.imag[..., 1, 1], f.imag[..., 1, 1])                    # other bins untouched
+    odd = _exact_real_bins(torch.fft.rfft2(torch.randn(1, 1, 5, 7, dtype=torch.float64)), 5, 7)
+    assert odd.imag[..., 0, 0].abs().max() == 0                                  # odd sizes: only the DC bin

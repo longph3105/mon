@@ -9,7 +9,9 @@ Regenerate with:
 
 The default dtype is float64: in float32 the SNR mask (``blur / (|luma - blur| + 1e-4)`` over its
 max) carries rounding error that the spatial branch amplifies to ~1e-3, so float32 literals only
-match on the machine that made them. A float64 run needs one patch in the checkout, a no-op in
+match on the machine that made them. Make the literal on x86_64: on arm64, FFT bins that are real for real input
+come out ±1e-17 instead of 0, which flips their phase between ±π in the official frequency blocks (~1e-3 in
+``enhanced``); mon zeroes them, matching x86. A float64 run needs one patch in the checkout, a no-op in
 float32: in ``model/flol.py`` ``get_mask``, ``return mask.float()`` → ``return mask``.
 """
 
