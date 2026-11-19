@@ -110,14 +110,10 @@ class NightCity(FolderDataset):
     }
     classes = CITYSCAPES_CLASSES
 
-    def __getitem__(self, index: int) -> Sample:
-        transform, self.transform = self.transform, None
-        try:
-            sample = super().__getitem__(index)
-        finally:
-            self.transform = transform
+    def postprocess(self, sample: Sample) -> Sample:
+        """Downsample a larger mask to the image size (nearest), then map ``labelId``s to train ids."""
         mask, (h, w) = sample["mask"], sample["image"].shape[-2:]
         if mask.shape != (h, w):
             mask = F.interpolate(mask[None, None].float(), size=(h, w), mode="nearest")[0, 0].to(torch.uint8)
         sample["mask"] = tv_tensors.Mask(cityscapes_train_ids(mask))
-        return self.transform(sample) if self.transform is not None else sample
+        return sample

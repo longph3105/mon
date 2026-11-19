@@ -130,7 +130,8 @@ class FolderDataset(Dataset[Sample]):
         classes: Class list (required for ``"voc"`` modalities; used by models and metrics).
 
     Override ``pair_key`` when a secondary modality isn't stored under the primary file's
-    relative stem (e.g. one target per folder of inputs).
+    relative stem (e.g. one target per folder of inputs), and ``postprocess`` to fix a sample as
+    read from disk before ``transform`` (e.g. map label ids, resize a mask stored at another size).
 
     Args:
         split: Split to load; must be a key of ``layout``.
@@ -186,6 +187,10 @@ class FolderDataset(Dataset[Sample]):
         The default pairs by identical key; subclasses override it for other pairings.
         """
         return key
+
+    def postprocess(self, sample: Sample) -> Sample:
+        """Adjust a sample as read from disk, before ``transform``; the default returns it unchanged."""
+        return sample
 
     def _validate_layout(self) -> None:
         name = type(self).__name__
@@ -279,6 +284,7 @@ class FolderDataset(Dataset[Sample]):
                     target = read_voc(path, self._voc_ids, canvas_size=size)
                 sample.update(target)
         sample["meta"] = SampleMeta(index=index, stem=stem, split=self.split, paths=ReadOnlyDict(paths), orig_size=size)
+        sample = self.postprocess(sample)
         return self.transform(sample) if self.transform is not None else sample
 
     def __repr__(self) -> str:

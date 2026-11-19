@@ -55,7 +55,6 @@ def test_double_size_mask_is_downsampled_nearest(tmp_path: StdPath):
     s = ds[0]
     assert s["mask"].shape == (2, 3) and s["image"].shape == (3, 2, 3)
     assert int(s["mask"][0, 0]) == 13 and int(s["mask"][1, 2]) == 10  # car, sky
-    assert ds.transform is not None  # restored after __getitem__
 
 
 @pytest.mark.slow

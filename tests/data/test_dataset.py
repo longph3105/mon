@@ -81,6 +81,20 @@ def test_transform_gets_whole_sample(paired_root: StdPath):
     assert s["meta"].orig_size == Size(8, 12)
 
 
+def test_postprocess_runs_before_transform(paired_root: StdPath):
+    class Shifted(Paired):
+        def postprocess(self, sample):
+            assert sample["image"].shape == (3, 8, 12)  # as read from disk: transform hasn't run
+            sample["target"] = tv_tensors.wrap(sample["target"] - 5, like=sample["target"])
+            return sample
+
+    resize = v2.Resize((4, 6))
+    ds = Shifted("train", root=paired_root, transform=resize)
+    s = ds[0]
+    assert s["image"].shape == (3, 4, 6) and int(s["target"][0, 0, 0]) in (14, 15, 16)  # 20 - 5 (JPEG)
+    assert ds.transform is resize
+
+
 def test_default_root_from_datasets_dir(paired_root: StdPath, monkeypatch: pytest.MonkeyPatch):
     class WithFolder(Paired):
         folder = "enhance/LOL"
