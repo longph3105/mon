@@ -308,13 +308,14 @@ def _auto_batch_size(model: nn.Module, loss_fn: nn.Module, recipe: TrainRecipe, 
                 batch = _to_device(collate([sample] * size), device)
                 with torch.autocast(device.type, dtype=torch.float16, enabled=amp):
                     out = recipe.step(probe, loss_fn, batch)
-                out["loss"].backward()  # type: ignore[no-untyped-call]
+                loss = out["loss"] if recipe.optimizers is None else sum(out[f"loss_{n}"] for n in recipe.optimizers)
+                loss.backward()  # type: ignore[union-attr]  # Tensor.backward is unannotated
                 peak = torch.cuda.max_memory_allocated(device)
             except torch.cuda.OutOfMemoryError:
                 break
             finally:
                 probe.zero_grad(set_to_none=True)
-                batch = out = None  # type: ignore[assignment]
+                batch = out = loss = None  # type: ignore[assignment]
             logger.info("batch_size=auto: %d -> peak %.2f GiB of %.2f GiB", size, peak / 2**30, total / 2**30)
             if peak > AUTO_BATCH_MEMORY * total:
                 break
@@ -342,6 +343,42 @@ def _to_device(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
 
 
 # --- Optimization ---
+
+def _param_groups(model: nn.Module, recipe: TrainRecipe) -> dict[str, list[nn.Parameter]]:
+    """``{optimizer name: parameters}``; ``{"": all}`` for a single-optimizer recipe."""
+    if recipe.optimizers is None:
+        return {"": list(model.parameters())}
+    groups: dict[str, list[nn.Parameter]] = {}
+    for name, parts in recipe.optimizers.items():
+        groups[name] = []
+        for part in parts:
+            sub = getattr(model, part, None)
+            if not isinstance(sub, nn.Module):
+                raise ValueError(f"recipe optimizer {name!r}: {type(model).__name__} has no submodule {part!r}")
+            groups[name] += list(sub.parameters())
+    ids = [id(p) for ps in groups.values() for p in ps]
+    if len(ids) != len(set(ids)):
+        raise ValueError(f"recipe optimizers share parameters: {dict(recipe.optimizers)}")
+    left = sum(p.numel() for p in model.parameters() if id(p) not in set(ids))
+    if left:
+        logger.warning("%d parameters are in no recipe optimizer and stay fixed", left)
+    return groups
+
+
+def _set_trainable(groups: Mapping[str, list[nn.Parameter]], active: str) -> None:
+    """Only ``active``'s parameters require grad (the others' gradients would be discarded anyway)."""
+    for name, params in groups.items():
+        for p in params:
+            p.requires_grad_(name == active)
+
+
+def _optim_states(optims: Mapping[str, torch.optim.Optimizer],
+                  scheds: Mapping[str, torch.optim.lr_scheduler.LRScheduler | None], multi: bool) -> dict[str, Any]:
+    """Checkpoint entries: one state dict each (single optimizer), or ``{name: state}`` per optimizer."""
+    o = {n: opt.state_dict() for n, opt in optims.items()}
+    s = {n: sch.state_dict() if sch is not None else None for n, sch in scheds.items()}
+    return {"optimizer": o, "scheduler": s} if multi else {"optimizer": o[""], "scheduler": s[""]}
+
 
 def _optimizer(cfg: OptimizerConfig, params: Any) -> torch.optim.Optimizer:
     if cfg.name == "sgd":
@@ -468,8 +505,10 @@ def train(cfg: TrainConfig | DictConfig | Mapping[str, Any]) -> Path:
             recipe.init(model)
     model    = model.to(device).train()
     loss_fn  = recipe.loss().to(device)
-    optim    = _optimizer(config.optimizer, model.parameters())
-    sched    = _scheduler(config.scheduler, optim, config.epochs)
+    groups   = _param_groups(model, recipe)
+    optims   = {n: _optimizer(config.optimizer, ps) for n, ps in groups.items()}
+    scheds   = {n: _scheduler(config.scheduler, o, config.epochs) for n, o in optims.items()}
+    multi    = recipe.schedule is not None
     scaler   = torch.amp.GradScaler(device.type, enabled=config.amp)
 
     val_loader = None
@@ -488,9 +527,13 @@ def train(cfg: TrainConfig | DictConfig | Mapping[str, Any]) -> Path:
     if resume:
         ckpt = torch.load(run_dir / "last.ckpt", map_location=device, weights_only=True)
         model.load_state_dict(ckpt["model"])
-        optim.load_state_dict(ckpt["optimizer"])
-        if sched is not None and ckpt["scheduler"] is not None:
-            sched.load_state_dict(ckpt["scheduler"])
+        saved_optims = ckpt["optimizer"] if multi else {"": ckpt["optimizer"]}
+        saved_scheds = ckpt["scheduler"] if multi else {"": ckpt["scheduler"]}
+        for n, o in optims.items():
+            o.load_state_dict(saved_optims[n])
+            s = scheds[n]
+            if s is not None and saved_scheds[n] is not None:
+                s.load_state_dict(saved_scheds[n])
         scaler.load_state_dict(ckpt["scaler"])
         start_epoch, step, best = ckpt["epoch"], ckpt["step"], ckpt["best"]
         _set_rng_state(ckpt["rng"])
@@ -533,9 +576,18 @@ def train(cfg: TrainConfig | DictConfig | Mapping[str, Any]) -> Path:
                 loader.generator.manual_seed(seed + epoch)  # same order and worker seeds after a resume
             t0, sums, batches = time.perf_counter(), dict[str, float](), 0
             for batch in loader:
+                active = recipe.schedule(step + 1) if recipe.schedule is not None else ""
+                if active is None:  # a scheduled step without an update: the batch is consumed
+                    step += 1
+                    continue
+                if multi:
+                    _set_trainable(groups, active)
+                optim = optims[active]
                 batch = _to_device(batch, device)
                 with torch.autocast(device.type, dtype=torch.float16, enabled=config.amp):
                     out = recipe.step(model, loss_fn, batch)
+                if multi:
+                    out = {"loss": out[f"loss_{active}"], **out}
                 loss = out["loss"]
                 if not torch.isfinite(loss):
                     raise FloatingPointError(f"non-finite loss {loss.item()} at epoch {epoch + 1}, step {step + 1}")
@@ -543,40 +595,41 @@ def train(cfg: TrainConfig | DictConfig | Mapping[str, Any]) -> Path:
                 scaler.scale(loss).backward()  # type: ignore[no-untyped-call]  # Tensor.backward is unannotated
                 if config.grad_clip is not None:
                     scaler.unscale_(optim)
-                    nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
+                    nn.utils.clip_grad_norm_(groups[active], config.grad_clip)
                 scaler.step(optim)
                 scaler.update()
                 step += 1
                 batches += 1
                 for k, v in out.items():
                     sums[k] = sums.get(k, 0.0) + float(v.detach())
-            lr = optim.param_groups[0]["lr"]
-            if sched is not None:
-                sched.step()
+            lr = next(iter(optims.values())).param_groups[0]["lr"]
+            for sched in scheds.values():
+                if sched is not None:
+                    sched.step()
             row: dict[str, Any] = {"epoch": epoch + 1, "step": step, "lr": lr, "seconds": round(time.perf_counter() - t0, 3)}
             row |= {f"train/{k}": v / max(batches, 1) for k, v in sums.items()}
             last = epoch + 1 == config.epochs
             if val_loader is not None and ((epoch + 1) % config.val_every == 0 or last):
                 row |= _validate_epoch(model, val_loader, metrics, multiple, config.output_key, device)
 
-            value = row["train/loss"] if monitor == "loss" else row.get(f"val/{monitor}")
+            value = row.get("train/loss" if monitor == "loss" else f"val/{monitor}")  # none: no step updated
             if value is not None and (best["value"] is None or (value > best["value"] if higher else value < best["value"])):
                 best = {"name": monitor, "value": float(value), "epoch": epoch + 1}
                 _save(model.state_dict(), run_dir / "best.pt")
             if config.save_every and (epoch + 1) % config.save_every == 0:
                 _save(model.state_dict(), run_dir / f"epoch_{epoch + 1:04d}.pt")
             _save({
-                "model": model.state_dict(), "optimizer": optim.state_dict(),
-                "scheduler": sched.state_dict() if sched is not None else None, "scaler": scaler.state_dict(),
+                "model": model.state_dict(), **_optim_states(optims, scheds, multi), "scaler": scaler.state_dict(),
                 "epoch": epoch + 1, "step": step, "best": best, "rng": _rng_state(),
                 "config": OmegaConf.to_container(OmegaConf.structured(config)),
             }, run_dir / "last.ckpt")
 
-            if columns is None:
+            if columns is None and sums:  # the first epoch with an update fixes the columns
                 train_cols = [f"train/{k}" for k in sums]
                 val_cols   = [f"val/{n}" for n in metrics]
                 columns    = ["epoch", "step", "lr", "seconds", *train_cols, *val_cols]
-            _append_csv(run_dir / "log.csv", row, columns)
+            if columns is not None:
+                _append_csv(run_dir / "log.csv", row, columns)
             shown = ", ".join(f"{k.split('/', 1)[1]} {v:.4g}" for k, v in row.items() if "/" in k and v is not None)
             logger.info("epoch %d/%d: %s (%.1fs)", epoch + 1, config.epochs, shown, row["seconds"])
             pbar.update(task, advance=1)

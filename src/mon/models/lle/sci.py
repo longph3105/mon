@@ -4,7 +4,8 @@ A tiny network estimates the illumination ``i`` (clamped to ``[1e-4, 1]``) and t
 Retinex reflectance ``clamp(x / i, 0, 1)``. During training, a self-calibration module refines
 the input over several weight-sharing stages so that the first stage alone learns to do the
 job; at test time only that first stage runs (3 conv layers for SCI), as in the official test
-scripts. SCI++ (TPAMI) adds a second illumination branch and alternates two optimizers.
+scripts. SCI++ (TPAMI) adds a second illumination branch and alternates two optimizers
+(``SCIPP_RECIPE``).
 
 Parameter names match the official code (including its weight sharing: the same block is
 appended to ``blocks`` several times), so the released checkpoints load with ``strict=True``.
@@ -44,6 +45,7 @@ __all__ = [
     "SCI_RECIPE",
     "SCILoss",
     "SCIPP",
+    "SCIPP_RECIPE",
     "SCIPP_Weights",
     "SCI_Weights",
 ]
@@ -376,4 +378,54 @@ SCI_RECIPE = TrainRecipe(
 )
 """Official SCI (CVPR) training: Adam 3e-4 (weight decay 3e-4), clip 5, batch 1, full images, 1000 epochs, seed 2.
 
-SCI++ (TPAMI) alternates two optimizers (``ha``; ``hb`` + ``calibrate``) and has no recipe yet."""
+The three released weights share this recipe and differ in training data, which the authors give
+only as "mainly" (``CVPR/README.md``) without image lists, so none is exactly reproducible. The
+closest ``data=`` ids: ``easy`` → ``mit_5k`` (MIT-Adobe FiveK), ``medium`` → ``lol_v1`` and
+``lsrw_huawei``/``lsrw_nikon`` (LOL + LSRW; one id per run), ``difficult`` → ``darkface``. The
+paper's tables use 500 random MIT and 500 random LSRW training pairs (the authors' subsets are
+on Google Drive, not in ``mon``)."""
+
+
+def _scipp_step(model: nn.Module, loss: nn.Module, batch: dict[str, Tensor]) -> StepOutput:
+    assert isinstance(model, SCIPP)
+    stages = model.forward_stages(batch["image"])
+    image, illum = stages["inputs"][0], stages["illuminations"]
+    first = loss(image, illum[0])
+    later = {f"stage{k + 1}": F.l1_loss(illum[0], illum[k]) + 0.1 * loss(image, illum[k]) for k in range(1, len(illum))}
+    return {"loss_ha": first, "loss_hb": torch.stack(list(later.values())).sum(), "stage1": first, **later}
+
+
+def _scipp_schedule(step: int) -> str | None:
+    """The official alternation as it acts: ``ha`` at steps ≡ 1–6 (mod 10), ``hb`` + ``calibrate`` at ≡ 8, 9."""
+    r = step % 10
+    if 1 <= r <= 6:
+        return "ha"
+    return "hb" if r in (8, 9) else None
+
+
+SCIPP_RECIPE = TrainRecipe(
+    loss       = SCILoss,
+    step       = _scipp_step,
+    defaults   = {
+        "batch_size": 1, "epochs": 3000, "seed": 2, "shuffle": False,
+        "optimizer": {"name": "adam", "lr": 3e-4, "betas": [0.9, 0.999], "weight_decay": 3e-4}, "grad_clip": None,
+    },
+    source     = "vis-opt-group/SCI TPAMI/train.py (f6f88fd): two Adam optimizers alternated by global step, "
+                 "full images in file order, batch 1, 3000 epochs, seed 2",
+    notes      = "the official script names no training set; its clip_grad_norm_ runs after the optimizer step "
+                 "(no effect), so the recipe has none; steps ≡ 7, 0 (mod 10) update nothing (see SCIPP_RECIPE)",
+    optimizers = {"ha": ("ha",), "hb": ("hb", "calibrate")},
+    schedule   = _scipp_schedule,
+)
+"""Official SCI++ (TPAMI) training: Adam 3e-4 (weight decay 3e-4) for ``ha``, and another for ``hb`` +
+``calibrate``; batch 1, full images in file order, 3000 epochs, seed 2, no init (PyTorch defaults).
+
+Objectives: ``ha`` minimizes ``SCILoss(x, i₁)``; ``hb`` + ``calibrate`` minimize
+``Σ_k≥2 L1(i₁, i_k) + 0.1·SCILoss(x, i_k)``. The official loop picks ``ha`` when ``total_step % 10 < 7``,
+but it sets ``requires_grad`` after the forward pass, so each step's graph has the previous step's
+flags: the first step of each phase (steps ≡ 7 and ≡ 0 mod 10) builds no graph to the parameters it
+updates, and with PyTorch ≥ 2.0 (``zero_grad`` sets ``None``, Adam skips them) changes nothing. The
+schedule reproduces that effective alternation: 6 ``ha`` updates, 2 ``hb`` + ``calibrate`` updates and
+2 empty steps per 10 (``tests/runners/test_trainer_parity.py``). The released ``weights_1_3500`` was
+saved at epoch 1, step 3500, so its training set had 1750–3499 images; the official README names
+none (``mon_old`` trained it on LSRW)."""

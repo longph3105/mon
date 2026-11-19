@@ -59,7 +59,7 @@ def test_invalid_configs(cfg: dict, match: str):
 
 def test_registry_recipes_resolve():
     trainable = [e.name for e in MODELS.entries() if e.meta.get("train")]
-    assert trainable == ["sci", "zero_dce", "zero_dce++", "zero_ig"]
+    assert trainable == ["sci", "sci++", "zero_dce", "zero_dce++", "zero_ig"]
     for name in trainable:
         assert isinstance(trainer._recipe(name), TrainRecipe)
 
@@ -95,6 +95,32 @@ def test_resume_continues_exactly(folder: StdPath, tmp_path: StdPath):
         train({"resume": str(resumed), "batch_size": 4})
 
 
+def test_multi_optimizer_resume_continues_exactly(tmp_path: StdPath):
+    folder   = _images(tmp_path / "train", n=6, size=(16, 24))
+    cfg      = {"model": "sci++", "data": str(folder), "num_workers": 0, "device": "cpu"}
+    straight = train({**cfg, "epochs": 4, "run_dir": str(tmp_path / "a")})
+    part     = train({**cfg, "epochs": 2, "run_dir": str(tmp_path / "b")})
+    resumed  = train({"resume": str(part), "epochs": 4})
+    a = torch.load(straight / "last.ckpt", weights_only=True)
+    b = torch.load(resumed / "last.ckpt", weights_only=True)
+    assert a["step"] == b["step"] == 24 and set(b["optimizer"]) == {"ha", "hb"}
+    for k, v in a["model"].items():
+        assert torch.equal(v, b["model"][k]), k
+    for n in ("ha", "hb"):  # 24 steps: ha at ≡ 1–6 (mod 10), hb at ≡ 8, 9
+        steps = {int(s["step"]) for s in b["optimizer"][n]["state"].values()}
+        assert steps == ({16} if n == "ha" else {4}), (n, steps)
+
+
+def test_recipe_optimizer_groups_are_validated():
+    def step(model, loss, batch):  # noqa: ANN001, ANN202
+        return {}
+
+    with pytest.raises(ValueError, match="together"):
+        TrainRecipe(loss=torch.nn.L1Loss, step=step, optimizers={"a": ("x",)})
+    with pytest.raises(ValueError, match="disjoint"):
+        TrainRecipe(loss=torch.nn.L1Loss, step=step, optimizers={"a": ("x",), "b": ("x",)}, schedule=lambda s: "a")
+
+
 def test_existing_run_dir_raises(folder: StdPath, tmp_path: StdPath):
     train(_cfg(folder, tmp_path))
     with pytest.raises(FileExistsError, match="exist_ok"):
@@ -120,7 +146,7 @@ def test_fr_metrics_without_targets_raise(folder: StdPath, tmp_path: StdPath):
         train(_cfg(folder, tmp_path, val_data=str(folder)))
 
 
-@pytest.mark.parametrize("model", ["sci", "zero_dce++", "zero_ig"])
+@pytest.mark.parametrize("model", ["sci", "sci++", "zero_dce++", "zero_ig"])
 def test_each_recipe_trains_one_epoch(model: str, folder: StdPath, tmp_path: StdPath):
     run = train(_cfg(folder, tmp_path, model=model, batch_size=1))
     row = next(csv.DictReader((run / "log.csv").open()))

@@ -48,11 +48,11 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   parity) and `denoise.zs_n2n` (zero-shot, `mon_old` parity).
 - **In progress:** `mon.metrics`: `psnr`, `ssim`, `lpips` (full-reference), `niqe`, `brisque`, `nrqm`, `pi`
   (no-reference), lazy `METRICS` index; defaults follow pyiqa (parity tests), which is not a dependency.
-- **In progress:** `mon.runners`: `trainer` (`mon train`; recipes for `zero_dce`, `zero_dce++`, `sci`, `zero_ig`),
-  `predictor` (`mon predict`), `evaluator` (`mon evaluate`), `benchmarker` (`mon benchmark`).
+- **In progress:** `mon.runners`: `trainer` (`mon train`; recipes for `zero_dce`, `zero_dce++`, `sci`, `sci++`,
+  `zero_ig`), `predictor` (`mon predict`), `evaluator` (`mon evaluate`), `benchmarker` (`mon benchmark`).
 - **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
-- **Next:** recipes for the other models (PairLIE: exposure-pair sampling; SCI++: two alternating optimizers; the
-  supervised models once their paper losses are ported); more metrics when needed; plotting.
+- **Next:** recipes for the other models (PairLIE: exposure-pair sampling; the supervised models once their paper
+  losses are ported); more metrics when needed; plotting.
   Decisions deferred to these ports are recorded in `logs/archive/log_2026_11_17.md` under each
   `core` module's entry.
 - **Tooling:** uv with the `uv_build` backend (`pyproject.toml`, `uv.lock`); pytest and mypy (strict) in the
@@ -178,9 +178,10 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   `mon_old` used (PSNR on RGB; SSIM and NIQE on luma rounded to 8-bit levels); pyiqa is non-commercial, so it
   is only a reference: never a dependency, never copied. Evaluate saved 8-bit outputs, not in-memory floats.
 - Training: one generic loop (`mon.runners.trainer`); a model contributes a `TrainRecipe` (`mon.nn.training`: step,
-  loss, init, official defaults) named by its `MODELS` entry (`train=`). Recipe defaults reproduce the official script
-  and sit under the user's config; check a new recipe's loop against the official script (see
-  `tests/runners/test_trainer_parity.py`). Training resizes, never pads; checkpoints resume exactly.
+  loss, init, official defaults; alternating optimizers via `optimizers` + `schedule`) named by its `MODELS` entry
+  (`train=`). Recipe defaults reproduce the official script and sit under the user's config; check a new recipe's
+  loop against the official script (see `tests/runners/test_trainer_parity.py`). Training resizes, never pads;
+  checkpoints resume exactly.
 - Retraining a model from its paper always uses the recipe as is (owner's rule): no `batch_size=auto` or other
   changes to the optimization; speed-ups that keep the math identical (`cache=true`, `cache_device=device`) are fine.
 - Samples and datasets cross process boundaries (DataLoader workers; Python 3.14 uses `forkserver`, which pickles):

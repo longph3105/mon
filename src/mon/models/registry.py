@@ -62,7 +62,8 @@ MODELS.add_lazy("retinexnet", "mon.models.lle.retinexnet:RetinexNet", tasks={Tas
 MODELS.add_lazy("ruas"      , "mon.models.lle.ruas:RUAS"         , tasks={Task.LLE}, arch="ruas")
 MODELS.add_lazy("sci"       , "mon.models.lle.sci:SCI"           , tasks={Task.LLE}, arch="sci",
                 train="mon.models.lle.sci:SCI_RECIPE")
-MODELS.add_lazy("sci++"     , "mon.models.lle.sci:SCIPP"         , tasks={Task.LLE}, arch="sci")
+MODELS.add_lazy("sci++"     , "mon.models.lle.sci:SCIPP"         , tasks={Task.LLE}, arch="sci",
+                train="mon.models.lle.sci:SCIPP_RECIPE")
 MODELS.add_lazy("sgz"       , "mon.models.lle.sgz:SGZ"           , tasks={Task.LLE}, arch="sgz")
 MODELS.add_lazy("zero_dce"  , "mon.models.lle.zero_dce:ZeroDCE"  , tasks={Task.LLE}, arch="zero_dce",
                 train="mon.models.lle.zero_dce:ZERO_DCE_RECIPE")

@@ -4,6 +4,10 @@
 
 ### Added
 
+- Training: `sci++` recipe (`SCIPP_RECIPE`, official `TPAMI/train.py`): two Adam optimizers (`ha`; `hb` +
+  `calibrate`) alternated as the official loop effectively does (6 + 2 updates per 10 steps), 3,000 epochs, file
+  order. `TrainRecipe` gains `optimizers` and `schedule` for recipes that alternate optimizers; checkpoints of such
+  runs store one optimizer state per name. The `sci` recipe now names the data closest to each released weight.
 - Data zoo: `fisheye8k` (FishEye8K, `mon.data.zoo.fisheye8k`): fisheye road-object detection, 5 classes,
   5,288 train / 2,712 val / 1,000 test images (AI City 2024 Track 4 split, by camera; test with the revised labels).
 - Data zoo: `widerface` (WIDER FACE, `mon.data.zoo.widerface`): 12,880 train / 3,226 val images with face boxes (YOLO,
