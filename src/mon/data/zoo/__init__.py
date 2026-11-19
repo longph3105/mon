@@ -6,4 +6,6 @@ registers itself.
 
 __all__: list[str] = []
 
-from mon.data.zoo import classify, detect, lol, loli_street, ntire, segment, sice, testkit, uhd_ll, unpaired_lol  # noqa: F401
+from mon.data.zoo import (  # noqa: F401
+    classify, detect, lol, loli_street, ntire, segment, sice, testkit, track, uhd_ll, unpaired_lol,
+)

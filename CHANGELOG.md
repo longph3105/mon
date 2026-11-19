@@ -4,6 +4,8 @@
 
 ### Added
 
+- Data zoo: `mot16` (MOT16, `mon.data.zoo.track`), tagged tracking and detection: per-frame samples, train with
+  the pedestrian boxes MOT evaluation counts (YOLO view, clipped to the frame), test frames without labels.
 - Data zoo: `uhd_ll` (UHD-LL, UHDFour ICLR 2023): 2,000 train / 150 test 4K pairs from the official release.
 - Data zoo: `ntire_2025_llie` (NTIRE 2025 Low Light Image Enhancement challenge): 219 train pairs and the 46 val / 30
   test inputs (no released ground truth), PNG, challenge ids.
