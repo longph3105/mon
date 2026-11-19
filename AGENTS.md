@@ -31,10 +31,10 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 - **Done:** `mon.core` (ported from `mon_old/libs/mon/src/mon/core`): paths, file I/O and downloads, config
   (OmegaConf), logging and progress bars, enums, registry, runtime (devices, seeding), weights, size, timing.
 - **Done:** `mon.data`: `io`, `labels`, `structures`, `dataset` (`FolderDataset`, `ClassFolderDataset`,
-  `ImageFolder`), `loader`, `transforms`; `zoo` has `lol_v1`, `lol_v2_real`, `sice`, `sice_me`, the six
-  `unpaired_lol` sets, `cifar10`, `cifar100`, `mnist`, `fashion_mnist`, `exdark` and `darkface` (detection + LLE,
-  YOLO boxes), `nightcity` (segmentation + LLE, Cityscapes train ids), and the `testkit_*` test fixtures
-  (`testkit_efficiency`: a 256²–8K resolution ladder for `mon benchmark`).
+  `ImageFolder`), `loader`, `transforms`; `zoo` has `lol_v1`, `lol_v2_real`, `loli_street`, `ntire_2025_llie`, `sice`,
+  `sice_me`, the six `unpaired_lol` sets, `cifar10`, `cifar100`, `mnist`, `fashion_mnist`, `exdark`, `darkface` and
+  `ydld` (detection + LLE, YOLO boxes), `nightcity` (segmentation + LLE, Cityscapes train ids), and the `testkit_*`
+  test fixtures (`testkit_efficiency`: a 256²–8K resolution ladder for `mon benchmark`).
   Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference, complexity (params, FLOPs/MACs,
   latency, peak memory) done; layers added per model.

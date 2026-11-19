@@ -10,13 +10,18 @@ from mon.core.enums import Split, Task
 from mon.core.path import datasets_dir
 from mon.data.dataset import DATASETS
 from mon.data.io import write_image
-from mon.data.zoo.detect import DarkFace, ExDark, detection_layout
+from mon.data.zoo.detect import YDLD, DarkFace, ExDark, detection_layout
 
-CLASSES = {"exdark": ExDark, "darkface": DarkFace}
-SPLITS = {"exdark": {Split.TRAIN, Split.VAL, Split.TEST}, "darkface": {Split.TRAIN, Split.TEST}}
+CLASSES = {"exdark": ExDark, "darkface": DarkFace, "ydld": YDLD}
+SPLITS = {
+    "exdark"  : {Split.TRAIN, Split.VAL, Split.TEST},
+    "darkface": {Split.TRAIN, Split.TEST},
+    "ydld"    : {Split.TRAIN, Split.TEST},
+}
 EXPECTED = {
     "exdark"  : {Split.TRAIN: (3000, 10381), Split.VAL: (1800, 6212), Split.TEST: (2563, 7117)},
     "darkface": {Split.TRAIN: (5000, 41966), Split.TEST: (1000, 8430)},
+    "ydld"    : {Split.TRAIN: (1588, 49384), Split.TEST: (1928, 66641)},
 }
 
 
@@ -49,6 +54,7 @@ def test_classes():
     assert ExDark.classes is not None and DarkFace.classes is not None
     assert ExDark.classes.names[10] == "people" and ExDark.classes["table"].id == 11
     assert DarkFace.classes.names == ["face"]
+    assert YDLD.classes is not None and YDLD.classes.names == ["streetlight", "carlight", "traffic_signal_light"]
 
 
 @pytest.mark.parametrize("cls", CLASSES.values())

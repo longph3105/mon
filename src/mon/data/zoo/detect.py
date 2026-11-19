@@ -1,4 +1,4 @@
-"""Low-light object detection datasets: ExDark and DARK FACE.
+"""Low-light object detection datasets: ExDark, DARK FACE and YDLD (night light sources).
 
 Also tagged ``Task.LLE``: low-light images with no reference, used to evaluate enhancement
 (no-reference metrics) and enhancement-for-detection.
@@ -18,11 +18,15 @@ Warning:
       ``test`` is a seeded random hold-out of 1,000 of the 6,000 labeled images. Near-duplicate
       frames of one scene fall on both sides: test scores are optimistic and not comparable to
       the challenge leaderboard. Faces are tiny (often < 20 px).
+    - YDLD: lights are tiny (median short side 4.3 px at 720p); 10 test images are near-copies of
+      train frames. ``<split>/annotations.json`` is the released COCO file (0-based category ids;
+      481 ``area`` values differ from w·h, which COCO's size ranges use); the YOLO labels drop 3
+      zero-size train boxes. The full set is not public (the repository offers 100 samples).
 
 Examples:
     >>> from mon.core.enums import Split, Task
     >>> from mon.data.dataset import DATASETS
-    >>> {"darkface", "exdark"} <= set(DATASETS.names(tasks=Task.DETECT)) & set(DATASETS.names(tasks=Task.LLE))
+    >>> {"darkface", "exdark", "ydld"} <= set(DATASETS.names(tasks=Task.DETECT)) & set(DATASETS.names(tasks=Task.LLE))
     True
     >>> ExDark.splits() == {Split.TRAIN, Split.VAL, Split.TEST}
     True
@@ -39,12 +43,15 @@ References:
       ``Groundtruth/imageclasslist.txt``, 250 train / 150 val / rest test per class).
     - DARK FACE: Yang et al., "Advancing Image Understanding in Poor Visibility Environments: A
       Collective Benchmark Study", IEEE TIP 2020. https://flyywh.github.io/CVPRW2019LowLight/
-    - Built by ``make_exdark.sh`` / ``make_darkface.sh`` inside each dataset folder.
+    - YDLD: "A New Multi-Source Light Detection Benchmark and Semi-Supervised Focal Light
+      Detection", NeurIPS 2024 Datasets and Benchmarks. https://github.com/YDLD-dataset/YDLD
+    - Built by ``make_exdark.sh`` / ``make_darkface.sh`` / ``make_ydld.sh`` inside each dataset folder.
 """
 
 __all__ = [
     "DarkFace",
     "ExDark",
+    "YDLD",
     "detection_layout",
 ]
 
@@ -90,3 +97,12 @@ class DarkFace(FolderDataset):
     folder  = "darkface"
     layout  = detection_layout("train", "test")
     classes = ClassList.from_names(["face"])
+
+
+@register_dataset("ydld", tasks={Task.DETECT, Task.LLE})
+class YDLD(FolderDataset):
+    """YDLD: 1,588 train / 1,928 test night driving frames, 3 light classes, 116,025 boxes (upstream split)."""
+
+    folder  = "ydld"
+    layout  = detection_layout("train", "test")
+    classes = ClassList.from_names(["streetlight", "carlight", "traffic_signal_light"])

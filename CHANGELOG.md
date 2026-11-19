@@ -4,6 +4,12 @@
 
 ### Added
 
+- Data zoo: `ntire_2025_llie` (NTIRE 2025 Low Light Image Enhancement challenge): 219 train pairs and the 46 val / 30
+  test inputs (no released ground truth), PNG, challenge ids.
+- Data zoo: `ydld` (YDLD, NeurIPS 2024: night driving light sources, 3 classes, 1,588 train / 1,928 test), a detection
+  dataset also tagged LLE, like `exdark`.
+- Data zoo: `loli_street` (LoLI-Street, ACCV 2024): 30,000 train / 3,000 val synthetic low-light images at three
+  darkness levels per scene (`<n>/<level>`, paired with the scene's target) and 1,000 real test images (no targets).
 - Data zoo: `exdark` (ExDark, official split, 12 classes) and `darkface` (DARK FACE, seeded 5000/1000 hold-out, `face`)
   as detection datasets, also tagged LLE (`{"image", "boxes", "labels"}` from YOLO labels; `detection_layout`), and
   `nightcity` (NightCity with NightLab's re-annotated val) as a segmentation dataset, also tagged LLE (`{"image",
