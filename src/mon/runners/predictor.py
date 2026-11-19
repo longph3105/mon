@@ -40,6 +40,7 @@ from mon.core.path import Path, runs_dir
 from mon.core.registry import Entry
 from mon.core.runtime import seed_everything, select_device
 from mon.core.timing import Profiler
+from mon.core.weights import resolve_weights
 from mon.data.dataset import DATASETS, ImageFolder
 from mon.data.io import write_image
 from mon.data.loader import create_dataloader
@@ -80,7 +81,9 @@ class PredictConfig:
         tile: Run on overlapping ``tile``-sized tiles (``tiled_forward``) to bound memory;
             a multiple of ``pad_multiple``. Not for zero-shot fitting.
         tile_overlap: Pixels shared by neighboring tiles.
-        output_key: Output to save; ``None``: the first of ``DEFAULT_OUTPUT_KEYS`` present.
+        output_key: Output to save; ``None``: the weights' ``meta["output_key"]`` if set (the
+            official output for that checkpoint, e.g. RUAS ``upe``), else the first of
+            ``DEFAULT_OUTPUT_KEYS`` present.
         save_extra: Also save the other image-shaped outputs (1 or 3 channels) as
             ``<stem>_<key><ext>``.
         ext: Output image format: ``".png"`` (8-bit), ``".jpg"``, ...
@@ -208,6 +211,16 @@ def _forward_fn(cfg: PredictConfig, entry: Entry[Any], zero_shot: bool, seed: in
     return lambda x: tiled_forward(model, x, tile=tile, overlap=overlap)
 
 
+def _weights_output_key(cfg: PredictConfig, entry: Entry[Any], zero_shot: bool) -> str | None:
+    """The chosen weights' ``meta["output_key"]`` (the checkpoint's official output), if any."""
+    enum = getattr(entry.obj, "weights_enum", None)
+    if zero_shot or enum is None:
+        return None
+    spec = resolve_weights(cfg.weights, enum)
+    key  = spec.meta.get("output_key") if spec is not None else None
+    return None if key is None else str(key)
+
+
 def _output_key(outputs: Mapping[str, Tensor], wanted: str | None) -> str:
     if wanted is not None:
         if wanted not in outputs:
@@ -257,6 +270,7 @@ def predict(cfg: PredictConfig | DictConfig | Mapping[str, Any]) -> Path:
     _check_run_dir(run_dir, config.exist_ok)
     multiple = _input_multiple(config, entry)
     forward  = _forward_fn(config, entry, zero_shot, seed, device, multiple)
+    wanted   = config.output_key or _weights_output_key(config, entry, zero_shot)
 
     run_dir.mkdir(parents=True, exist_ok=True)
     save_config(replace(config, seed=seed, zero_shot=zero_shot, run_dir=str(run_dir)), run_dir / "config.yaml")
@@ -274,7 +288,7 @@ def predict(cfg: PredictConfig | DictConfig | Mapping[str, Any]) -> Path:
                 x, size = pad_to_multiple(x, multiple, padding_mode=cast(PaddingMode, config.padding_mode))
                 raw     = forward(x)
                 outputs = {"output": raw} if isinstance(raw, Tensor) else dict(raw)
-                key     = key or _output_key(outputs, config.output_key)
+                key     = key or _output_key(outputs, wanted)
             with profiler.stage("save"):
                 b, h, w = x.shape[0], x.shape[-2], x.shape[-1]
                 saved   = {key: outputs[key]}

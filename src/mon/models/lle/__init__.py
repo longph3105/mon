@@ -9,6 +9,7 @@ One module per model family; each is listed in ``mon.models.MODELS`` and importe
 - ``hvi_cidnet``: HVI-CIDNet (two cross-attending branches in the HVI color space).
 - ``pairlie``: PairLIE (Retinex decomposition learned from low-light pairs).
 - ``retinexnet``: RetinexNet (Retinex decomposition, then illumination adjustment).
+- ``ruas``: RUAS (unrolled Retinex illumination stages and a denoiser, cells from architecture search).
 - ``sci``: SCI and SCI++ (self-calibrated illumination).
 - ``zero_dce``: Zero-DCE and Zero-DCE++ (zero-reference curve estimation).
 - ``zero_ig``: Zero-IG (joint denoising and enhancement fitted per image; dataset-trained weights too).

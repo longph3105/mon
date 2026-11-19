@@ -24,6 +24,9 @@ CASES = [  # (model, weights, mean PSNR, tolerance)
     ("hvi_cidnet", "default",   22.4841, 5e-3),
     ("retinexnet", "default",   16.2308, 5e-3),
     ("flol",       "default",   19.1995, 3e-2),
+    ("ruas",       "lol_v1",    12.2862, 5e-3),
+    ("ruas",       "upe",       11.5522, 5e-3),
+    ("ruas",       "darkface",  12.0249, 5e-3),
     pytest.param("clode", "default", 16.8303, 1e-2, marks=pytest.mark.gpu),  # adaptive ODE solver: minutes on CPU
 ]
 
@@ -51,14 +54,17 @@ def test_testkit_psnr(name: str, weights: str, expected: float, tol: float,
     if name == "clode" and regression_device.type != "cuda":
         pytest.skip("needs CUDA")
     enum = MODELS.get(name).weights_enum  # type: ignore[attr-defined]
+    spec = resolve_weights(weights, enum)
+    assert spec is not None
     try:
-        resolve_weights(weights, enum).resolve(download=False)  # type: ignore[union-attr]
+        spec.resolve(download=False)
     except (FileNotFoundError, RuntimeError):
         pytest.skip("released weights not in the zoo")
+    key = str(spec.meta.get("output_key", "enhanced"))  # the checkpoint's official output
     images, targets = testkit_lle
     model = load(name, weights, device=regression_device)
     with torch.no_grad():
-        out = torch.cat([model(images[i:i + 8].to(regression_device))["enhanced"].clamp(0, 1).cpu()
+        out = torch.cat([model(images[i:i + 8].to(regression_device))[key].clamp(0, 1).cpu()
                          for i in range(0, len(images), 8)])
     y = (out * 255).round() / 255
     psnr = 10 * torch.log10(1 / ((y - targets) ** 2).mean(dim=(1, 2, 3)))

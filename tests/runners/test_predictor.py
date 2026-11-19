@@ -153,3 +153,26 @@ def test_cli_usage(capsys: pytest.CaptureFixture[str]):
     assert main([]) == 2
     assert main(["fly"]) == 2 and "unknown command" in capsys.readouterr().err
     assert main(["train"]) == 2 and "model is required" in capsys.readouterr().err
+
+
+def test_weights_meta_picks_the_official_output(images: StdPath, tmp_path: StdPath):
+    from mon.runners.predictor import _weights_output_key
+
+    entry = MODELS.entry("ruas")
+    assert _weights_output_key(PredictConfig(model="ruas", data="x", weights="upe"), entry, False) == "pre_denoise"
+    assert _weights_output_key(PredictConfig(model="ruas", data="x", weights="lol_v1"), entry, False) == "enhanced"
+    assert _weights_output_key(PredictConfig(model="ruas", data="x", weights=None), entry, False) is None
+    try:
+        ruas_upe = load("ruas", "upe")
+    except FileNotFoundError as err:
+        pytest.skip(f"released weights not available: {err}")
+    run = predict(_cfg(images, tmp_path, model="ruas", weights="upe"))
+    x = read_image(images / "a.png").float()[None] / 255
+    with torch.no_grad():
+        expected = ruas_upe(x)["pre_denoise"].clamp(0, 1)
+    got = read_image(run / "a.png").float()[None] / 255
+    assert (got - expected).abs().max() <= 1 / 255 + 1e-6
+    run = predict(_cfg(images, tmp_path / "explicit", model="ruas", weights="upe", output_key="enhanced"))
+    with torch.no_grad():
+        expected = ruas_upe(x)["enhanced"].clamp(0, 1)
+    assert ((read_image(run / "a.png").float()[None] / 255) - expected).abs().max() <= 1 / 255 + 1e-6

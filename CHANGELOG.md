@@ -20,6 +20,9 @@
 
 ### Added
 
+- `lle.ruas` (RUAS, CVPR 2021) with the three released checkpoints (`lol_v1`, `upe` default, `darkface`); matches the
+  official forward pass exactly. `mon predict` saves each checkpoint's official output (`Weights.meta["output_key"]`:
+  denoised for `lol_v1`, pre-denoise for `upe`/`darkface`) unless `output_key` is set.
 - `mon benchmark model=<name> [size=[H,W]] …` (`mon.runners.benchmarker`) and `mon.nn.complexity`: parameters,
   FLOPs/MACs (`torch.utils.flop_counter`, no new dependency; matmuls and convolutions only), forward latency (mean,
   median, std), and peak CUDA memory, on a seeded random input; `output=` writes the result as YAML.
