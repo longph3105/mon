@@ -20,6 +20,9 @@
 
 ### Added
 
+- `mon benchmark model=<name> [size=[H,W]] …` (`mon.runners.benchmarker`) and `mon.nn.complexity`: parameters,
+  FLOPs/MACs (`torch.utils.flop_counter`, no new dependency; matmuls and convolutions only), forward latency (mean,
+  median, std), and peak CUDA memory, on a seeded random input; `output=` writes the result as YAML.
 - `mon.data.zoo.testkit`: `testkit_lle`, `testkit_lle_unpaired`, `testkit_mef`, `testkit_classify`: 100 samples each
   (256×256) for fast tests, built deterministically by `python -m mon.data.zoo testkit build` (manifest with
   source SHA-256s). `ClassFolderDataset.items()`.

@@ -1,27 +1,31 @@
-"""Runners: drive models over data end to end: training, prediction, evaluation.
+"""Runners: drive models over data end to end: training, prediction, evaluation, benchmarking.
 
 Names are re-exported lazily (see ``mon.core``).
 
 Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 
-    =========  ===========================================================================  ========================
-    Module     Purpose                                                                      Key names
-    =========  ===========================================================================  ========================
-    cli        Command-line entry point: ``mon train``, ``mon predict``, ``mon evaluate``.  main
-    evaluator  Score saved predictions against targets with image-quality metrics.          EvaluateConfig, evaluate
-    predictor  Run a model over images and save its outputs.                                PredictConfig, predict
-    trainer    Train a registered model with its recipe, validate, checkpoint, and resume.  TrainConfig, train
-    =========  ===========================================================================  ========================
+    ===========  ==============================================================================================  ==========================
+    Module       Purpose                                                                                         Key names
+    ===========  ==============================================================================================  ==========================
+    benchmarker  Measure a registered model's complexity: parameters, FLOPs/MACs, latency, peak memory.          BenchmarkConfig, benchmark
+    cli          Command-line entry point: ``mon train``, ``mon predict``, ``mon evaluate``, ``mon benchmark``.  main
+    evaluator    Score saved predictions against targets with image-quality metrics.                             EvaluateConfig, evaluate
+    predictor    Run a model over images and save its outputs.                                                   PredictConfig, predict
+    trainer      Train a registered model with its recipe, validate, checkpoint, and resume.                     TrainConfig, train
+    ===========  ==============================================================================================  ==========================
 """
 
 from typing import TYPE_CHECKING
 
 from mon.core._lazy import make_lazy
 
-_SUBMODULES: tuple[str, ...] = ("cli", "evaluator", "predictor", "trainer")
+_SUBMODULES: tuple[str, ...] = ("benchmarker", "cli", "evaluator", "predictor", "trainer")
 
 # Public name -> submodule. Keep in sync with each submodule's ``__all__``.
 _EXPORTS: dict[str, str] = {
+    # benchmarker
+    "BenchmarkConfig": "benchmarker",
+    "benchmark"      : "benchmarker",
     # cli
     "main"          : "cli",
     # evaluator
@@ -40,11 +44,13 @@ _EXPORTS: dict[str, str] = {
 
 # Literal list so static tools (mypy, pyright) see the re-exports; must equal sorted(_EXPORTS).
 __all__ = [
+    "BenchmarkConfig",
     "EvaluateConfig",
     "OptimizerConfig",
     "PredictConfig",
     "SchedulerConfig",
     "TrainConfig",
+    "benchmark",
     "evaluate",
     "main",
     "predict",
@@ -56,6 +62,7 @@ __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 
 
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
+    from mon.runners.benchmarker import BenchmarkConfig, benchmark
     from mon.runners.cli import main
     from mon.runners.evaluator import EvaluateConfig, evaluate
     from mon.runners.predictor import PredictConfig, predict

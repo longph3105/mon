@@ -5,24 +5,31 @@ Layers and losses are added when a ported model needs them; plain ``torch.nn`` a
 
 Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 
-    ========  ====================================================================  ===========================================
-    Module    Purpose                                                               Key names
-    ========  ====================================================================  ===========================================
-    losses    Loss functions shared by several models, one module per family.       ExposureControlLoss, SpatialConsistencyLoss
-    tiling    Tiled inference for large images, blended with a Hann window.         tiled_forward, tile_starts
-    training  Training recipes: a model's step, loss, init, and official defaults.  TrainRecipe
-    utils     Model helpers: parameter counts, freezing, device lookup.             count_parameters, freeze, module_device
-    ========  ====================================================================  ===========================================
+    ==========  ====================================================================  ===========================================
+    Module      Purpose                                                               Key names
+    ==========  ====================================================================  ===========================================
+    complexity  Model complexity: parameters, FLOPs/MACs, latency, and peak memory.   profile_complexity, count_flops
+    losses      Loss functions shared by several models, one module per family.       ExposureControlLoss, SpatialConsistencyLoss
+    tiling      Tiled inference for large images, blended with a Hann window.         tiled_forward, tile_starts
+    training    Training recipes: a model's step, loss, init, and official defaults.  TrainRecipe
+    utils       Model helpers: parameter counts, freezing, device lookup.             count_parameters, freeze, module_device
+    ==========  ====================================================================  ===========================================
 """
 
 from typing import TYPE_CHECKING
 
 from mon.core._lazy import make_lazy
 
-_SUBMODULES: tuple[str, ...] = ("losses", "tiling", "training", "utils")
+_SUBMODULES: tuple[str, ...] = ("complexity", "losses", "tiling", "training", "utils")
 
 # Public name -> submodule. Keep in sync with each submodule's ``__all__``.
 _EXPORTS: dict[str, str] = {
+    # complexity
+    "Complexity"                : "complexity",
+    "count_flops"               : "complexity",
+    "measure_latency"           : "complexity",
+    "measure_peak_memory"       : "complexity",
+    "profile_complexity"        : "complexity",
     # losses
     "ColorConstancyLoss"        : "losses",
     "ExposureControlLoss"       : "losses",
@@ -48,6 +55,7 @@ _EXPORTS: dict[str, str] = {
 # Literal list so static tools (mypy, pyright) see the re-exports; must equal sorted(_EXPORTS).
 __all__ = [
     "ColorConstancyLoss",
+    "Complexity",
     "ExposureControlLoss",
     "IlluminationSmoothnessLoss",
     "Reduction",
@@ -55,10 +63,14 @@ __all__ = [
     "StepOutput",
     "TrainRecipe",
     "check_reduction",
+    "count_flops",
     "count_parameters",
     "freeze",
     "hann_window_2d",
+    "measure_latency",
+    "measure_peak_memory",
     "module_device",
+    "profile_complexity",
     "reduce_loss",
     "tile_starts",
     "tiled_forward",
@@ -69,6 +81,7 @@ __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 
 
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
+    from mon.nn.complexity import Complexity, count_flops, measure_latency, measure_peak_memory, profile_complexity
     from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
     from mon.nn.losses.zero_reference import (
         ColorConstancyLoss, ExposureControlLoss, IlluminationSmoothnessLoss, SpatialConsistencyLoss,

@@ -149,7 +149,7 @@ def test_cli_predict(images: StdPath, tmp_path: StdPath, capsys: pytest.CaptureF
 
 
 def test_cli_usage(capsys: pytest.CaptureFixture[str]):
-    assert main(["--help"]) == 0 and "usage: mon {train,predict,evaluate}" in capsys.readouterr().out
+    assert main(["--help"]) == 0 and "usage: mon {train,predict,evaluate,benchmark}" in capsys.readouterr().out
     assert main([]) == 2
     assert main(["fly"]) == 2 and "unknown command" in capsys.readouterr().err
     assert main(["train"]) == 2 and "model is required" in capsys.readouterr().err

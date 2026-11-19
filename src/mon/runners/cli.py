@@ -1,4 +1,4 @@
-"""Command-line entry point: ``mon train``, ``mon predict``, ``mon evaluate``.
+"""Command-line entry point: ``mon train``, ``mon predict``, ``mon evaluate``, ``mon benchmark``.
 
 Usage: ``mon <command> [config.yaml] key=value ...`` (OmegaConf dotlist overrides).
 """
@@ -11,12 +11,13 @@ import sys
 from collections.abc import Sequence
 
 USAGE = """\
-usage: mon {train,predict,evaluate} [CONFIG.yaml] [key=value ...]
+usage: mon {train,predict,evaluate,benchmark} [CONFIG.yaml] [key=value ...]
 
 commands:
   train     Train a model with its official recipe (keys: mon.runners.trainer.TrainConfig).
   predict   Run a model over images and save its outputs (keys: mon.runners.predictor.PredictConfig).
   evaluate  Score saved predictions with image-quality metrics (keys: mon.runners.evaluator.EvaluateConfig).
+  benchmark Measure params, FLOPs/MACs, latency, peak memory (keys: mon.runners.benchmarker.BenchmarkConfig).
 
 examples:
   mon train model=zero_dce                                  # official recipe: SICE-ME, 100 epochs
@@ -27,6 +28,8 @@ examples:
   mon predict model=zero_ig data=night.png fit_args.iterations=500 device=cuda:0
   mon evaluate pred=runs/predict/dccnet/lol_v1_test data=lol_v1 "metrics=[psnr,ssim,lpips]"
   mon evaluate pred=runs/predict/zero_dce/dicm_test metrics=[niqe]
+  mon benchmark model=zero_dce size=[900,1200] device=cuda:0
+  mon benchmark model=zero_dce++ model_args.scale_factor=12 output=zero_dce++.yaml
 """
 
 
@@ -37,7 +40,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(USAGE, end="")
         return 0 if args else 2
     command, rest = args[0], args[1:]
-    if command not in ("train", "predict", "evaluate"):
+    if command not in ("train", "predict", "evaluate", "benchmark"):
         print(f"mon: unknown command {command!r}\n\n{USAGE}", end="", file=sys.stderr)
         return 2
     if any(a in ("-h", "--help") for a in rest):
@@ -68,10 +71,14 @@ def _run(command: str, path: str | None, rest: list[str]) -> None:
         from mon.runners.predictor import PredictConfig, predict
 
         print(predict(load_config(path, rest, schema=PredictConfig)))
-    else:
+    elif command == "evaluate":
         from mon.runners.evaluator import EvaluateConfig, evaluate
 
         evaluate(load_config(path, rest, schema=EvaluateConfig))
+    else:
+        from mon.runners.benchmarker import BenchmarkConfig, benchmark
+
+        benchmark(load_config(path, rest, schema=BenchmarkConfig))
 
 
 if __name__ == "__main__":

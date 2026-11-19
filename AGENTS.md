@@ -34,7 +34,8 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   `ImageFolder`), `loader`, `transforms`; `zoo` has `lol_v1`, `lol_v2_real`, `sice`, `sice_me`, the six
   `unpaired_lol` sets, `cifar10`, `cifar100`, `mnist`, `fashion_mnist`, and the `testkit_*` test fixtures.
   Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
-- **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference done; layers added per model.
+- **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference, complexity (params, FLOPs/MACs,
+  latency, peak memory) done; layers added per model.
 - **In progress:** `mon.models`: lazy `MODELS` index and `load` done; `lle.zero_dce` (Zero-DCE, Zero-DCE++),
   `lle.sci` (SCI, SCI++), `lle.pairlie`, `lle.clode`, `lle.dccnet`, `lle.flol`, `lle.hvi_cidnet`,
   `lle.retinexnet` ported with released weights and parity tests; `lle.colie` (zero-shot, `mon_old` parity);
@@ -44,7 +45,7 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 - **In progress:** `mon.metrics`: `psnr`, `ssim`, `lpips` (full-reference), `niqe` (no-reference), lazy
   `METRICS` index; defaults follow pyiqa (parity tests), which is not a dependency.
 - **In progress:** `mon.runners`: `trainer` (`mon train`; recipes for `zero_dce`, `zero_dce++`, `sci`, `zero_ig`),
-  `predictor` (`mon predict`), `evaluator` (`mon evaluate`).
+  `predictor` (`mon predict`), `evaluator` (`mon evaluate`), `benchmarker` (`mon benchmark`).
 - **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
 - **Next:** recipes for the other models (PairLIE: exposure-pair sampling; SCI++: two alternating optimizers; the
   supervised models once their paper losses are ported); more metrics when needed; plotting.
@@ -75,8 +76,8 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 | `src/mon/data/`    | Files → samples → batches; may import only `mon.core`. Overview: `help(mon.data)`.                                    |
 | `src/mon/metrics/` | Image-quality metrics and the lazy `METRICS` index; may import only `mon.core`. Overview: `help(mon.metrics)`.        |
 | `src/mon/models/`  | Models by task (`lle/`, …), lazy `MODELS` index, `load`; imports `mon.core`, `mon.nn`. Overview: `help(mon.models)`.  |
-| `src/mon/nn/`      | Losses, model helpers, tiled inference; imports only `mon.core`. Overview: `help(mon.nn)`.                            |
-| `src/mon/runners/` | Runners (train, predict, evaluate) and the `mon` CLI; imports any `mon` package. Overview: `help(mon.runners)`.       |
+| `src/mon/nn/`      | Losses, model helpers, tiled inference, complexity; imports only `mon.core`. Overview: `help(mon.nn)`.                |
+| `src/mon/runners/` | Runners (train, predict, evaluate, benchmark), `mon` CLI; imports any `mon` package. Overview: `help(mon.runners)`.   |
 | `tests/`           | Tests, mirroring the `src/mon/` module tree.                                                                          |
 | `CHANGELOG.md`     | User-facing changes, newest first.                                                                                    |
 | `README.md`        | Install, usage, citation.                                                                                             |
@@ -104,6 +105,7 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 | Train             | `uv run mon train model=<name> [data=<id or folder>] …`      |
 | Predict           | `uv run mon predict model=<name> data=<path or id> …`        |
 | Evaluate          | `uv run mon evaluate pred=<run dir> data=<id or folder> …`   |
+| Benchmark         | `uv run mon benchmark model=<name> [size=[H,W]] …`           |
 | Lint Markdown     | `npx markdownlint-cli2 "*.md" "docs/**/*.md" "logs/**/*.md"` |
 
 - The lock must resolve for macOS arm64 and Linux x86_64 (`tool.uv.required-environments`).

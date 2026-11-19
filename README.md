@@ -88,6 +88,7 @@ config in its run directory under `$RUNS_DIR`):
 uv run mon train model=zero_dce device=cuda:0
 uv run mon predict model=zero_dce data=sice_me split=val device=cuda:0
 uv run mon evaluate pred=<run dir> data=sice_me split=val "metrics=[psnr,ssim,lpips]"
+uv run mon benchmark model=zero_dce size=[900,1200] device=cuda:0  # params, FLOPs/MACs, latency, memory
 ```
 
 Datasets, transforms and loaders: [docs/data.md](docs/data.md).
