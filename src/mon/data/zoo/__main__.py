@@ -1,4 +1,4 @@
-"""Dataset builders: ``python -m mon.data.zoo testkit build [--out DIR] [--overwrite]``."""
+"""Dataset builders: ``python -m mon.data.zoo testkit build [--out DIR] [--overwrite] [--part NAME ...]``."""
 
 import argparse
 import sys
@@ -13,13 +13,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     b = tk_sub.add_parser("build", help="build it from the source datasets")
     b.add_argument("--out", help="output directory (default: $DATASETS_DIR/testkit)")
     b.add_argument("--overwrite", action="store_true", help="replace existing files (none are deleted)")
+    b.add_argument("--part", action="append", dest="parts", metavar="NAME",
+                   help="build only this part (repeatable): lle, lle_unpaired, mef, classify, efficiency")
     args = parser.parse_args(argv)
 
     from mon.core.console import setup_logging
     from mon.data.zoo.testkit import build
 
     setup_logging()
-    print(build(args.out, overwrite=args.overwrite))
+    print(build(args.out, overwrite=args.overwrite, parts=args.parts))
     return 0
 
 

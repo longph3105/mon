@@ -11,11 +11,18 @@ size), stored as PNG under ``datasets_dir() / "testkit"``. One dataset id per ta
 - ``testkit_mef``: exposure stacks, 25 SICE test scenes (evenly spaced among those with ≥ 4 exposures) × 4
   exposures (darkest, two in between, brightest) = 100, plus each scene's reference.
 - ``testkit_classify``: CIFAR-10 test, the first 10 images of each class = 100 (32×32, native).
+- ``testkit_efficiency``: model efficiency (params, MACs, speed, memory) across resolutions, not quality: the same
+  5 dark SICE test scenes (darkest exposure; scenes with a landscape photo of at least 3840×2160, evenly spaced) at
+  each of ``EFFICIENCY_SIZES`` (256×256 to 8K), paired with the scene's reference: ``test/images/<W>x<H>/sice_<scene>.png``
+  and ``test/targets/<W>x<H>/sice_<scene>.png``. Both get the identical scaling to cover the size and centre crop:
+  ``INTER_AREA`` down, bicubic up (only 8K, which exceeds every SICE photo).
+  ``mon benchmark data=testkit_efficiency`` measures a model on it.
 
 Inputs and targets of a pair get the identical resize and crop, so they stay aligned. Stems are
 ``<source dataset>_<source stem>`` (``/`` → ``_``), e.g. ``lol_v1_111``, ``sice_me_12_3``.
 ``build`` writes ``manifest.yaml`` (source path and SHA-256 of every source and output file), so any
-machine rebuilds the same files: ``python -m mon.data.zoo testkit build``. New tasks add a dataset here
+machine rebuilds the same files: ``python -m mon.data.zoo testkit build`` (``--part efficiency`` rebuilds one
+part and updates its manifest entries). New tasks add a dataset here
 when their data and models exist.
 
 Use it for regression tests (seconds, any device); the full datasets stay for parity with papers.
@@ -25,14 +32,17 @@ Examples:
     >>> from mon.core.enums import Task
     >>> from mon.data.dataset import DATASETS
     >>> sorted(n for n in DATASETS.names() if n.startswith("testkit"))
-    ['testkit_classify', 'testkit_lle', 'testkit_lle_unpaired', 'testkit_mef']
+    ['testkit_classify', 'testkit_efficiency', 'testkit_lle', 'testkit_lle_unpaired', 'testkit_mef']
     >>> TestkitMEF.pair_key("target", "sice_3/1")
     'sice_3'
 """
 
 __all__ = [
+    "EFFICIENCY_SIZES",
+    "PARTS",
     "SIZE",
     "TestkitClassify",
+    "TestkitEfficiency",
     "TestkitLLE",
     "TestkitLLEUnpaired",
     "TestkitMEF",
@@ -62,6 +72,12 @@ SIZE = 256
 _LLE_PAIRED    = (("lol_v1", "test", 15), ("lol_v2_real", "test", 40), ("sice_me", "val", 45))
 _UNPAIRED_SETS = (("dicm", 25), ("fusion", 16), ("lime", 10), ("mef", 17), ("npe", 8), ("vv", 24))
 _MEF_SCENES, _MEF_EXPOSURES, _PER_CLASS = 25, 4, 10
+_EFFICIENCY_SCENES = 5
+
+EFFICIENCY_SIZES: tuple[tuple[int, int], ...] = (
+    (256, 256), (512, 512), (600, 400), (1280, 720), (1920, 1080), (2560, 1440), (3840, 2160), (7680, 4320),
+)
+"""``(W, H)`` of ``testkit_efficiency``: square sizes papers use, LOL-v1's native size, 720p, 1080p, 2K, 4K, 8K."""
 
 
 # --- Datasets ---
@@ -111,6 +127,18 @@ class TestkitClassify(ClassFolderDataset):
     layout = classification_layout("test")
 
 
+@register_dataset("testkit_efficiency", tasks={Task.LLE})
+class TestkitEfficiency(FolderDataset):
+    """Testkit efficiency ladder: 5 dark SICE scenes and their references at each of ``EFFICIENCY_SIZES``.
+
+    ``meta.stem`` = ``"<W>x<H>/<scene>"``.
+    """
+
+    __test__ = False  # "Test…" names: keep pytest from collecting these classes
+    folder = "testkit/efficiency"
+    layout = paired_layout("test")
+
+
 # --- Builder ---
 
 def _sha256(path: Path) -> str:
@@ -132,6 +160,16 @@ def _square(img: np.ndarray, size: int = SIZE) -> np.ndarray:
     img = cv2.resize(img, (nw, nh), interpolation=cv2.INTER_AREA)
     top, left = (nh - size) // 2, (nw - size) // 2
     return img[top:top + size, left:left + size]
+
+
+def _cover(img: np.ndarray, width: int, height: int) -> np.ndarray:
+    """Scale to cover ``width × height`` (area down, bicubic up) and centre-crop to it."""
+    h, w = img.shape[:2]
+    scale = max(width / w, height / h)
+    nw, nh = max(width, round(w * scale)), max(height, round(h * scale))
+    img = cv2.resize(img, (nw, nh), interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_CUBIC)
+    top, left = (nh - height) // 2, (nw - width) // 2
+    return img[top:top + height, left:left + width]
 
 
 def _evenly(items: Sequence[Any], count: int) -> list[Any]:
@@ -196,6 +234,39 @@ def _mef(w: _Writer) -> None:
         w.write(_square(_read(target)), f"mef/test/targets/sice_{scene}.png", target)
 
 
+def _efficiency(w: _Writer) -> None:
+    from mon.data.dataset import DATASETS
+
+    darkest: dict[str, Path] = {}
+    targets: dict[str, Path] = {}
+    for stem, files in DATASETS.build("sice", "test").items():
+        scene, k = stem.split("/", 1)
+        if k == "1":
+            darkest[scene], targets[scene] = files["image"], files["target"]
+    scenes = sorted(darkest, key=lambda s: (len(s), s))                                  # numeric order
+    min_w, min_h = EFFICIENCY_SIZES[-2]                                                   # 4K: largest pure downscale
+    picked: list[tuple[str, np.ndarray]] = []
+    for start in (round(i * len(scenes) / _EFFICIENCY_SCENES) for i in range(_EFFICIENCY_SCENES)):
+        for scene in scenes[start:]:                                                      # first fit from each start
+            if scene in {p for p, _ in picked}:
+                continue
+            img = _read(darkest[scene])
+            if img.shape[1] >= max(img.shape[0], min_w) and img.shape[0] >= min_h:
+                picked.append((scene, img))
+                break
+    if len(picked) < _EFFICIENCY_SCENES:
+        raise ValueError(f"found only {len(picked)} SICE test scenes with a landscape photo >= {min_w}×{min_h}")
+    refs = {scene: _read(targets[scene]) for scene, _ in picked}
+    for scene, img in picked:
+        if refs[scene].shape != img.shape:
+            raise ValueError(f"SICE test scene {scene}: target {refs[scene].shape} differs from input {img.shape}")
+    for width, height in EFFICIENCY_SIZES:
+        for scene, img in picked:
+            rel = f"{width}x{height}/sice_{scene}.png"
+            w.write(_cover(img, width, height), f"efficiency/test/images/{rel}", darkest[scene])
+            w.write(_cover(refs[scene], width, height), f"efficiency/test/targets/{rel}", targets[scene])
+
+
 def _classify(w: _Writer) -> None:
     from mon.data.dataset import DATASETS
 
@@ -212,20 +283,47 @@ def _classify(w: _Writer) -> None:
     classes.write_text("\n".join(names) + "\n")
 
 
-def build(out: str | Path | None = None, *, overwrite: bool = False) -> Path:
+PARTS: dict[str, str] = {"lle": "lle", "lle_unpaired": "lle_unpaired", "mef": "mef", "classify": "classify",
+                         "efficiency": "efficiency"}
+"""Builder parts → their folder under the testkit root."""
+
+_BUILDERS = {"lle": _lle, "lle_unpaired": _lle_unpaired, "mef": _mef, "classify": _classify, "efficiency": _efficiency}
+_RESIZE = ("short side to size (cv2.INTER_AREA), centre crop; classify: native; efficiency: cover each size "
+           "(INTER_AREA down, INTER_CUBIC up), centre crop")
+
+
+def build(out: str | Path | None = None, *, overwrite: bool = False, parts: Sequence[str] | None = None) -> Path:
     """Build the testkit from the source datasets (all must be on this machine); return its root.
 
+    ``parts`` (keys of ``PARTS``; default all) rebuilds only those: their manifest entries are replaced, the
+    others' kept.
+
     Raises:
-        FileExistsError: If ``out`` exists and ``overwrite`` is false (nothing is ever deleted).
-        FileNotFoundError / ValueError: Missing source datasets or files.
+        FileExistsError: If a part's folder (or, for a full build, ``out``) has files and ``overwrite`` is false
+            (nothing is ever deleted).
+        FileNotFoundError / ValueError: Missing source datasets or files, or an unknown part.
     """
     root = Path(out) if out is not None else datasets_dir() / "testkit"
-    if root.exists() and any(root.iterdir()) and not overwrite:
-        raise FileExistsError(f"{root} exists; pass overwrite=True (files are replaced, none deleted)")
+    names = list(PARTS) if parts is None else list(parts)
+    unknown = sorted(set(names) - set(PARTS))
+    if unknown:
+        raise ValueError(f"unknown testkit parts {unknown}; choose from {list(PARTS)}")
+    targets = [root] if parts is None else [root / PARTS[n] for n in names]
+    for target in targets:
+        if target.exists() and any(target.iterdir()) and not overwrite:
+            raise FileExistsError(f"{target} exists; pass overwrite=True (files are replaced, none deleted)")
+    manifest = root / "manifest.yaml"
+    kept: list[dict[str, str]] = []
+    if parts is not None and manifest.is_file():
+        from mon.core.fileio import load_yaml
+
+        prefixes = tuple(f"{PARTS[n]}/" for n in names)
+        kept = [e for e in load_yaml(manifest)["files"] if not e["file"].startswith(prefixes)]
     w = _Writer(root)
-    for part in (_lle, _lle_unpaired, _mef, _classify):
-        part(w)
-        logger.info("testkit: %s done (%d files so far)", part.__name__.strip("_"), len(w.entries))
-    save_yaml({"size": SIZE, "resize": "short side to size (cv2.INTER_AREA), centre crop; classify: native",
-               "files": w.entries}, root / "manifest.yaml")
+    for name in names:
+        _BUILDERS[name](w)
+        logger.info("testkit: %s done (%d files so far)", name, len(w.entries))
+    entries = sorted(kept + w.entries, key=lambda e: [*PARTS.values()].index(e["file"].split("/", 1)[0]))
+    save_yaml({"size": SIZE, "efficiency_sizes": [f"{a}x{b}" for a, b in EFFICIENCY_SIZES], "resize": _RESIZE,
+               "files": entries}, manifest)
     return root

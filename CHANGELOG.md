@@ -20,6 +20,10 @@
 
 ### Added
 
+- `mon benchmark data=testkit_efficiency` (or any dataset id or folder): params, MACs, latency, and peak memory per
+  image resolution on real images, with out-of-memory sizes recorded; `sizes=[...]` filters, `output=` writes YAML
+  and CSV. New `testkit_efficiency`: 5 dark SICE scenes and their references at 256×256, 512×512, 600×400, 720p,
+  1080p, 2K, 4K and 8K (`python -m mon.data.zoo testkit build --part efficiency`; `--part` rebuilds one part).
 - No-reference metrics `brisque` (lower is better), `nrqm` (Ma et al., higher is better) and `pi` (PIRM perceptual
   index, lower is better), matching pyiqa 0.1.16 (BRISQUE within 0.1, NRQM and PI within 2e-3 on LOL-v1). NRQM's
   official forests need a one-time conversion: `uv run --with scipy python -m mon.metrics.nrqm convert model.mat`.
