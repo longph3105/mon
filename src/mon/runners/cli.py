@@ -30,6 +30,7 @@ examples:
   mon evaluate pred=runs/predict/zero_dce/dicm_test metrics=[niqe]
   mon benchmark model=zero_dce size=[900,1200] device=cuda:0
   mon benchmark model=zero_dce++ model_args.scale_factor=12 output=zero_dce++.yaml
+  mon benchmark model=colie data=testkit_efficiency device=cuda:0  # zero-shot: per-image fit time
 """
 
 

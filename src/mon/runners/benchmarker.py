@@ -5,8 +5,14 @@ weights, and nothing needs downloading), runs it on a seeded random ``[batch, 3,
 (``[batch, stack, 3, H, W]`` for exposure-stack models), and returns
 ``mon.nn.complexity.Complexity`` as a dict with the resolved config under ``config``. ``H`` and
 ``W`` are rounded up to the model's ``input_multiple``. The result is printed; with ``output``,
-it is also written there as YAML. For a zero-shot model this measures one forward pass of the
-network, not the per-image fitting.
+it is also written there as YAML.
+
+A zero-shot model (registry ``zero_shot=True``, e.g. ``colie``, ``zero_ig``) is measured as it runs at test time:
+each timed run is one call of its registry ``fit`` function (a fresh network fitted to the input, ``fit_args``
+passed through), so latency is the per-image fit time and peak memory is taken during the timed runs. MACs are
+the whole fit's (forward and backward, every step), counted once per input size; that pass is also the warm-up,
+so ``warmup`` defaults to 0 and ``runs`` to 1. ``zero_shot=false`` measures the network's forward pass instead
+(e.g. Zero-IG's released weights).
 
 With ``data`` (a ``DATASETS`` id, e.g. ``testkit_efficiency``, or a folder of images), it measures real
 images instead, grouped by resolution: per size, MACs (mean over the images: adaptive models such as
@@ -21,6 +27,7 @@ Examples:
     {'params': 79416, 'flops': 41523609600, 'macs': 20761804800, ...}
     >>> benchmark({"model": "zero_dce", "data": "testkit_efficiency", "output": "zero_dce.yaml"})  # doctest: +SKIP
     {'model': 'zero_dce', 'params': 79416, 'rows': [{'size': '256x256', 'macs': 5190451200.0, ...}, ...], ...}
+    >>> benchmark({"model": "colie", "data": "testkit_efficiency"})  # per-image fit time  # doctest: +SKIP
 """
 
 __all__ = [
@@ -29,10 +36,13 @@ __all__ = [
 ]
 
 import csv
+import importlib
+import inspect
 import io
 import math
 import statistics
-from collections.abc import Mapping
+import time
+from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -46,6 +56,7 @@ from mon.core.enums import Task
 from mon.core.fileio import _atomic_write_text, save_yaml
 from mon.core.path import Path
 from mon.core.runtime import seed_everything, select_device
+from mon.core.timing import synchronize
 from mon.data.dataset import DATASETS, ImageFolder
 from mon.data.transforms import pad_to_multiple
 from mon.models.registry import MODELS, load
@@ -61,8 +72,12 @@ class BenchmarkConfig:
 
     Attributes:
         model: ``MODELS`` name.
-        weights: ``load`` spec; ``None`` (default) is the constructor's random init.
+        weights: ``load`` spec; ``None`` (default) is the constructor's random init. Unused when fitting.
         model_args: Constructor arguments, e.g. ``{"scale_factor": 12}`` for Zero-DCE++.
+        zero_shot: Time the registry ``fit`` function (per-image fitting) instead of the forward pass. ``None``:
+            the registry's ``zero_shot`` flag (as ``mon predict``).
+        fit_args: Keyword arguments for the ``fit`` function, e.g. ``{"iterations": 100}`` for Zero-IG. Those
+            that are also constructor arguments (CoLIE's ``hidden_dim``) set the network whose parameters are counted.
         data: Measure real images instead of a random input: a ``DATASETS`` id (``split`` picks the split; e.g.
             ``testkit_efficiency``) or a folder (searched recursively). Grouped by resolution; ``size`` is unused.
         split: Dataset split when ``data`` is a dataset id.
@@ -70,10 +85,10 @@ class BenchmarkConfig:
         size: Input ``[H, W]`` (one value: square), rounded up to the model's ``input_multiple``.
         batch_size: Input batch size.
         stack: Images per exposure stack, for exposure-stack (MEF) models only.
-        latency: Time the forward pass.
+        latency: Time the forward pass (or fit).
         memory: Measure peak CUDA memory (``None`` on other devices).
-        warmup: Untimed forward passes before timing (with ``data``: per resolution).
-        runs: Timed forward passes (with ``data``: per image).
+        warmup: Untimed passes before timing (with ``data``: per resolution). ``None``: 5, or 0 when fitting.
+        runs: Timed passes (with ``data``: per image). ``None``: 20, or 1 when fitting.
         device: ``select_device`` spec.
         seed: Seed for the random input (``None``: drawn and recorded).
         output: YAML file for the result (with ``data``, also ``<stem>.csv``); ``None``: only printed.
@@ -83,6 +98,8 @@ class BenchmarkConfig:
     model     : str = MISSING
     weights   : str | None = None
     model_args: dict[str, Any] = field(default_factory=dict)
+    zero_shot : bool | None = None
+    fit_args  : dict[str, Any] = field(default_factory=dict)
     data      : str | None = None
     split     : str = "test"
     sizes     : list[str] | None = None
@@ -91,8 +108,8 @@ class BenchmarkConfig:
     stack     : int = 3
     latency   : bool = True
     memory    : bool = True
-    warmup    : int = 5
-    runs      : int = 20
+    warmup    : int | None = None
+    runs      : int | None = None
     device    : str = "auto"
     seed      : int | None = None
     output    : str | None = None
@@ -111,7 +128,7 @@ def _as_config(cfg: BenchmarkConfig | DictConfig | Mapping[str, Any]) -> Benchma
         raise ValueError(f"size must be [H, W] or [S] with positive values, got {obj.size}")
     if obj.batch_size < 1 or obj.stack < 1:
         raise ValueError(f"batch_size and stack must be >= 1, got {obj.batch_size}, {obj.stack}")
-    if obj.runs < 1 or obj.warmup < 0:
+    if (obj.runs is not None and obj.runs < 1) or (obj.warmup is not None and obj.warmup < 0):
         raise ValueError(f"need runs >= 1 and warmup >= 0, got runs={obj.runs}, warmup={obj.warmup}")
     return obj
 
@@ -143,21 +160,39 @@ def benchmark(cfg: BenchmarkConfig | DictConfig | Mapping[str, Any]) -> dict[str
     h, w     = _input_size(config.size, multiple)
     if (h, w) != _input_size(config.size, 1):
         logger.info("size %s rounded up to %dx%d (%s input_multiple=%d)", config.size, h, w, config.model, multiple)
-    if entry.meta.get("zero_shot", False):
-        logger.warning("%s is zero-shot: this measures one network forward pass, not the per-image fitting",
-                       config.model)
+    zero_shot = bool(entry.meta.get("zero_shot", False)) if config.zero_shot is None else config.zero_shot
+    config.zero_shot = zero_shot
+    config.warmup    = (0 if zero_shot else 5) if config.warmup is None else config.warmup
+    config.runs      = (1 if zero_shot else 20) if config.runs is None else config.runs
+    if zero_shot:
+        if config.weights is not None and config.weights.strip().lower() != "default":
+            logger.warning("weights=%r ignored: %s fits a fresh network per image (zero_shot=false runs weights)",
+                           config.weights, config.model)
+        if config.model_args:
+            logger.warning("model_args only set the network whose parameters are counted; fit_args configure the fit")
+    elif config.fit_args:
+        logger.warning("fit_args ignored: %s runs its forward pass (zero_shot=false)", config.model)
 
-    model = load(config.model, config.weights, device=device, **config.model_args)
+    model_args = config.model_args
+    if zero_shot:  # the fitted network's architecture follows fit_args (e.g. CoLIE's hidden_dim)
+        accepted   = inspect.signature(entry.obj).parameters
+        model_args = {k: v for k, v in config.fit_args.items() if k in accepted} | model_args
+    model = load(config.model, None if zero_shot else config.weights, device=device, **model_args)
+    fn    = _fit_fn(config, entry.meta.get("fit"), seed) if zero_shot else model
     if config.data is not None:
         if Task.MEF in entry.meta.get("tasks", set()):
             raise ValueError(f"{config.model!r} fuses exposure stacks; data= measures single images")
-        return _benchmark_data(config, model, multiple, device, seed, output)
+        return _benchmark_data(config, model, fn, multiple, device, seed, output)
     shape = ((config.batch_size, config.stack, 3, h, w) if Task.MEF in entry.meta.get("tasks", set())
              else (config.batch_size, 3, h, w))
     x = torch.rand(shape, device=device)
 
-    result = profile_complexity(model, x, latency=config.latency, memory=config.memory,
-                                warmup=config.warmup, runs=config.runs).to_dict()
+    if zero_shot:
+        result = {"params": count_parameters(model), **_profile_fit(fn, x, config, device),
+                  "input_shapes": [list(x.shape)], "device": str(device)}
+    else:
+        result = profile_complexity(model, x, latency=config.latency, memory=config.memory,
+                                    warmup=config.warmup, runs=config.runs).to_dict()
     result["config"] = {**asdict(config), "seed": seed, "device": str(device)}
     if device.type == "cuda":
         result["device_name"] = torch.cuda.get_device_name(device)
@@ -167,6 +202,60 @@ def benchmark(cfg: BenchmarkConfig | DictConfig | Mapping[str, Any]) -> dict[str
         save_yaml(result, output)
         logger.info("wrote %s", output)
     return result
+
+
+# --- Zero-shot fitting ---
+
+def _fit_fn(config: BenchmarkConfig, target: Any, seed: int) -> Callable[[Tensor], Any]:
+    """``x -> fit(x, seed=seed, **fit_args)`` from the registry's ``fit`` target."""
+    if not target:
+        raise ValueError(f"{config.model!r} has no 'fit' function in MODELS; set zero_shot=false")
+    module, _, name = str(target).partition(":")
+    fit    = getattr(importlib.import_module(module), name)
+    kwargs = {"seed": seed, **config.fit_args}
+    return lambda x: fit(x, **kwargs)
+
+
+def _run_fits(fn: Callable[[Tensor], Any], x: Tensor, config: BenchmarkConfig, device: torch.device,
+              *, count: bool = True, warmup: int | None = None) -> tuple[int | None, list[float], list[int]]:
+    """``(FLOPs or None, times in ms, peaks in bytes)``: one counted fit if ``count`` (also the warm-up), then
+    ``warmup`` (default ``config.warmup``) untimed and ``config.runs`` timed fits (peak CUDA memory during each)."""
+    assert config.warmup is not None and config.runs is not None
+    warmup = config.warmup if warmup is None else warmup
+    flops = count_flops(fn, x) if count else None
+    cuda  = config.memory and device.type == "cuda"
+    times: list[float] = []
+    peaks: list[int] = []
+    with torch.inference_mode():
+        for _ in range(warmup):
+            fn(x)
+        for _ in range(config.runs if config.latency or cuda else 0):
+            if cuda:
+                torch.cuda.synchronize(device)
+                torch.cuda.reset_peak_memory_stats(device)
+            synchronize()
+            start = time.perf_counter()
+            fn(x)
+            synchronize()
+            times.append((time.perf_counter() - start) * 1e3)
+            if cuda:
+                peaks.append(int(torch.cuda.max_memory_allocated(device)))
+    return flops, times if config.latency else [], peaks
+
+
+def _stats(times: list[float], peaks: list[int]) -> dict[str, Any]:
+    return {
+        "latency_ms"       : statistics.fmean(times) if times else None,
+        "latency_median_ms": statistics.median(times) if times else None,
+        "latency_std_ms"   : statistics.stdev(times) if len(times) > 1 else None,
+        "peak_memory"      : max(peaks) if peaks else None,
+    }
+
+
+def _profile_fit(fn: Callable[[Tensor], Any], x: Tensor, config: BenchmarkConfig,
+                 device: torch.device) -> dict[str, Any]:
+    flops, times, peaks = _run_fits(fn, x, config, device)
+    return {"flops": flops, "macs": None if flops is None else flops / 2, **_stats(times, peaks)}
 
 
 # --- Real images by resolution ---
@@ -193,39 +282,50 @@ def _load_images(config: BenchmarkConfig) -> dict[tuple[int, int], list[Tensor]]
     return {k: groups[k] for k in sorted(groups, key=lambda hw: (hw[0] * hw[1], hw))}
 
 
-def _measure_size(model: nn.Module, images: list[Tensor], config: BenchmarkConfig, multiple: int,
+def _measure_size(model: Callable[[Tensor], Any], images: list[Tensor], config: BenchmarkConfig, multiple: int,
                   device: torch.device) -> dict[str, Any]:
-    batches = [pad_to_multiple((img.float() / 255)[None].expand(config.batch_size, -1, -1, -1).to(device),
-                               multiple)[0] for img in images]
-    flops = [count_flops(model, x) for x in batches]
+    """One resolution's row: ``model`` is the network, or the fit function when ``config.zero_shot``."""
+    assert config.warmup is not None and config.runs is not None
+    # One image on the device at a time: a peak must not include the size's other inputs.
+    batches = [pad_to_multiple((img.float() / 255)[None].expand(config.batch_size, -1, -1, -1), multiple)[0]
+               for img in images]
+    if config.zero_shot:
+        return _measure_fit_size(model, batches, config, device)
+    flops = [count_flops(model, x.to(device)) for x in batches]
     times: list[float] = []
     peaks: list[int] = []
-    for i, x in enumerate(batches):
+    for i, x_cpu in enumerate(batches):
+        x = x_cpu.to(device)
         times += measure_latency(model, x, warmup=config.warmup if i == 0 else 0, runs=config.runs) \
             if config.latency else []
         peak = measure_peak_memory(model, x, device) if config.memory else None
         if peak is not None:
             peaks.append(peak)
-    return {
-        "macs"             : statistics.fmean(flops) / 2,
-        "macs_min"         : min(flops) / 2,
-        "macs_max"         : max(flops) / 2,
-        "latency_ms"       : statistics.fmean(times) if times else None,
-        "latency_median_ms": statistics.median(times) if times else None,
-        "latency_std_ms"   : statistics.stdev(times) if len(times) > 1 else None,
-        "peak_memory"      : max(peaks) if peaks else None,
-    }
+    return {"macs": statistics.fmean(flops) / 2, "macs_min": min(flops) / 2, "macs_max": max(flops) / 2,
+            **_stats(times, peaks)}
 
 
-def _benchmark_data(config: BenchmarkConfig, model: nn.Module, multiple: int, device: torch.device, seed: int,
-                    output: Path | None) -> dict[str, Any]:
+def _measure_fit_size(fit: Callable[[Tensor], Any], batches: list[Tensor], config: BenchmarkConfig,
+                      device: torch.device) -> dict[str, Any]:
+    """Zero-shot row: MACs counted on the first image only (counting costs a whole fit), warm-up there too."""
+    flops, times, peaks = _run_fits(fit, batches[0].to(device), config, device)
+    for x in batches[1:]:
+        _, t, p = _run_fits(fit, x.to(device), config, device, count=False, warmup=0)
+        times += t
+        peaks += p
+    macs = None if flops is None else flops / 2
+    return {"macs": macs, "macs_min": macs, "macs_max": macs, **_stats(times, peaks)}
+
+
+def _benchmark_data(config: BenchmarkConfig, model: nn.Module, fn: Callable[[Tensor], Any], multiple: int,
+                    device: torch.device, seed: int, output: Path | None) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     for (h, w), images in _load_images(config).items():
         row: dict[str, Any] = {"size": f"{w}x{h}", "images": len(images),
                                "input": [config.batch_size, 3, math.ceil(h / multiple) * multiple,
                                          math.ceil(w / multiple) * multiple]}
         try:
-            row |= _measure_size(model, images, config, multiple, device) | {"status": "ok"}
+            row |= _measure_size(fn, images, config, multiple, device) | {"status": "ok"}
         except torch.OutOfMemoryError:
             row["status"] = "oom"
         except RuntimeError as err:  # e.g. a model's size limits; recorded, the next size still runs

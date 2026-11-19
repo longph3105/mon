@@ -4,11 +4,17 @@
 
 ### Changed
 
+- `mon benchmark` on a zero-shot model (`colie`, `zero_ig`, `zs_n2n`) now times its per-image fit (the registry `fit`,
+  with `fit_args`), as `mon predict` runs it: latency per fit, peak memory during the fits, MACs of the whole fit
+  (forward and backward, every step). `warmup`/`runs` default to 0/1 there (5/20 for a forward pass);
+  `zero_shot=false` measures the network's forward pass as before. `mon benchmark model=colie` used to crash.
 - `ZERO_DCE_RECIPE` trains at 512×512, as the Zero-DCE paper states (the official script resizes to 256); on SICE-ME val
   this is closer to the released weights (PSNR 13.40 vs 13.07 at 256; released 13.59).
 
 ### Fixed
 
+- `mon benchmark data=…` kept all images of a resolution on the device at once, so each peak memory included the other
+  inputs (+1.5 GiB at 8K for 5 images); images now move to the device one at a time.
 - FLOL gave platform-dependent outputs (~1e-3 apart on arm64 vs x86_64): FFT bins that are real for real input
   carried ±1e-17 or exactly 0 imaginary parts, flipping their phase between ±π before the learned phase MLP. They
   are now set to exactly 0 (equal to the official code on x86); the parity literal was regenerated there.

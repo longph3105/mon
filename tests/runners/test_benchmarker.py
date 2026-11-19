@@ -87,3 +87,42 @@ def test_benchmark_data_sizes_filter_and_errors(tmp_path, monkeypatch):
     monkeypatch.setattr(bm, "_measure_size", flaky)
     r = benchmark({"model": "zero_dce", "data": str(imgs), "device": "cpu", "latency": False})
     assert [row["status"] for row in r["rows"]] == ["ok", "error: input too small", "oom"]
+
+
+_COLIE_FIT = {"epochs": 2, "down_size": 16, "hidden_dim": 8}
+
+
+def test_benchmark_zero_shot_times_the_fit():
+    r = benchmark({"model": "colie", "size": [32, 32], "device": "cpu", "seed": 0, "fit_args": _COLIE_FIT})
+    assert r["config"]["zero_shot"] is True and (r["config"]["warmup"], r["config"]["runs"]) == (0, 1)
+    assert r["params"] == 577  # hidden_dim from fit_args, not the constructor default (145,409)
+    assert r["macs"] > 0 and r["latency_ms"] > 0 and r["peak_memory"] is None
+
+    fit = {"model": "zero_ig", "size": [32, 32], "device": "cpu", "seed": 0, "warmup": 0, "runs": 1}
+    fitted  = benchmark(fit | {"fit_args": {"iterations": 2}})
+    forward = benchmark(fit | {"zero_shot": False})
+    assert forward["config"]["zero_shot"] is False and fitted["macs"] > 2 * forward["macs"] > 0
+    with pytest.raises(ValueError, match="no 'fit'"):
+        benchmark({"model": "zero_dce", "device": "cpu", "zero_shot": True})
+
+
+def test_benchmark_zero_shot_data(tmp_path):
+    r = benchmark({"model": "colie", "data": str(_ladder(tmp_path / "imgs", sizes=((40, 24), (64, 64)))),
+                   "device": "cpu", "seed": 0, "fit_args": _COLIE_FIT, "runs": 2})
+    assert [row["size"] for row in r["rows"]] == ["40x24", "64x64"]
+    for row in r["rows"]:
+        assert row["status"] == "ok" and row["macs"] == row["macs_min"] == row["macs_max"] > 0
+        assert row["latency_ms"] > 0 and row["latency_std_ms"] is not None  # 2 images × 2 runs
+
+
+@pytest.mark.gpu
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_benchmark_data_peak_ignores_other_images(tmp_path):
+    def peak(n):
+        root = tmp_path / f"n{n}"
+        for i in range(n):
+            write_image(torch.full((3, 256, 256), 40, dtype=torch.uint8), root / f"{i}.png")
+        r = benchmark({"model": "sci", "data": str(root), "device": "cuda:0", "latency": False, "seed": 0})
+        return r["rows"][0]["peak_memory"]
+
+    assert peak(4) == peak(1)

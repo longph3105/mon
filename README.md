@@ -90,6 +90,7 @@ uv run mon predict model=zero_dce data=sice_me split=val device=cuda:0
 uv run mon evaluate pred=<run dir> data=sice_me split=val "metrics=[psnr,ssim,lpips]"
 uv run mon benchmark model=zero_dce size=[900,1200] device=cuda:0  # params, FLOPs/MACs, latency, memory
 uv run mon benchmark model=zero_dce data=testkit_efficiency output=zero_dce.yaml  # per resolution, 256² to 8K
+uv run mon benchmark model=colie data=testkit_efficiency  # zero-shot: times the per-image fit
 ```
 
 Datasets, transforms and loaders: [docs/data.md](docs/data.md). Efficiency of every LLE model, 256² to 8K on an

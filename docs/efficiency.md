@@ -19,6 +19,9 @@ Parameters, MACs, latency and peak memory of every low-light enhancement model i
   images, so it excludes the CUDA context (~300 MiB) and the allocator's cache. MACs come from
   `FlopCounterMode` (FLOPs / 2). It counts matmuls and convolutions only, so element-wise work is not
   included (curve iterations, Retinex divisions, attention softmax).
+- **Caveat:** these peaks were measured before a benchmarker fix (2026-11-19). Each one includes the other 4
+  images of its size held on the GPU: +12 MiB at 600×400, +95 MiB at 1080p, +380 MiB at 4K, +1.5 GiB at 8K.
+  To be re-measured.
 - Raw YAML/CSV per model: `$DATA_DIR/runs/benchmark/efficiency_2026_11_19/`.
 - `_s12` rows: Zero-DCE++ and SGZ with `model_args.scale_factor=12`, their official test setting. The curve is
   estimated on a 12× downsampled input and upsampled. Plain rows use the default `scale_factor=1`.
@@ -92,6 +95,15 @@ CoLIE and Zero-IG are zero-shot methods: by default they fit a fresh network to 
 per-image cost is the fit, not one forward pass. The `zero_ig` rows above time the forward pass of its
 released weights (`zero_shot=false`). CoLIE has no released weights, so it has no forward row (its
 `forward` takes coordinates, not an image).
+
+`mon benchmark` now times the fit for a zero-shot model by default (`zero_shot=false` for the forward pass):
+
+```bash
+uv run mon benchmark model=colie data=testkit_efficiency device=cuda:0  # also fit_args.<name>=...
+```
+
+With it, CoLIE on all 5 images per size takes 0.89–0.98 s per fit across two runs and 2,763 GMACs per fit at
+every size. Its peak memory goes from 657 MiB at 256² to 1,933 MiB at 8K, which matches the table below.
 
 Below: one image per size (`sice_1`), each model's official fit defaults (`colie_enhance`: 100 Adam steps on a
 256² downsampled Value channel; `zero_ig_enhance`: 2001 steps at native resolution), wall time with CUDA
