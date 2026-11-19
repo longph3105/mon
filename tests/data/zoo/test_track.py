@@ -9,14 +9,19 @@ from mon.core.enums import Split, Task
 from mon.core.path import datasets_dir
 from mon.data.dataset import DATASETS
 from mon.data.io import write_image
-from mon.data.zoo.track import MOT16
+from mon.data.zoo.track import MOT16, MOT20
 
 
-def test_registered():
-    assert DATASETS.get("mot16") is MOT16
-    assert DATASETS.entry("mot16").meta["tasks"] == {Task.TRACK, Task.DETECT}
-    assert DATASETS.entry("mot16").meta["splits"] == {Split.TRAIN, Split.TEST}
-    assert MOT16.classes is not None and MOT16.classes.names == ["person"]
+CLASSES = {"mot16": MOT16, "mot20": MOT20}
+EXPECTED = {"mot16": (5316, 110405, 5919), "mot20": (8931, 1134614, 4479)}  # train frames, train boxes, test frames
+
+
+@pytest.mark.parametrize(("name", "cls"), CLASSES.items())
+def test_registered(name: str, cls: type):
+    assert DATASETS.get(name) is cls
+    assert DATASETS.entry(name).meta["tasks"] == {Task.TRACK, Task.DETECT}
+    assert DATASETS.entry(name).meta["splits"] == {Split.TRAIN, Split.TEST}
+    assert cls.classes is not None and cls.classes.names == ["person"]
 
 
 def test_loads_synthetic_folder(tmp_path: StdPath):
@@ -34,18 +39,20 @@ def test_loads_synthetic_folder(tmp_path: StdPath):
 
 
 @pytest.mark.slow
-def test_real_counts_and_boxes():
+@pytest.mark.parametrize("name", CLASSES)
+def test_real_counts_and_boxes(name: str):
     try:
-        root = datasets_dir() / "mot16"
+        root = datasets_dir() / name
     except RuntimeError:
         pytest.skip("DATA_DIR / DATASETS_DIR not set")
     if not root.is_dir():
         pytest.skip(f"{root} not on this machine")
-    train = MOT16("train", root=root)
-    assert len(train) == 5316
+    n_train, n_boxes, n_test = EXPECTED[name]
+    train = CLASSES[name]("train", root=root)
+    assert len(train) == n_train
     rows = [line.split() for _, p in train.items() for line in p["objects"].read_text().splitlines() if line.strip()]
-    assert len(rows) == 110405 and {r[0] for r in rows} == {"0"}
+    assert len(rows) == n_boxes and {r[0] for r in rows} == {"0"}
     for _, cx, cy, w, h in ((r[0], *map(float, r[1:])) for r in rows):  # clipped to the frame by make_mot16.sh
         assert 0 < w <= 1 and 0 < h <= 1 and cx - w / 2 > -1e-6 and cx + w / 2 < 1 + 1e-6
         assert cy - h / 2 > -1e-6 and cy + h / 2 < 1 + 1e-6
-    assert len(MOT16("test", root=root)) == 5919
+    assert len(CLASSES[name]("test", root=root)) == n_test
