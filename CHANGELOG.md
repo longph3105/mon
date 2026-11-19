@@ -4,6 +4,8 @@
 
 ### Added
 
+- Data zoo: `mit_5k` (MIT-Adobe FiveK, `mon.data.zoo.fivek`): input → Expert C pairs, 3,500 train / 500 val /
+  1,000 test (yuukicammy split), 768 px.
 - Data zoo: `mot16` (MOT16, `mon.data.zoo.track`), tagged tracking and detection: per-frame samples, train with
   the pedestrian boxes MOT evaluation counts (YOLO view, clipped to the frame), test frames without labels.
 - Data zoo: `uhd_ll` (UHD-LL, UHDFour ICLR 2023): 2,000 train / 150 test 4K pairs from the official release.

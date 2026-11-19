@@ -7,5 +7,5 @@ registers itself.
 __all__: list[str] = []
 
 from mon.data.zoo import (  # noqa: F401
-    classify, detect, lol, loli_street, ntire, segment, sice, testkit, track, uhd_ll, unpaired_lol,
+    classify, detect, fivek, lol, loli_street, ntire, segment, sice, testkit, track, uhd_ll, unpaired_lol,
 )
