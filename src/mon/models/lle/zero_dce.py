@@ -308,14 +308,18 @@ ZERO_DCE_RECIPE = TrainRecipe(
     loss     = ZeroDCELoss,
     step     = _train_step,
     defaults = {
-        "data": "sice_me", "split": "train", "resize": [256, 256], "batch_size": 8, "epochs": 100,
+        "data": "sice_me", "split": "train", "resize": [512, 512], "batch_size": 8, "epochs": 100,
         "optimizer": {"name": "adam", "lr": 1e-4, "weight_decay": 1e-4}, "grad_clip": 0.1,
     },
-    source   = "Li-Chongyi/Zero-DCE Zero-DCE_code/lowlight_train.py (e0f4adc); 100 epochs = the released Epoch99.pth "
-               "(the script's default is 200)",
-    notes    = _RESIZE_NOTE,
+    source   = "Zero-DCE paper (CVPR 2020) §4: 512×512 training images; everything else from Li-Chongyi/Zero-DCE "
+               "Zero-DCE_code/lowlight_train.py (e0f4adc), whose loader resizes to 256; 100 epochs = the released "
+               "Epoch99.pth (the script's default is 200)",
+    notes    = (_RESIZE_NOTE + ". Size follows the paper (owner's choice): on sice_me val, 512 training gives PSNR "
+                "13.40 / SSIM 0.698 / LPIPS 0.385 vs the script's 256 at 13.07 / 0.692 / 0.393 and the released weights "
+                "at 13.59 / 0.694 / 0.359. The paper's loss weights (0.5, 20) differ from the code's (5, 200); the "
+                "code's are kept (untested with the paper's)"),
 )
-"""Official Zero-DCE training: Adam 1e-4 (weight decay 1e-4), clip 0.1, batch 8, 256×256, 100 epochs on SICE-ME."""
+"""Zero-DCE training: paper size 512×512; Adam 1e-4 (weight decay 1e-4), clip 0.1, batch 8, 100 epochs on SICE-ME."""
 
 ZERO_DCEPP_RECIPE = TrainRecipe(
     loss     = lambda: ZeroDCELoss(tv_weight=1600.0),

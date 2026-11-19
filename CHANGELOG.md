@@ -2,6 +2,11 @@
 
 ## 3.0.0.dev0 — Unreleased
 
+### Changed
+
+- `ZERO_DCE_RECIPE` trains at 512×512, as the Zero-DCE paper states (the official script resizes to 256); on SICE-ME val
+  this is closer to the released weights (PSNR 13.40 vs 13.07 at 256; released 13.59).
+
 ### Fixed
 
 - `mon train resume=…` on CUDA crashed (`RNG state must be a torch.ByteTensor`): the checkpoint loads onto the GPU and

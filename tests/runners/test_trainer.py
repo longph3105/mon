@@ -37,7 +37,7 @@ def _cfg(folder: StdPath, tmp_path: StdPath, **kw: object) -> dict[str, object]:
 
 def test_recipe_defaults_sit_under_user_values():
     cfg = resolve_train_config({"model": "zero_dce", "epochs": 3})
-    assert (cfg.data, cfg.resize, cfg.batch_size, cfg.grad_clip) == ("sice_me", [256, 256], 8, 0.1)
+    assert (cfg.data, cfg.resize, cfg.batch_size, cfg.grad_clip) == ("sice_me", [512, 512], 8, 0.1)
     assert (cfg.optimizer.name, cfg.optimizer.lr, cfg.optimizer.weight_decay, cfg.epochs) == ("adam", 1e-4, 1e-4, 3)
     pp = resolve_train_config({"model": "zero_dce++", "model_args": {"num_iters": 8}})
     assert pp.resize == [512, 512] and pp.model_args == {"scale_factor": 1.0, "num_iters": 8}
