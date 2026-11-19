@@ -27,6 +27,7 @@ CASES = [  # (model, weights, mean PSNR, tolerance)
     ("ruas",       "lol_v1",    12.2862, 5e-3),
     ("ruas",       "upe",       11.5522, 5e-3),
     ("ruas",       "darkface",  12.0249, 5e-3),
+    ("sgz",        "default",   15.7665, 5e-3),
     pytest.param("clode", "default", 16.8303, 1e-2, marks=pytest.mark.gpu),  # adaptive ODE solver: minutes on CPU
 ]
 

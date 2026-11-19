@@ -11,6 +11,7 @@ One module per model family; each is listed in ``mon.models.MODELS`` and importe
 - ``retinexnet``: RetinexNet (Retinex decomposition, then illumination adjustment).
 - ``ruas``: RUAS (unrolled Retinex illumination stages and a denoiser, cells from architecture search).
 - ``sci``: SCI and SCI++ (self-calibrated illumination).
+- ``sgz``: SGZ (the Zero-DCE++ network trained with a semantic loss; released weights).
 - ``zero_dce``: Zero-DCE and Zero-DCE++ (zero-reference curve estimation).
 - ``zero_ig``: Zero-IG (joint denoising and enhancement fitted per image; dataset-trained weights too).
 """

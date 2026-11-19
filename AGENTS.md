@@ -37,7 +37,7 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 - **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference, complexity (params, FLOPs/MACs,
   latency, peak memory) done; layers added per model.
 - **In progress:** `mon.models`: lazy `MODELS` index and `load` done; `lle.zero_dce` (Zero-DCE, Zero-DCE++),
-  `lle.sci` (SCI, SCI++), `lle.pairlie`, `lle.clode`, `lle.dccnet`, `lle.flol`, `lle.hvi_cidnet`,
+  `lle.sci` (SCI, SCI++), `lle.sgz` (SGZ), `lle.pairlie`, `lle.clode`, `lle.dccnet`, `lle.flol`, `lle.hvi_cidnet`,
   `lle.retinexnet`, `lle.ruas` ported with released weights and parity tests; `lle.colie` (zero-shot, `mon_old` parity);
   `lle.zero_ig` (zero-shot, official dataset-trained weights; official inference, loss and gradient parity);
   `mef.mertens` (exposure fusion, classical) with OpenCV parity tests; `denoise.tv_denoise` (scikit-image

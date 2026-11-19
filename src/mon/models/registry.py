@@ -9,7 +9,7 @@ checks that every entry resolves and every public model class in ``mon.models`` 
 Examples:
     >>> from mon.core.enums import Task
     >>> MODELS.names(tasks=Task.LLE)
-    ['clode', 'colie', 'dccnet', 'flol', 'hvi_cidnet', 'pairlie', 'retinexnet', 'ruas', 'sci', 'sci++', 'zero_dce', 'zero_dce++', 'zero_ig']
+    ['clode', 'colie', 'dccnet', 'flol', 'hvi_cidnet', 'pairlie', 'retinexnet', 'ruas', 'sci', 'sci++', 'sgz', 'zero_dce', 'zero_dce++', 'zero_ig']
     >>> load("mertens")  # no parameters: nothing to load
     Mertens(contrast=1.0, saturation=1.0, exposure=1.0, sigma=0.2, levels=None)
     >>> model = load("zero_dce", weights=None)  # random init; weights="default" loads SICE_ME
@@ -63,6 +63,7 @@ MODELS.add_lazy("ruas"      , "mon.models.lle.ruas:RUAS"         , tasks={Task.L
 MODELS.add_lazy("sci"       , "mon.models.lle.sci:SCI"           , tasks={Task.LLE}, arch="sci",
                 train="mon.models.lle.sci:SCI_RECIPE")
 MODELS.add_lazy("sci++"     , "mon.models.lle.sci:SCIPP"         , tasks={Task.LLE}, arch="sci")
+MODELS.add_lazy("sgz"       , "mon.models.lle.sgz:SGZ"           , tasks={Task.LLE}, arch="sgz")
 MODELS.add_lazy("zero_dce"  , "mon.models.lle.zero_dce:ZeroDCE"  , tasks={Task.LLE}, arch="zero_dce",
                 train="mon.models.lle.zero_dce:ZERO_DCE_RECIPE")
 MODELS.add_lazy("zero_dce++", "mon.models.lle.zero_dce:ZeroDCEPP", tasks={Task.LLE}, arch="zero_dce",

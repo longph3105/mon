@@ -20,6 +20,8 @@
 
 ### Added
 
+- `lle.sgz` (SGZ, WACV 2022): the Zero-DCE++ network with SGZ's released weights (`sice_me`; the official test uses
+  `model_args.scale_factor=12`), checked against the official forward pass.
 - `lle.ruas` (RUAS, CVPR 2021) with the three released checkpoints (`lol_v1`, `upe` default, `darkface`); matches the
   official forward pass exactly. `mon predict` saves each checkpoint's official output (`Weights.meta["output_key"]`:
   denoised for `lol_v1`, pre-denoise for `upe`/`darkface`) unless `output_key` is set.
