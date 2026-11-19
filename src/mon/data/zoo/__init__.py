@@ -13,6 +13,6 @@ registers itself.
 __all__: list[str] = []
 
 from mon.data.zoo import (  # noqa: F401
-    cifar, cityscapes, darkface, exdark, lol, loli_street, lsrw, mit_5k, mnist, mot, nightcity, ntire, sice, testkit,
-    uhd_ll, unpaired_lol, widerface, ydld,
+    cifar, cityscapes, darkface, exdark, fisheye8k, lol, loli_street, lsrw, mit_5k, mnist, mot, nightcity, ntire, sice,
+    testkit, uhd_ll, unpaired_lol, widerface, ydld,
 )

@@ -4,6 +4,8 @@
 
 ### Added
 
+- Data zoo: `fisheye8k` (FishEye8K, `mon.data.zoo.fisheye8k`): fisheye road-object detection, 5 classes,
+  5,288 train / 2,712 val / 1,000 test images (AI City 2024 Track 4 split, by camera; test with the revised labels).
 - Data zoo: `widerface` (WIDER FACE, `mon.data.zoo.widerface`): 12,880 train / 3,226 val images with face boxes (YOLO,
   rebuilt from the official ground truth), 16,097 test images.
 - Data zoo: `lsrw_huawei` (2,450 / 30) and `lsrw_nikon` (3,150 / 20), LSRW (R2RNet) per camera

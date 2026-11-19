@@ -35,7 +35,8 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   `uhd_ll`, `mit_5k`, `lsrw_huawei`, `lsrw_nikon`, the six `unpaired_lol` sets, `cifar10`, `cifar100`, `mnist`,
   `fashion_mnist`, `exdark`, `darkface` and `ydld` (detection + LLE, YOLO boxes), `nightcity` (segmentation + LLE,
   Cityscapes train ids), `mot16` and `mot20` (tracking + detection, per-frame person boxes), `widerface` (face
-  detection), and the `testkit_*` test fixtures (`testkit_efficiency`: a 256²–8K resolution ladder for `mon benchmark`).
+  detection), `fisheye8k` (fisheye road objects), and the `testkit_*` test fixtures (`testkit_efficiency`: a 256²–8K
+  resolution ladder for `mon benchmark`).
   Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference, complexity (params, FLOPs/MACs,
   latency, peak memory) done; layers added per model.
