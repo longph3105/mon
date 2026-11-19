@@ -190,9 +190,9 @@ def test_registry():
 
 # --- Real data (LOL-v1 test split, released weights) ---
 
-@pytest.mark.slow
+@pytest.mark.full
 @pytest.mark.parametrize(("alpha", "expected_psnr"), [(0.2, 18.498), (0.14, 19.521)])
-def test_lol_v1_psnr_regression(alpha: float, expected_psnr: float):
+def test_lol_v1_psnr_regression(alpha: float, expected_psnr: float, regression_device: torch.device):
     """Mean PSNR of 8-bit outputs vs targets; measured 2026-11-18 (outputs identical to mon_old)."""
     from mon.core.path import datasets_dir
     from mon.data.zoo.lol import LOLv1
@@ -202,12 +202,13 @@ def test_lol_v1_psnr_regression(alpha: float, expected_psnr: float):
         pytest.skip("DATA_DIR / DATASETS_DIR not set")
     if not root.is_dir():
         pytest.skip(f"{root} not on this machine")
-    model = PairLIE(alpha=alpha).eval()
+    model = PairLIE(alpha=alpha).eval().to(regression_device)
     model.load_state_dict(released())
     psnrs = []
     with torch.no_grad():
         for sample in LOLv1("test"):
-            x, target = sample["image"].float() / 255, sample["target"].float() / 255
+            x      = (sample["image"].float() / 255).to(regression_device)
+            target = (sample["target"].float() / 255).to(regression_device)
             y = (model(x[None])["enhanced"][0].clamp(0, 1) * 255).round() / 255
             psnrs.append(10 * torch.log10(1 / F.mse_loss(y, target)).item())
     assert sum(psnrs) / len(psnrs) == pytest.approx(expected_psnr, abs=5e-3)

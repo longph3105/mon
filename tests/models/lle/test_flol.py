@@ -154,8 +154,8 @@ def test_registry_and_default_weights():
 
 # --- LOL-v2-real ---
 
-@pytest.mark.slow
-def test_lol_v2_real_psnr_regression():
+@pytest.mark.full
+def test_lol_v2_real_psnr_regression(regression_device: torch.device):
     """Measured 2026-11-18 on CPU (CUDA within 2e-3). The official ``evaluation.py`` protocol (float outputs, no
     clamp, peak ``max(target)``) gives the README's 21.75; 8-bit clamped outputs score higher."""
     from torch.nn import functional as F
@@ -168,12 +168,13 @@ def test_lol_v2_real_psnr_regression():
         pytest.skip("DATA_DIR / DATASETS_DIR not set")
     if not root.is_dir():
         pytest.skip(f"{root} not on this machine")
-    model = FLOL().eval()
+    model = FLOL().eval().to(regression_device)
     model.load_state_dict(released(FLOL_Weights.LOL_V2_REAL))
     psnr_8bit, psnr_official = [], []
     with torch.no_grad():
         for sample in LOLv2Real("test"):
-            x, target = sample["image"].float() / 255, sample["target"].float() / 255
+            x      = (sample["image"].float() / 255).to(regression_device)
+            target = (sample["target"].float() / 255).to(regression_device)
             y = model(x[None])["enhanced"][0]
             psnr_official.append((20 * torch.log10(target.max() / torch.sqrt(F.mse_loss(y, target)))).item())
             y8 = (y.clamp(0, 1) * 255).round() / 255

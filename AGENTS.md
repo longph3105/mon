@@ -32,8 +32,8 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   (OmegaConf), logging and progress bars, enums, registry, runtime (devices, seeding), weights, size, timing.
 - **Done:** `mon.data`: `io`, `labels`, `structures`, `dataset` (`FolderDataset`, `ClassFolderDataset`,
   `ImageFolder`), `loader`, `transforms`; `zoo` has `lol_v1`, `lol_v2_real`, `sice`, `sice_me`, the six
-  `unpaired_lol` sets, `cifar10`, `cifar100`, `mnist`, `fashion_mnist`. Samples are dicts of
-  `torchvision.tv_tensors`; transforms are torchvision v2.
+  `unpaired_lol` sets, `cifar10`, `cifar100`, `mnist`, `fashion_mnist`, and the `testkit_*` test fixtures.
+  Samples are dicts of `torchvision.tv_tensors`; transforms are torchvision v2.
 - **In progress:** `mon.nn`: zero-reference losses, model utils, tiled inference done; layers added per model.
 - **In progress:** `mon.models`: lazy `MODELS` index and `load` done; `lle.zero_dce` (Zero-DCE, Zero-DCE++),
   `lle.sci` (SCI, SCI++), `lle.pairlie`, `lle.clode`, `lle.dccnet`, `lle.flol`, `lle.hvi_cidnet`,
@@ -98,6 +98,7 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 | Bump version      | `uv version --bump <part>`                                   |
 | Test              | `uv run pytest`                                              |
 | Test, fast/CPU    | `uv run pytest -m "not slow and not gpu"`                    |
+| Test, full data   | `uv run pytest -m full`                                      |
 | Type check        | `uv run mypy`                                                |
 | Check data paths  | `uv run python -m mon.core.path`                             |
 | Train             | `uv run mon train model=<name> [data=<id or folder>] …`      |
@@ -112,7 +113,9 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   `uv version --bump major|minor|patch|alpha|beta|rc|stable|post|dev`; `uv version` prints it.
   From a pre-release (`3.0.0.dev0`), use `--bump stable` to release `3.0.0`; `--bump minor` jumps to `3.1.0`.
 - Keep runtime deps minimal: add one only when the module that needs it is ported.
-- `uv run pytest` runs `tests/` plus doctests in `src/mon/`. Markers: `slow`, `gpu` (`--strict-markers`).
+- `uv run pytest` runs `tests/` plus doctests in `src/mon/`. Markers: `slow`, `gpu`, `full` (`--strict-markers`).
+  `full` tests (whole datasets vs published numbers) are off by default (`addopts`); run them with `-m full` after
+  changing a model or the data pipeline, and before releases.
 - Dev-only tools go in `[dependency-groups] dev` (`uv add --dev <pkg>`), never in runtime deps.
 - `uv run mypy` checks `src/mon` in strict mode; keep it clean. Add `types-*` stub packages to `dev` when needed.
 - Markdown must pass markdownlint (`.markdownlint.yaml`). No Python lint or format commands yet (see **Status**).
@@ -223,6 +226,9 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
    packages, or changing the public API of code that already has callers.
 2. Add or update tests for any behavior change. Mark slow or GPU-only tests with `@pytest.mark.slow` /
    `@pytest.mark.gpu`. Before committing, `uv run pytest` and `uv run mypy` must pass.
+   Regression tests on real data use the testkit (`mon.data.zoo.testkit`: 100 samples at 256×256 per dataset, one per
+   task family) on the `regression_device` fixture (CUDA without TF32, else CPU); whole-dataset checks are `full`.
+   Extend the testkit when a new task gets data and models.
 3. Add an entry to `CHANGELOG.md` for user-visible changes.
 4. After significant work, append a short summary to `logs/<host>/log_YYYY_MM_DD.md` in this repo.
 5. Never commit model weights, datasets, checkpoints (`*.pt`, `*.pth`, `*.ckpt`), or secrets.

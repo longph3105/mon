@@ -80,10 +80,11 @@ dev             = [
 # --- pytest ---
 [tool.pytest]
 testpaths       = ["tests", "src/mon"]
-addopts         = ["--doctest-modules", "--strict-markers", "--import-mode=importlib"]
+addopts         = ["--doctest-modules", "--strict-markers", "--import-mode=importlib", "-m", "not full"]
 markers         = [
     "slow: long-running test (deselect with -m 'not slow')",
     "gpu: needs CUDA or MPS (deselect with -m 'not gpu')",
+    "full: regression on a full dataset against published numbers; off by default (run with -m full)",
 ]
 
 # --- mypy ---

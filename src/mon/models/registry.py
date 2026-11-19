@@ -19,6 +19,7 @@ Examples:
 
 __all__ = [
     "MODELS",
+    "flush_denormals",
     "load",
 ]
 
@@ -71,6 +72,25 @@ MODELS.add_lazy("zero_ig"   , "mon.models.lle.zero_ig:ZeroIG"    , tasks={Task.L
 MODELS.add_lazy("mertens"   , "mon.models.mef.mertens:Mertens"   , tasks={Task.MEF}, arch="mertens")
 
 
+def flush_denormals(model: "nn.Module") -> int:
+    """Set denormal float parameters and buffers (``0 < |x| < finfo.tiny``) to zero, in place; return how many.
+
+    Weight decay leaves many trained weights in that range (about 25% of the released Zero-DCE weights), and CPU
+    convolutions (oneDNN) are ~50× slower on them. Their products are far below float32 rounding, so outputs are
+    unchanged.
+    """
+    import torch  # lazy: keep listing models free of torch
+
+    count = 0
+    with torch.no_grad():
+        for t in [*model.parameters(), *model.buffers()]:
+            if t.is_floating_point():
+                tiny = (t != 0) & (t.abs() < torch.finfo(t.dtype).tiny)
+                count += int(tiny.sum())
+                t.masked_fill_(tiny, 0)
+    return count
+
+
 def load(
     name   : str,
     weights: WeightsLike = "default",
@@ -89,7 +109,7 @@ def load(
             ``zoo_dir()``), or ``None`` for the constructor's random init. Missing files are
             downloaded when the ``Weights`` has a ``url``.
         device: Move the model there (any ``select_device`` spec); ``None`` keeps it on CPU.
-        strict: Passed to ``load_state_dict``.
+        strict: Passed to ``load_state_dict``. Loaded weights then go through ``flush_denormals``.
         **kwargs: Constructor arguments; they must match the checkpoint's architecture.
 
     Raises:
@@ -108,6 +128,7 @@ def load(
     spec  = resolve_weights(weights, enum)
     if spec is not None:
         model.load_state_dict(spec.load_state_dict(), strict=strict)
+        flush_denormals(model)
     if device is not None:
         from mon.core.runtime import select_device  # lazy: imports torch
         model.to(select_device(device))

@@ -6,4 +6,4 @@ registers itself.
 
 __all__: list[str] = []
 
-from mon.data.zoo import classify, lol, sice, unpaired_lol  # noqa: F401
+from mon.data.zoo import classify, lol, sice, testkit, unpaired_lol  # noqa: F401

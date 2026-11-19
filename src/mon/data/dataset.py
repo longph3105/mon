@@ -377,6 +377,10 @@ class ClassFolderDataset(Dataset[Sample]):
             raise ValueError(f"{name} [{self.split.value}]: no images found in {split_dir}")
         self._items.sort(key=lambda item: item[0])
 
+    def items(self) -> list[tuple[str, Mapping[str, Path]]]:
+        """Each image's ``(stem, {"image": file})`` (stem ``"<class>/<name>"``), in sample order, unread."""
+        return [(stem, ReadOnlyDict({"image": path})) for stem, path, _ in self._items]
+
     def __len__(self) -> int:
         return len(self._items)
 

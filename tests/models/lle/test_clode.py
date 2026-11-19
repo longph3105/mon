@@ -293,7 +293,7 @@ def test_registry_and_default_weights():
 
 # --- LOL-v1 ---
 
-@pytest.mark.slow
+@pytest.mark.full
 @pytest.mark.gpu
 @pytest.mark.parametrize(("member", "expected_psnr"), [(CLODE_Weights.LOL_V1, 19.602), (CLODE_Weights.UNIVERSAL, 19.162)])
 def test_lol_v1_psnr_regression(member: CLODE_Weights, expected_psnr: float):

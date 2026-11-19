@@ -198,14 +198,15 @@ def test_registry_and_default_weights():
 
 # --- README benchmarks ---
 
-@pytest.mark.slow
+@pytest.mark.full
 @pytest.mark.parametrize(("dataset", "member", "gains", "expected"), [
     ("LOLv1", HVICIDNet_Weights.LOL_V1_WO_PERC, {"saturation_gain": 1.3}, 23.5029),         # README 23.5000
     ("LOLv1", HVICIDNet_Weights.LOL_V1_W_PERC, {"saturation_gain": 1.3}, 23.8092),          # README 23.8091
     ("LOLv2Real", HVICIDNet_Weights.LOL_V2_REAL_BEST_PSNR, {"output_gain": 0.8}, 23.9046),  # README 23.9040
     ("LOLv2Real", HVICIDNet_Weights.LOL_V2_REAL_BEST_SSIM, {"output_gain": 0.82}, 23.8977), # README 23.8975
 ])
-def test_readme_psnr(dataset: str, member: HVICIDNet_Weights, gains: dict, expected: float):
+def test_readme_psnr(dataset: str, member: HVICIDNet_Weights, gains: dict, expected: float,
+                     regression_device: torch.device):
     """Official protocol (eval.py + measure.py): clamp, truncate to 8 bit (``ToPILImage``), PSNR with +1e-8 in
     the MSE. Measured 2026-11-18 on CPU; CUDA within 4e-3."""
     from mon.core.path import datasets_dir
@@ -217,12 +218,13 @@ def test_readme_psnr(dataset: str, member: HVICIDNet_Weights, gains: dict, expec
         pytest.skip("DATA_DIR / DATASETS_DIR not set")
     if not root.is_dir():
         pytest.skip(f"{root} not on this machine")
-    model = HVICIDNet(**gains).eval()
+    model = HVICIDNet(**gains).eval().to(regression_device)
     model.load_state_dict(released(member))
     psnrs = []
     with torch.no_grad():
         for sample in cls("test"):
-            x, target = sample["image"].float() / 255, sample["target"].double()
+            x      = (sample["image"].float() / 255).to(regression_device)
+            target = (sample["target"].double()).to(regression_device)
             y8 = (model(x[None])["enhanced"][0].clamp(0, 1) * 255).to(torch.uint8).double()
             psnrs.append(10 * math.log10(255.0**2 / (((y8 - target) ** 2).mean().item() + 1e-8)))
     assert sum(psnrs) / len(psnrs) == pytest.approx(expected, abs=5e-3)

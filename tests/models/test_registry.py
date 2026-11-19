@@ -77,6 +77,8 @@ def test_load_default_released_weights():
         expected = ZeroDCE_Weights.DEFAULT.weights.load_state_dict(download=False)
     except FileNotFoundError:
         pytest.skip("released weights not available")
+    tiny = torch.finfo(torch.float32).tiny
+    expected = {k: torch.where(v.abs() < tiny, torch.zeros_like(v), v) for k, v in expected.items()}  # flush_denormals
     for spec in ("default", "SICE_ME", ZeroDCE_Weights.SICE_ME):
         model = load("zero_dce", spec)
         assert all(torch.equal(model.state_dict()[k], v) for k, v in expected.items())
@@ -122,3 +124,15 @@ def test_load_errors(tmp_path):
     finally:
         MODELS.remove("no_weights_test")
         MODELS.remove("classical_test")
+
+
+def test_flush_denormals_zeroes_only_denormals():
+    from torch import nn
+
+    from mon.models.registry import flush_denormals
+
+    layer = nn.Linear(4, 1, bias=False)
+    with torch.no_grad():
+        layer.weight.copy_(torch.tensor([[1e-40, -1e-39, 1e-3, 0.0]]))
+    assert flush_denormals(layer) == 2
+    assert layer.weight.tolist() == [[0.0, 0.0, pytest.approx(1e-3), 0.0]]

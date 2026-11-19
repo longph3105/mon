@@ -30,13 +30,15 @@ _SUBMODULES: tuple[str, ...] = ("registry",)
 
 # Public name -> submodule. Keep in sync with each submodule's ``__all__``.
 _EXPORTS: dict[str, str] = {
-    "MODELS": "registry",
-    "load"  : "registry",
+    "MODELS"         : "registry",
+    "flush_denormals": "registry",
+    "load"           : "registry",
 }
 
 # Literal list so static tools (mypy, pyright) see the re-exports; must equal sorted(_EXPORTS).
 __all__ = [
     "MODELS",
+    "flush_denormals",
     "load",
 ]
 
@@ -44,4 +46,4 @@ __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 
 
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
-    from mon.models.registry import MODELS, load
+    from mon.models.registry import MODELS, flush_denormals, load

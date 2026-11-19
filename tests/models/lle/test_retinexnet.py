@@ -213,11 +213,11 @@ def test_registry_and_default_weights():
 
 # --- LOL-v1 ---
 
-@pytest.mark.slow
+@pytest.mark.full
 @pytest.mark.parametrize(("member", "expected"), [
     (RetinexNet_Weights.LOL_V1_PSNR, 12.780), (RetinexNet_Weights.LOL_V1_SSIM, 11.579), (RetinexNet_Weights.REIMPL_9200, 17.610),
 ])
-def test_lol_v1_psnr_regression(member: RetinexNet_Weights, expected: float):
+def test_lol_v1_psnr_regression(member: RetinexNet_Weights, expected: float, regression_device: torch.device):
     """Clamp, truncate to 8 bit (the reimplementation saves ``clip(x·255).astype(uint8)``); measured 2026-11-18, CPU.
     The mon_old checkpoints score far below the reimplementation's release."""
     from mon.core.path import datasets_dir
@@ -228,12 +228,13 @@ def test_lol_v1_psnr_regression(member: RetinexNet_Weights, expected: float):
         pytest.skip("DATA_DIR / DATASETS_DIR not set")
     if not root.is_dir():
         pytest.skip(f"{root} not on this machine")
-    model = RetinexNet().eval()
+    model = RetinexNet().eval().to(regression_device)
     model.load_state_dict(released(member))
     psnrs = []
     with torch.no_grad():
         for sample in LOLv1("test"):
-            x, target = sample["image"].float()[None] / 255, sample["target"].double()
+            x      = (sample["image"].float()[None] / 255).to(regression_device)
+            target = (sample["target"].double()).to(regression_device)
             y8 = (model(x)["enhanced"][0].clamp(0, 1) * 255).to(torch.uint8).double()
             psnrs.append(10 * math.log10(255.0**2 / ((y8 - target) ** 2).mean().item()))
     assert sum(psnrs) / len(psnrs) == pytest.approx(expected, abs=5e-3)

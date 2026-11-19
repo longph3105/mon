@@ -133,8 +133,8 @@ def test_registry_and_default_weights():
 
 # --- LOL-v1 ---
 
-@pytest.mark.slow
-def test_lol_v1_psnr_regression():
+@pytest.mark.full
+def test_lol_v1_psnr_regression(regression_device: torch.device):
     """Mean PSNR of 8-bit outputs vs targets (full 600×400 images, CPU ~1 min); measured 2026-11-18. The
     official ``results/`` images score the same and differ from these outputs by at most one 8-bit level."""
     from torch.nn import functional as F
@@ -147,12 +147,13 @@ def test_lol_v1_psnr_regression():
         pytest.skip("DATA_DIR / DATASETS_DIR not set")
     if not root.is_dir():
         pytest.skip(f"{root} not on this machine")
-    model = DCCNet().eval()
+    model = DCCNet().eval().to(regression_device)
     model.load_state_dict(released())
     psnrs = []
     with torch.no_grad():
         for sample in LOLv1("test"):
-            x, target = sample["image"].float() / 255, sample["target"].float() / 255
+            x      = (sample["image"].float() / 255).to(regression_device)
+            target = (sample["target"].float() / 255).to(regression_device)
             y = (model(x[None])["enhanced"][0] * 255).round() / 255
             psnrs.append(10 * torch.log10(1 / F.mse_loss(y, target)).item())
     assert sum(psnrs) / len(psnrs) == pytest.approx(22.976, abs=5e-3)

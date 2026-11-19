@@ -20,6 +20,14 @@
 
 ### Added
 
+- `mon.data.zoo.testkit`: `testkit_lle`, `testkit_lle_unpaired`, `testkit_mef`, `testkit_classify`: 100 samples each
+  (256×256) for fast tests, built deterministically by `python -m mon.data.zoo testkit build` (manifest with
+  source SHA-256s). `ClassFolderDataset.items()`.
+- `mon.models.flush_denormals`, applied by `load`: zeroes denormal weights (about 25% of the released Zero-DCE
+  weights), which made CPU convolutions ~50× slower; outputs unchanged.
+- Tests: `test_testkit_regression.py` (12 LLE models with released weights, ~40 s on GPU); `regression_device`
+  fixture (CUDA without TF32, else CPU); `full` marker, off by default, for whole-dataset regressions (now on GPU:
+  80 s instead of ~12 min on CPU).
 - `mon.runners.trainer`: `TrainConfig`, `resolve_train_config`, `train(cfg)` and `mon train`: one loop for every
   model with a training recipe (AMP, gradient clipping, Adam/AdamW/SGD, step/multistep/cosine schedules,
   validation with the evaluation protocol, `best.pt`/`epoch_NNNN.pt`/`last.ckpt`, exact resume, `log.csv`).

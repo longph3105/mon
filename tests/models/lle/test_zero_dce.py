@@ -313,13 +313,13 @@ def test_released_weights_on_disk_match_sha256():
 
 # --- Real data (LOL-v1 test split, released weights) ---
 
-@pytest.mark.slow
+@pytest.mark.full
 @pytest.mark.parametrize(("name", "kwargs", "expected_psnr"), [
     ("zero_dce", {}, 14.861),
     ("zero_dce++", {}, 15.142),
     ("zero_dce++", {"scale_factor": 12}, 15.348),  # full 400×600: no crop to a multiple of 12 needed
 ])
-def test_lol_v1_psnr_regression(name: str, kwargs: dict, expected_psnr: float):
+def test_lol_v1_psnr_regression(name: str, kwargs: dict, expected_psnr: float, regression_device: torch.device):
     """Mean PSNR of 8-bit outputs vs targets; values measured 2026-11-18, outputs identical to mon_old."""
     from mon.core.path import datasets_dir
     from mon.data.zoo.lol import LOLv1
@@ -332,11 +332,12 @@ def test_lol_v1_psnr_regression(name: str, kwargs: dict, expected_psnr: float):
         pytest.skip(f"{root} not on this machine")
     ds = LOLv1("test")
     released(MODELS.get(name).weights_enum)  # skip without the weights
-    model = load(name, **kwargs)
+    model = load(name, **kwargs, device=regression_device)
     psnrs = []
     with torch.no_grad():
         for sample in ds:
-            x, target = sample["image"].float() / 255, sample["target"].float() / 255
+            x      = (sample["image"].float() / 255).to(regression_device)
+            target = (sample["target"].float() / 255).to(regression_device)
             y = (model(x[None])["enhanced"][0].clamp(0, 1) * 255).round() / 255
             psnrs.append(10 * torch.log10(1 / F.mse_loss(y, target)).item())
     assert len(psnrs) == 15
