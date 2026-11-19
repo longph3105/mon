@@ -92,7 +92,8 @@ uv run mon benchmark model=zero_dce size=[900,1200] device=cuda:0  # params, FLO
 uv run mon benchmark model=zero_dce data=testkit_efficiency output=zero_dce.yaml  # per resolution, 256² to 8K
 ```
 
-Datasets, transforms and loaders: [docs/data.md](docs/data.md).
+Datasets, transforms and loaders: [docs/data.md](docs/data.md). Efficiency of every LLE model, 256² to 8K on an
+RTX 3090: [docs/efficiency.md](docs/efficiency.md).
 
 ## Citation
 

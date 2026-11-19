@@ -24,6 +24,8 @@
 
 ### Added
 
+- `docs/efficiency.md`: params, MACs, latency and peak memory of every LLE model on `testkit_efficiency` (RTX 3090),
+  plus per-image fit time for the zero-shot CoLIE and Zero-IG.
 - `mon benchmark data=testkit_efficiency` (or any dataset id or folder): params, MACs, latency, and peak memory per
   image resolution on real images, with out-of-memory sizes recorded; `sizes=[...]` filters, `output=` writes YAML
   and CSV. New `testkit_efficiency`: 5 dark SICE scenes and their references at 256×256, 512×512, 600×400, 720p,
