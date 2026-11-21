@@ -81,7 +81,7 @@ model = mon.models.load("zero_dce", device="auto")  # weights="default" → rele
 enhanced = model(image)["enhanced"]                 # image: [B, 3, H, W] float in [0, 1]
 ```
 
-Train, predict and evaluate from the command line (OmegaConf dotlist arguments; each run saves its resolved
+Train, predict, evaluate and benchmark from the command line (OmegaConf dotlist arguments; each run saves its resolved
 config in its run directory under `$RUNS_DIR`):
 
 ```shell
