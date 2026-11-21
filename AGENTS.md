@@ -82,6 +82,7 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
 | `src/mon/models/`  | Models by task (`lle/`, …), lazy `MODELS` index, `load`; imports `mon.core`, `mon.nn`. Overview: `help(mon.models)`.  |
 | `src/mon/nn/`      | Losses, model helpers, tiled inference, complexity; imports only `mon.core`. Overview: `help(mon.nn)`.                |
 | `src/mon/runners/` | Runners (train, predict, evaluate, benchmark), `mon` CLI; imports any `mon` package. Overview: `help(mon.runners)`.   |
+| `tools/`           | Scripts on top of `mon`, not part of the package (run from a checkout): `dataset_overview.py`.                        |
 | `tests/`           | Tests, mirroring the `src/mon/` module tree.                                                                          |
 | `CHANGELOG.md`     | User-facing changes, newest first.                                                                                    |
 | `README.md`        | Install, usage, citation.                                                                                             |
@@ -105,6 +106,7 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
 | Test, fast/CPU    | `uv run pytest -m "not slow and not gpu"`                    |
 | Test, full data   | `uv run pytest -m full`                                      |
 | Type check        | `uv run mypy`                                                |
+| Dataset overview  | `uv run python tools/dataset_overview.py <id or folder> …`   |
 | Check data paths  | `uv run python -m mon.core.path`                             |
 | Train             | `uv run mon train model=<name> [data=<id or folder>] …`      |
 | Predict           | `uv run mon predict model=<name> data=<path or id> …`        |
@@ -123,7 +125,7 @@ Keep each fact in one place: link to `docs/` instead of restating it here or in 
   `full` tests (whole datasets vs published numbers) are off by default (`addopts`); run them with `-m full` after
   changing a model or the data pipeline, and before releases.
 - Dev-only tools go in `[dependency-groups] dev` (`uv add --dev <pkg>`), never in runtime deps.
-- `uv run mypy` checks `src/mon` in strict mode; keep it clean. Add `types-*` stub packages to `dev` when needed.
+- `uv run mypy` checks `src/mon` and `tools` in strict mode; keep it clean. Add `types-*` stub packages to `dev` when needed.
 - Markdown must pass markdownlint (`.markdownlint.yaml`). No Python lint or format commands yet (see **Status**).
 
 ---

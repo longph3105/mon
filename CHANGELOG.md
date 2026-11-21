@@ -4,6 +4,11 @@
 
 ### Added
 
+- `tools/dataset_overview.py`: writes `<split>/overview.jpg` for a registered dataset (or any image folder): `n`
+  random samples (`seed`) with their annotations: boxes with a class legend, class names, colorized masks, and
+  other image modalities beside the input; multi-exposure/multi-level layouts (`images/<group>/<k>` + one target per
+  group: SICE, LoLI-Street) as strips; MOTChallenge test splits with their public detections. `tools/` is new: scripts
+  on top of `mon`, not part of the package; `mypy` now checks it too.
 - Losses: `HVICIDNetLoss` (official HVI-CIDNet objective: L1 + SSIM + Laplacian edge + VGG-19 perceptual, in RGB
   and in HVI through the learned `density_k`) and `RetinexNetLoss` (decomposition and relighting objectives of the
   PyTorch reimplementation `mon` follows; TensorFlow differences documented).
