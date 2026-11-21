@@ -1,0 +1,9 @@
+// markdownlint-cli2 settings for this repo (https://github.com/DavidAnson/markdownlint-cli2).
+{
+  "config": {
+    // Wrap prose at 80 (same as the workspace); headings, tables and code blocks can't be wrapped without breaking them.
+    "MD013": { "line_length": 80, "headings": false, "tables": false, "code_blocks": false }
+  },
+  // CLAUDE.md is a single "@AGENTS.md" import line for Claude Code.
+  "ignores": ["CLAUDE.md"]
+}

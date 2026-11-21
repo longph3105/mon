@@ -5,12 +5,18 @@ cat, Mon.
 
 ## Status
 
-**3.0.0 is a ground-up rewrite and is not usable yet.** It replaces the 2.x
-monorepo with a single package, and modules are being ported one at a time. For
-the previous version, see the
-[`2.15.0`](https://github.com/longph3105/mon/tree/2.15.0) branch.
+**3.0 is a ground-up rewrite, in early development (pre-alpha): APIs may still
+change.** It replaces the 2.x monorepo with a single package, and modules are
+being ported one at a time.
 
-Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+| Version | Where | State |
+| --- | --- | --- |
+| 3.0.1 | [`3.0.1`](https://github.com/longph3105/mon/tree/3.0.1) branch (default) | In development |
+| 3.0.0 | [`v3.0.0`](https://github.com/longph3105/mon/tree/v3.0.0) tag | First 3.0 release (2026-11-22) |
+| 2.15.0 | [`2.15.0`](https://github.com/longph3105/mon/tree/2.15.0) branch | Previous version (2.x monorepo) |
+
+Changes since 3.0.0 are listed in [CHANGELOG.md](CHANGELOG.md); earlier ones in
+the [3.0.0 changelog](https://github.com/longph3105/mon/blob/v3.0.0/CHANGELOG.md).
 
 ## Requirements
 
@@ -24,7 +30,7 @@ Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 With [uv](https://docs.astral.sh/uv/) (recommended for development):
 
 ```shell
-git clone -b 3.0.0 https://github.com/longph3105/mon.git
+git clone https://github.com/longph3105/mon.git   # default branch: 3.0.1
 cd mon
 uv sync                # core
 uv sync --extra gui    # core + display (matplotlib, PySide6)
@@ -33,9 +39,10 @@ uv sync --extra gui    # core + display (matplotlib, PySide6)
 As a dependency of another project:
 
 ```shell
-uv add "mon @ git+https://github.com/longph3105/mon@3.0.0"
+uv add "mon @ git+https://github.com/longph3105/mon@v3.0.0"   # the 3.0.0 release
+uv add "mon @ git+https://github.com/longph3105/mon@3.0.1"    # the development branch
 # or
-pip install "mon[gui] @ git+https://github.com/longph3105/mon@3.0.0"
+pip install "mon[gui] @ git+https://github.com/longph3105/mon@v3.0.0"
 ```
 
 OpenCV is installed as `opencv-python-headless`, so `cv2.imshow` does not work
