@@ -17,7 +17,7 @@
 
 [project]
 name            = "mon"
-version         = "3.0.0.dev0"
+version         = "3.0.0"
 description     = "A Python + PyTorch library for computer-vision research."
 license         = "MIT"
 license-files   = ["LICENSE"]
