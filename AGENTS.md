@@ -47,8 +47,7 @@ Before writing or changing code in `src/` or `tests/`, read and follow
   (metrics, parity numbers), and what is left open.
 - Each machine writes only to its own folder. Never rewrite or delete earlier
   entries; add a correction as a new entry.
-- `logs/archive/` holds the shared logs from before 2026-11-19, when logs
-  moved to per-machine folders. Entries before 2026-11-22 keep their old
-  heading format, and may name files by their old `log_YYYY_MM_DD.md` names.
+- Logs up to 3.0.0 were cleared on the `3.0.1` branch; read them at the
+  `v3.0.0` tag (`git show v3.0.0:logs/<machine>/YYYY-MM-DD.md`).
 - Logs are committed like any other change in this repo (only when the owner
   asks), with the message `logs: <machine> <short title>`.
