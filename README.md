@@ -1,11 +1,13 @@
 # 🐈 mon
 
-A Python + PyTorch library for computer-vision research. It's named after my cat, Mon.
+A Python + PyTorch library for computer-vision research. It's named after my
+cat, Mon.
 
 ## Status
 
-**3.0.0 is a ground-up rewrite and is not usable yet.** It replaces the 2.x monorepo with a single package,
-and modules are being ported one at a time. For the previous version, see the
+**3.0.0 is a ground-up rewrite and is not usable yet.** It replaces the 2.x
+monorepo with a single package, and modules are being ported one at a time. For
+the previous version, see the
 [`2.15.0`](https://github.com/longph3105/mon/tree/2.15.0) branch.
 
 Changes are listed in [CHANGELOG.md](CHANGELOG.md).
@@ -14,7 +16,8 @@ Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 - Python ≥ 3.13 (except 3.14.1)
 - PyTorch ≥ 2.15 (installed automatically)
-- Platforms: developed on macOS arm64 (MPS); Linux x86_64 (CUDA) runs training and the GPU tests
+- Platforms: developed on macOS arm64 (MPS); Linux x86_64 (CUDA) runs training
+  and the GPU tests
 
 ## Installation
 
@@ -35,13 +38,14 @@ uv add "mon @ git+https://github.com/longph3105/mon@3.0.0"
 pip install "mon[gui] @ git+https://github.com/longph3105/mon@3.0.0"
 ```
 
-OpenCV is installed as `opencv-python-headless`, so `cv2.imshow` does not work on Linux.
-Use the `gui` extra and matplotlib to display images.
+OpenCV is installed as `opencv-python-headless`, so `cv2.imshow` does not work
+on Linux. Use the `gui` extra and matplotlib to display images.
 
 ## Configuration
 
-Pretrained weights are looked up in `$ZOO_DIR`, datasets in `$DATASETS_DIR`, and run outputs go to `$RUNS_DIR`;
-if unset, they default to `$DATA_DIR/zoo`, `$DATA_DIR/datasets` and `$DATA_DIR/runs`:
+Pretrained weights are looked up in `$ZOO_DIR`, datasets in `$DATASETS_DIR`, and
+run outputs go to `$RUNS_DIR`; if unset, they default to `$DATA_DIR/zoo`,
+`$DATA_DIR/datasets` and `$DATA_DIR/runs`:
 
 ```shell
 export DATA_DIR=/path/to/data       # or set ZOO_DIR / DATASETS_DIR / RUNS_DIR individually
@@ -49,9 +53,10 @@ export DATA_DIR=/path/to/data       # or set ZOO_DIR / DATASETS_DIR / RUNS_DIR i
 
 Set them where every process sees them, not only interactive terminals:
 
-- macOS: `~/.zshenv` (zsh) or `~/.bash_profile` (bash). Linux servers: `~/.profile` or `~/.bashrc`.
-- Containers: `docker run -e DATA_DIR=/data …`. Per-project overrides: a git-ignored `.env` file with
-  `uv run --env-file .env …`.
+- macOS: `~/.zshenv` (zsh) or `~/.bash_profile` (bash). Linux servers:
+  `~/.profile` or `~/.bashrc`.
+- Containers: `docker run -e DATA_DIR=/data …`. Per-project overrides: a
+  git-ignored `.env` file with `uv run --env-file .env …`.
 
 Check what `mon` will use (exit code 1 if something is unset or missing):
 
@@ -69,9 +74,11 @@ dev  = mc.select_device("auto")        # cuda:0 → mps → cpu
 seed = mc.seed_everything(cfg.get("seed"))
 ```
 
-Names load lazily, so `import mon.core` stays fast until a name that needs PyTorch is used.
+Names load lazily, so `import mon.core` stays fast until a name that needs
+PyTorch is used.
 
-Models load by name with their released weights (downloaded if they aren't in the zoo):
+Models load by name with their released weights (downloaded if they aren't in
+the zoo):
 
 ```python
 import mon.models
@@ -81,8 +88,9 @@ model = mon.models.load("zero_dce", device="auto")  # weights="default" → rele
 enhanced = model(image)["enhanced"]                 # image: [B, 3, H, W] float in [0, 1]
 ```
 
-Train, predict, evaluate and benchmark from the command line (OmegaConf dotlist arguments; each run saves its resolved
-config in its run directory under `$RUNS_DIR`):
+Train, predict, evaluate and benchmark from the command line (OmegaConf dotlist
+arguments; each run saves its resolved config in its run directory under
+`$RUNS_DIR`):
 
 ```shell
 uv run mon train model=zero_dce device=cuda:0
@@ -93,8 +101,9 @@ uv run mon benchmark model=zero_dce data=testkit_efficiency output=zero_dce.yaml
 uv run mon benchmark model=colie data=testkit_efficiency  # zero-shot: times the per-image fit
 ```
 
-Datasets, transforms and loaders: [docs/data.md](docs/data.md). Efficiency of every LLE model, 256² to 8K on an
-RTX 3090: [docs/efficiency.md](docs/efficiency.md).
+Datasets, transforms and loaders: [docs/data.md](docs/data.md). Efficiency of
+every LLE model, 256² to 8K on an RTX 3090:
+[docs/efficiency.md](docs/efficiency.md).
 
 ## Citation
 
@@ -115,4 +124,5 @@ If you find this work useful, please consider citing:
 
 ## Contact
 
-Long H. Pham: [longpham3105@gmail.com](mailto:longpham3105@gmail.com) or [phlong@skku.edu](mailto:phlong@skku.edu)
+Long H. Pham: [longpham3105@gmail.com](mailto:longpham3105@gmail.com) or
+[phlong@skku.edu](mailto:phlong@skku.edu)

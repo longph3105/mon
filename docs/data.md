@@ -1,9 +1,9 @@
 # Data: datasets, transforms, loaders
 
-How `mon.data` turns files on disk into training batches and how predictions get back to image size.
-API details live in the docstrings (`help(mon.data)`); this guide shows how the pieces fit together.
-Every Python block below runs in the test suite (`tests/docs/test_data_md.py`), top to bottom, in one
-interpreter.
+How `mon.data` turns files on disk into training batches and how predictions get
+back to image size. API details live in the docstrings (`help(mon.data)`); this
+guide shows how the pieces fit together. Every Python block below runs in the
+test suite (`tests/docs/test_data_md.py`), top to bottom, in one interpreter.
 
 ## 1. Where the data lives
 
@@ -17,18 +17,22 @@ interpreter.
 
 Check them with `uv run python -m mon.core.path`.
 
-Each dataset has one **id**, e.g. `lol_v1`: its folder (`$DATASETS_DIR/lol_v1/`) and its registry name are
-the same string. Datasets are stored in a normalized layout per task family. Paired restoration datasets
-(low-light, denoising, …) use `<split>/images/` for inputs and `<split>/targets/` for ground truth, paired
-by file name. Multi-exposure datasets (`sice`) keep one folder of exposures per scene and one target per
-scene; a dataset maps each input to its target's name with `FolderDataset.pair_key`. Unpaired test sets
-(`unpaired_layout`: `<split>/images/` only) are bundled under one id, `unpaired_lol/<set>/`, and registered
-per set (`dicm`, `fusion`, `lime`, `mef`, `npe`, `vv`), since papers report them separately. The workspace
-`data/README.md` defines ids and layouts and lists every dataset.
+Each dataset has one **id**, e.g. `lol_v1`: its folder (`$DATASETS_DIR/lol_v1/`)
+and its registry name are the same string. Datasets are stored in a normalized
+layout per task family. Paired restoration datasets (low-light, denoising, …)
+use `<split>/images/` for inputs and `<split>/targets/` for ground truth, paired
+by file name. Multi-exposure datasets (`sice`) keep one folder of exposures per
+scene and one target per scene; a dataset maps each input to its target's name
+with `FolderDataset.pair_key`. Unpaired test sets (`unpaired_layout`:
+`<split>/images/` only) are bundled under one id, `unpaired_lol/<set>/`, and
+registered per set (`dicm`, `fusion`, `lime`, `mef`, `npe`, `vv`), since papers
+report them separately. The workspace `data/README.md` defines ids and layouts
+and lists every dataset.
 
 ## 2. Loading a registered dataset
 
-`DATASETS` maps ids to dataset classes. The first lookup imports `mon.data.zoo`, which registers them.
+`DATASETS` maps ids to dataset classes. The first lookup imports `mon.data.zoo`,
+which registers them.
 
 ```python
 import torch
@@ -47,20 +51,24 @@ sample["meta"].stem, sample["meta"].orig_size  # file stem, Size(height=H, width
 
 A sample is a plain dict:
 
-- Image-like values are `torchvision.tv_tensors` (`Image`, `Mask`), as stored on disk. 8-bit files load
-  as `uint8`, 16-bit as `uint16`; nothing is scaled yet.
-- `meta` is a `SampleMeta`: index, stem, split, source paths, and the size before transforms.
+- Image-like values are `torchvision.tv_tensors` (`Image`, `Mask`), as stored on
+  disk. 8-bit files load as `uint8`, 16-bit as `uint16`; nothing is scaled yet.
+- `meta` is a `SampleMeta`: index, stem, split, source paths, and the size
+  before transforms.
 
-Pass `root=` to load a copy outside `DATASETS_DIR`; `on_missing="skip"` drops samples with a missing file
-instead of raising.
+Pass `root=` to load a copy outside `DATASETS_DIR`; `on_missing="skip"` drops
+samples with a missing file instead of raising.
 
 ## 3. Transforms
 
-Transforms are `torchvision.transforms.v2`, applied to the whole sample dict. Run them in two stages:
+Transforms are `torchvision.transforms.v2`, applied to the whole sample dict.
+Run them in two stages:
 
-1. **Geometric** (crop, flip, resize) on the whole sample, so input and target stay aligned.
-2. **Photometric** (color jitter, noise) only on the input, through `ApplyTo`. A v2 photometric transform
-   changes *every* `Image` in the sample, including the ground-truth target.
+1. **Geometric** (crop, flip, resize) on the whole sample, so input and target
+   stay aligned.
+2. **Photometric** (color jitter, noise) only on the input, through `ApplyTo`. A
+   v2 photometric transform changes *every* `Image` in the sample, including the
+   ground-truth target.
 
 ```python
 from mon.data import ApplyTo
@@ -78,15 +86,20 @@ s["image"].shape, s["target"].shape      # both (3, 256, 256), same crop and fli
 
 Other helpers in `mon.data.transforms`, for what v2 lacks:
 
-- `ResizeToMultiple(32)`: resize so height and width are multiples of a network stride (training).
-- `PadToMultiple(32)`: pad bottom and right to a multiple instead (inference, see section 5).
-- `MinMaxNormalize()`: scale each image to [0, 1] by its own range, for depth, RAW, or HDR data.
+- `ResizeToMultiple(32)`: resize so height and width are multiples of a network
+  stride (training).
+- `PadToMultiple(32)`: pad bottom and right to a multiple instead (inference,
+  see section 5).
+- `MinMaxNormalize()`: scale each image to [0, 1] by its own range, for depth,
+  RAW, or HDR data.
 
-For detection data, add `v2.SanitizeBoundingBoxes()` after crops so labels are dropped with their boxes.
+For detection data, add `v2.SanitizeBoundingBoxes()` after crops so labels are
+dropped with their boxes.
 
 ## 4. Loaders and reproducibility
 
-`create_dataloader` wraps `torch.utils.data.DataLoader` with `mon`'s `collate` and a seeded generator.
+`create_dataloader` wraps `torch.utils.data.DataLoader` with `mon`'s `collate`
+and a seeded generator.
 
 ```python
 from mon.core.runtime import seed_everything
@@ -99,16 +112,20 @@ batch["image"].shape                     # (2, 3, 256, 256)
 len(batch["meta"])                       # 2: per-sample metadata stays a list
 ```
 
-- `collate` stacks same-shape tensors into `[B, …]`; `meta`, boxes and labels stay per-sample lists.
-- With `seed=None` (default) the loader draws its seed from torch's global RNG, so `seed_everything` alone
-  makes the shuffle order and worker RNGs reproducible. Pass `seed=` to fix them independently.
-- Full-size images only stack if they all have the same size; otherwise use crops or `batch_size=1`.
+- `collate` stacks same-shape tensors into `[B, …]`; `meta`, boxes and labels
+  stay per-sample lists.
+- With `seed=None` (default) the loader draws its seed from torch's global RNG,
+  so `seed_everything` alone makes the shuffle order and worker RNGs
+  reproducible. Pass `seed=` to fix them independently.
+- Full-size images only stack if they all have the same size; otherwise use
+  crops or `batch_size=1`.
 
 ## 5. Inference: pad, predict, crop back
 
-Networks with a stride need input sizes that are multiples of it (often 8–32). At inference, **pad, don't
-resize**: padding is undone exactly by cropping, while resizing in and back out resamples the output twice
-and shifts the metrics.
+Networks with a stride need input sizes that are multiples of it (often 8–32).
+At inference, **pad, don't resize**: padding is undone exactly by cropping,
+while resizing in and back out resamples the output twice and shifts the
+metrics.
 
 ```python
 from mon.data import crop_to, pad_to_multiple
@@ -123,12 +140,14 @@ with torch.no_grad():
 assert pred.shape == batch["target"].shape
 ```
 
-To pad inside the dataset instead (e.g. to batch images of different sizes after padding), use
-`PadToMultiple(32)` in the transform and crop each prediction with `crop_to(pred, meta.orig_size)`.
+To pad inside the dataset instead (e.g. to batch images of different sizes after
+padding), use `PadToMultiple(32)` in the transform and crop each prediction with
+`crop_to(pred, meta.orig_size)`.
 
-To predict on images that aren't a registered dataset (a folder, one file, or a list of files), use
-`ImageFolder`. It searches subfolders, skips hidden files (macOS `._*`), and keeps each image's path
-relative to the folder in `meta.stem`, so outputs can mirror the input tree:
+To predict on images that aren't a registered dataset (a folder, one file, or a
+list of files), use `ImageFolder`. It searches subfolders, skips hidden files
+(macOS `._*`), and keeps each image's path relative to the folder in
+`meta.stem`, so outputs can mirror the input tree:
 
 ```python
 from mon.data import ImageFolder, write_image
@@ -143,18 +162,21 @@ for batch in create_dataloader(inputs, batch_size=1):
     write_image(pred[0], out_dir / f"{meta.stem}.png")      # night/0001.jpg → night/0001.png
 ```
 
-`mon.runners.predict` does all of this for any registered model: it pads to the model's `input_multiple`, fits
-zero-shot models per image, and saves outputs clamped to `[0, 1]` with the resolved config. From the shell:
+`mon.runners.predict` does all of this for any registered model: it pads to the
+model's `input_multiple`, fits zero-shot models per image, and saves outputs
+clamped to `[0, 1]` with the resolved config. From the shell:
 
 ```text
 uv run mon predict model=zero_dce weights=sice_me data=path/to/night   # or data=lol_v1 split=test
 ```
 
-Outputs land in `$RUNS_DIR/predict/<model>[-<weights>]/<data>/` (`$DATA_DIR/runs` if `RUNS_DIR` is unset);
-pass `run_dir=…` to choose. `PredictConfig` lists every key (`device`, `tile`, `save_extra`, `fit_args`, …).
+Outputs land in `$RUNS_DIR/predict/<model>[-<weights>]/<data>/`
+(`$DATA_DIR/runs` if `RUNS_DIR` is unset); pass `run_dir=…` to choose.
+`PredictConfig` lists every key (`device`, `tile`, `save_extra`, `fit_args`, …).
 
-Score the saved outputs with `mon evaluate`; it pairs files with targets by stem and writes `metrics.csv` and
-`metrics.yaml` into the run directory (`gt_mean=true` adds the GT-mean protocol):
+Score the saved outputs with `mon evaluate`; it pairs files with targets by stem
+and writes `metrics.csv` and `metrics.yaml` into the run directory
+(`gt_mean=true` adds the GT-mean protocol):
 
 ```text
 uv run mon evaluate pred=$RUNS_DIR/predict/zero_dce-sice_me/lol_v1_test data=lol_v1 "metrics=[psnr,ssim,lpips]"
@@ -162,9 +184,10 @@ uv run mon evaluate pred=$RUNS_DIR/predict/zero_dce-sice_me/lol_v1_test data=lol
 
 ## 6. Classification datasets
 
-`cifar10`, `cifar100`, `mnist` and `fashion_mnist` are stored as `<split>/<class>/<index>.png` with a
-`classes.txt` listing class names in label-id order. Samples are `{"image", "label", "meta"}`; `label` is an
-`int64` scalar, so batches carry a `[B]` label tensor ready for `cross_entropy`.
+`cifar10`, `cifar100`, `mnist` and `fashion_mnist` are stored as
+`<split>/<class>/<index>.png` with a `classes.txt` listing class names in
+label-id order. Samples are `{"image", "label", "meta"}`; `label` is an `int64`
+scalar, so batches carry a `[B]` label tensor ready for `cross_entropy`.
 
 ```python
 from collections import Counter
@@ -185,13 +208,17 @@ classifier = torch.nn.Sequential(torch.nn.Flatten(), torch.nn.Linear(28 * 28, 10
 loss = F.cross_entropy(classifier(batch["image"]), batch["label"])
 ```
 
-- MNIST and Fashion-MNIST load as 1-channel gray images (`image_mode = "gray"`); CIFAR as RGB.
-- `meta.stem` is `"<class>/<index>"`; `<index>` is the image's position in the upstream split.
-- CIFAR-100 has 26 groups of byte-identical images, some with conflicting labels; see `mon.data.zoo.cifar`.
+- MNIST and Fashion-MNIST load as 1-channel gray images (`image_mode = "gray"`);
+  CIFAR as RGB.
+- `meta.stem` is `"<class>/<index>"`; `<index>` is the image's position in the
+  upstream split.
+- CIFAR-100 has 26 groups of byte-identical images, some with conflicting
+  labels; see `mon.data.zoo.cifar`.
 
 ## 7. Adding a dataset
 
-1. Put the data in `$DATASETS_DIR/<id>/` in the normalized layout and add its row to `data/README.md`.
+1. Put the data in `$DATASETS_DIR/<id>/` in the normalized layout and add its
+   row to `data/README.md`.
 2. Declare and register the class in a `mon.data.zoo` module:
 
    ```python
@@ -205,12 +232,15 @@ loss = F.cross_entropy(classifier(batch["image"]), batch["label"])
        layout = paired_layout("train", "test")
    ```
 
-3. Import that module in `src/mon/data/zoo/__init__.py`; otherwise the decorator never runs and the id is
-   missing from `DATASETS`.
-4. Add tests in `tests/data/zoo/`: synthetic folders, plus `slow` checks on the real data (counts, format,
-   no train/test overlap) that skip when the data isn't on the machine. See `tests/data/zoo/test_lol.py`.
+3. Import that module in `src/mon/data/zoo/__init__.py`; otherwise the decorator
+   never runs and the id is missing from `DATASETS`.
+4. Add tests in `tests/data/zoo/`: synthetic folders, plus `slow` checks on the
+   real data (counts, format, no train/test overlap) that skip when the data
+   isn't on the machine. See `tests/data/zoo/test_lol.py`.
 
-For other layouts, write `layout` by hand with `Modality(dir, kind)`: kinds are `image`, `mask`, `depth`,
-`yolo` and `voc`. Classification datasets (`<split>/<class>/<image>` plus `classes.txt`) subclass
-`ClassFolderDataset` with `layout = classification_layout("train", "test")` instead; their samples are
-`{"image", "label", "meta"}`, and `collate` stacks `label` into a `[B]` tensor.
+For other layouts, write `layout` by hand with `Modality(dir, kind)`: kinds are
+`image`, `mask`, `depth`, `yolo` and `voc`. Classification datasets
+(`<split>/<class>/<image>` plus `classes.txt`) subclass `ClassFolderDataset`
+with `layout = classification_layout("train", "test")` instead; their samples
+are `{"image", "label", "meta"}`, and `collate` stacks `label` into a `[B]`
+tensor.

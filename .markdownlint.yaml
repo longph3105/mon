@@ -1,6 +1,7 @@
 # markdownlint config for this repo (https://github.com/DavidAnson/markdownlint).
-# Prose is wrapped at 120 columns; tables and code blocks may run longer.
+# Prose is wrapped at 80 columns; headings, tables and code blocks may run longer.
 MD013:
-  line_length: 120
+  line_length: 80
+  headings: false
   tables: false
   code_blocks: false
