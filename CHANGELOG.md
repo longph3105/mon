@@ -4,6 +4,9 @@
 
 ### Added
 
+- Data zoo: `sice_under` (`mon.data.zoo.sice.SICEUnder`): the −1 EV input of 210 SICE Part 2 scenes with their
+  references, per the upstream `testing_index.txt` (#3 of 7 exposures, #4 of 9), read from `sice/test_under/`
+  (test split, paired). The `sice` docstring now describes `testing_index.txt` as the rule it is.
 - Metrics: `mon.metrics.ranking`, composite leaderboard rankings of methods from their mean scores:
   `competition_rank` (ties share the better rank), `weighted_rank_sum`, `combined_rank`, and the
   `NTIRE_2025_LLIE` weights (PSNR 0.5, SSIM 0.5, LPIPS 0.4, NIQE 0.2). The report gives only the weights; the
