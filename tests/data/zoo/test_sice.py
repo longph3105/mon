@@ -10,7 +10,7 @@ from mon.core.enums import Split, Task
 from mon.core.path import datasets_dir
 from mon.data.dataset import DATASETS
 from mon.data.io import write_image
-from mon.data.zoo.sice import SICE, SICEME
+from mon.data.zoo.sice import SICE, SICEME, SICEUnder
 
 
 def _img(value: int) -> torch.Tensor:
@@ -28,6 +28,13 @@ def test_registered(name: str, cls: type, splits: set[Split]):
     assert DATASETS.entry(name).meta["tasks"] == {Task.LLE}
     assert DATASETS.entry(name).meta["splits"] == splits
     assert cls.folder == name
+
+
+def test_sice_under_registered():
+    assert DATASETS.get("sice_under") is SICEUnder
+    assert DATASETS.entry("sice_under").meta["tasks"] == {Task.LLE}
+    assert DATASETS.entry("sice_under").meta["splits"] == {Split.TEST}
+    assert SICEUnder.folder == "sice"  # lives inside the sice folder, as sice/test_under/
 
 
 # --- Synthetic folders ---
@@ -66,6 +73,17 @@ def test_sice_me_train_has_no_targets(tmp_path: StdPath):
         SICEME("test", root=tmp_path)
 
 
+def test_sice_under_pairs_by_scene(tmp_path: StdPath):
+    for scene in ("2", "10"):
+        write_image(_img(10), tmp_path / "test_under" / "images" / f"{scene}.jpg", quality=100)
+        write_image(_img(200), tmp_path / "test_under" / "targets" / f"{scene}.png")
+    ds = SICEUnder("test", root=tmp_path)
+    assert [ds[i]["meta"].stem for i in range(len(ds))] == ["10", "2"]
+    assert set(ds[0]) == {"image", "target", "meta"}
+    with pytest.raises(ValueError, match="no 'train' split"):
+        SICEUnder("train", root=tmp_path)
+
+
 # --- Real data (skipped unless the datasets are on this machine) ---
 
 def _real_root(name: str) -> StdPath:
@@ -97,3 +115,17 @@ def test_real_sice_me_is_part1():
     names = {k for k, _ in train._items} | {k for k, _ in val._items}
     part1 = {k.replace("/", "_") for k, _ in SICE("train", root=sice_root)._items}
     assert names == part1 and not {k for k, _ in train._items} & {k for k, _ in val._items}
+
+
+
+@pytest.mark.slow
+def test_real_sice_under():
+    root = _real_root("sice")
+    if not (root / "test_under").is_dir():
+        pytest.skip("sice/test_under not built (make_sice.sh)")
+    ds = SICEUnder("test", root=root)
+    assert len(ds) == 210
+    assert {k for k, _ in ds._items} <= {k.split("/")[0] for k, _ in SICE("test", root=root)._items}
+    for scene in ("127", "169", "194", "195", "208", "212"):  # upstream targets rotated 90°, fixed in test_under
+        s = ds[[k for k, _ in ds._items].index(scene)]
+        assert s["image"].shape == s["target"].shape

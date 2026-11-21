@@ -1,24 +1,25 @@
-"""SICE multi-exposure datasets: SICE (Part 1 / Part 2) and SICE-ME (the Zero-DCE training split).
+"""SICE multi-exposure datasets: SICE (Part 1 / Part 2), SICE-ME (the Zero-DCE training split), SICE-under.
 
 SICE holds multi-exposure sequences of static scenes (3–28 exposures each) with one reference
 image per scene, as 8-bit sRGB JPEG (some test targets PNG) of 2448×3264 to 5472×3648 pixels.
 ``sice`` is stored in the multi-exposure layout (``<split>/images/<scene>/<k>.<ext>``,
 ``<split>/targets/<scene>.<ext>``); ``sice_me`` is derived from it in the paired layout
-(``<split>/images/<scene>_<k>.<ext>``). Images are full resolution: resize in the transform.
+(``<split>/images/<scene>_<k>.<ext>``). ``sice_under`` is one under-exposed input per Part 2 scene, picked by the
+upstream rule and stored in ``sice/test_under/`` (paired). Images are full resolution: resize in the transform.
 
 Warning:
-    ``sice_me`` is built from ``sice`` train (Part 1) only: never evaluate a model trained on
-    ``sice_me`` on ``sice`` train. Its train/val split is per image, as in Zero-DCE, so 288 of
-    the 360 scenes have exposures in both: ``sice_me`` val scores are optimistic. The upstream
-    ``test/testing_index.txt`` defines a test subset from Part 1 scenes, i.e. ``sice`` train.
-    Exposures of one scene share a target, so never re-split ``sice`` randomly by image for
-    evaluation. 12 exposure pairs are byte-identical upstream (test scenes 109–119, ``5`` = ``6``;
-    train scene 140, ``3`` = ``4``).
+    ``sice_me`` is built from ``sice`` train (Part 1) only: never evaluate a model trained on ``sice_me`` on
+    ``sice`` train. Its train/val split is per image, as in Zero-DCE, so 288 of the 360 scenes have exposures in
+    both: ``sice_me`` val scores are optimistic. The upstream ``test/testing_index.txt`` is a rule, not a scene
+    list: the -1 EV exposure is the under-exposed test input (#3 of 7, #4 of 9) and +1 EV the over-exposed one (#5
+    of 7); ``sice_under`` applies the first. ``sice_under`` is a subset of ``sice`` test: never count both.
+    Exposures of one scene share a target, so never re-split ``sice`` randomly by image for evaluation. 12 exposure
+    pairs are byte-identical upstream (test scenes 109–119, ``5`` = ``6``; train scene 140, ``3`` = ``4``).
 
 Examples:
     >>> from mon.core.enums import Split, Task
     >>> from mon.data.dataset import DATASETS
-    >>> {"sice", "sice_me"} <= set(DATASETS.names(tasks=Task.LLE))
+    >>> {"sice", "sice_me", "sice_under"} <= set(DATASETS.names(tasks=Task.LLE))
     True
     >>> SICE.splits() == {Split.TRAIN, Split.TEST}, SICEME.splits() == {Split.TRAIN, Split.VAL}
     (True, True)
@@ -39,6 +40,7 @@ References:
 __all__ = [
     "SICE",
     "SICEME",
+    "SICEUnder",
 ]
 
 from mon.core.enums import Split, Task
@@ -74,3 +76,23 @@ class SICEME(FolderDataset):
         Split.TRAIN: {"image": Modality("train/images")},
         **paired_layout("val"),
     }
+
+
+@register_dataset("sice_under", tasks={Task.LLE})
+class SICEUnder(FolderDataset):
+    """SICE-under: the -1 EV exposure of 210 SICE Part 2 scenes with their reference, per ``testing_index.txt``.
+
+    Test only, paired: ``{"image", "target", "meta"}`` with ``meta.stem`` = ``"<scene>"``. The upstream
+    rule (#3 of 7 exposures, #4 of 9) covers 210 of the 229 Part 2 scenes; the 19 with 5, 6 or 8 exposures
+    are left out. Stored in ``sice/test_under/`` (built by ``make_sice.sh`` in the dataset folder, real
+    copies), with the 6 upstream targets that are rotated 90° (127, 169, 194, 195, 208, 212) rotated back,
+    so every pair has one size. Mean input luminance is 0.37× the target for 7-exposure scenes and 0.86× for
+    9-exposure scenes. A subset of ``sice`` test: never count both.
+
+    Examples:
+        >>> SICEUnder.splits() == {Split.TEST}, SICEUnder.folder
+        (True, 'sice')
+    """
+
+    folder = "sice"
+    layout = {Split.TEST: {"image": Modality("test_under/images"), "target": Modality("test_under/targets")}}
