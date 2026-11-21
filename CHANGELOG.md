@@ -4,6 +4,10 @@
 
 ### Added
 
+- Metrics: `mon.metrics.ranking`, composite leaderboard rankings of methods from their mean scores:
+  `competition_rank` (ties share the better rank), `weighted_rank_sum`, `combined_rank`, and the
+  `NTIRE_2025_LLIE` weights (PSNR 0.5, SSIM 0.5, LPIPS 0.4, NIQE 0.2). The report gives only the weights; the
+  weighted sum of per-metric ranks is a reconstruction that reproduces its Table 1 Final Rank order.
 - `tools/dataset_overview.py`: writes `<split>/overview.jpg` for a registered dataset (or any image folder): `n`
   random samples (`seed`) with their annotations: boxes with a class legend, class names, colorized masks, and
   other image modalities beside the input; multi-exposure/multi-level layouts (`images/<group>/<k>` + one target per

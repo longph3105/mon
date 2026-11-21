@@ -47,7 +47,8 @@ Version `3.0.0.dev0` on branch `3.0.0` (pre-alpha; not usable as a library yet).
   `mef.mertens` (exposure fusion, classical) with OpenCV parity tests; `denoise.tv_denoise` (scikit-image
   parity) and `denoise.zs_n2n` (zero-shot, `mon_old` parity).
 - **In progress:** `mon.metrics`: `psnr`, `ssim`, `lpips` (full-reference), `niqe`, `brisque`, `nrqm`, `pi`
-  (no-reference), lazy `METRICS` index; defaults follow pyiqa (parity tests), which is not a dependency.
+  (no-reference), lazy `METRICS` index; defaults follow pyiqa (parity tests), which is not a dependency;
+  `ranking`: composite leaderboard ranks across methods (NTIRE 2025 LLIE weights).
 - **In progress:** `mon.runners`: `trainer` (`mon train`; recipes for `zero_dce`, `zero_dce++`, `sci`, `sci++`,
   `zero_ig`), `predictor` (`mon predict`), `evaluator` (`mon evaluate`), `benchmarker` (`mon benchmark`).
 - **Data:** datasets and weights live in the workspace `data/` (ids, layouts, zoo naming: `data/README.md`).
