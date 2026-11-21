@@ -23,6 +23,7 @@ follow both.
 | `pyproject.toml` | Package metadata and tool settings       |
 | `uv.lock`        | Locked dependencies                      |
 | `CHANGELOG.md`   | User-facing changes                      |
+| `CONVENTIONS.md` | Code conventions for `src/` and `tests/` |
 | `README.md`      | Install and usage                        |
 
 - Each package's overview is its docstring (`help(mon.data)`). Keep each fact in
@@ -32,32 +33,22 @@ follow both.
   family), update this table in the same commit. Keep each Purpose short: what
   the folder is for, not a list of its contents.
 
-## General Code Conventions
+## Code Conventions
 
-- Google-style docstrings; every module has a one-line docstring, plus
-  `References:` (paper or source links) when ported or adapted. Strip
-  `mon_old`'s shebang and `# -*- coding: utf-8 -*-` lines.
-- `__all__` at the top of every public module. Package namespaces re-export
-  submodules lazily: a new public name goes in the package's `_EXPORTS`,
-  `__all__` and docstring table (`tests/test_namespaces.py` checks these and the
-  layering in `ALLOWED_IMPORTS`). Inside `mon`, import from submodules
-  (`from mon.core.path import Path`), never from a namespace. Top-level `mon`
-  exposes only subpackages.
-- Section comments in large modules: `# --- Section Name ---`. Keep the owner's
-  alignment of `=` and `:`.
-- Configs: OmegaConf via `mon.core.config.load_config`/`save_config`; schemas
-  are dataclasses next to their code; resolve devices, weights and run dirs
-  explicitly after loading (no property setters).
-- Registries: one `Registry` (`mon.core.registry`) per kind, in the package that
-  owns it; give an explicit name when `cls.__name__.lower()` isn't the paper's
-  (`register("zero_dce++", ...)`).
-- Enums subclass `AliasStrEnum` (`mon.core.enums`); no `"default"` member or
-  `None` fallback: defaults go in signatures (`split: Split = Split.TRAIN`).
-- Seeds: `mon.core.runtime.seed_everything()`; save the returned seed with the
-  run.
-- Logging: `logger = get_logger(__name__)` (`mon.core.console`); never configure
-  logging or print at import. Only entry points call `setup_logging()`.
-- Devices: `select_device(spec)` (`mon.core.runtime`); never fall back to CPU
-  silently.
-- Samples and datasets must pickle (DataLoader workers; Python 3.14
-  `forkserver`): `mon.core.utils.ReadOnlyDict`, never `types.MappingProxyType`.
+Before writing or changing code in `src/` or `tests/`, read and follow
+[CONVENTIONS.md](CONVENTIONS.md).
+
+## Logs
+
+- Log work on this repo in `logs/<machine>/YYYY-MM-DD.md`, not in the
+  workspace's `coord/logs/`. Machine name, times and entry format follow
+  `../../coord/AGENTS.md` ("Machine name", "Times", "Logs").
+- Write an entry after significant work: what changed and why, results
+  (metrics, parity numbers), and what is left open.
+- Each machine writes only to its own folder. Never rewrite or delete earlier
+  entries; add a correction as a new entry.
+- `logs/archive/` holds the shared logs from before 2026-11-19, when logs
+  moved to per-machine folders. Entries before 2026-11-22 keep their old
+  heading format, and may name files by their old `log_YYYY_MM_DD.md` names.
+- Logs are committed like any other change in this repo (only when the owner
+  asks), with the message `logs: <machine> <short title>`.
