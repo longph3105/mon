@@ -90,7 +90,7 @@ markers         = [
 # --- mypy ---
 [tool.mypy]
 python_version  = "3.13"
-files           = ["src/mon"]
+files           = ["src/mon", "tools"]
 strict          = true
 
 # Third-party packages without type information (no py.typed / stubs).
