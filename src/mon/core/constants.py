@@ -1,25 +1,18 @@
-"""Global constants: file extensions, dir names, env vars."""
+"""Global constants: file extensions, env vars."""
 
 __all__ = [
-    "ANNS_DIR",
     "CONFIG_EXTENSIONS",
     "DATASETS_DIR_ENV",
     "DATA_DIR_ENV",
-    "DEBUG_DIR",
-    "DEFAULT_CKPT_EXT",
-    "DEFAULT_IMAGE_EXT",
-    "DEFAULT_LABEL_EXT",
-    "DEFAULT_WEIGHTS_EXT",
-    "DEPTH_DIR",
-    "IMAGES_DIR",
     "IMAGE_EXTENSIONS",
-    "LABELS_DIR",
     "RAW_IMAGE_EXTENSIONS",
     "RUNS_DIR_ENV",
     "VIDEO_EXTENSIONS",
     "WEIGHTS_EXTENSIONS",
     "ZOO_DIR_ENV",
 ]
+
+from mon.core._lazy import deprecated_getattr
 
 # --- Environment Variables ---
 
@@ -34,15 +27,6 @@ RUNS_DIR_ENV    : str = "RUNS_DIR"
 
 ZOO_DIR_ENV     : str = "ZOO_DIR"
 """Directory holding pretrained weights; see ``mon.core.path.zoo_dir``."""
-
-# --- Directory Names ---
-# Standard subdirectory names inside datasets and run outputs.
-
-ANNS_DIR  : str = "anns"
-DEBUG_DIR : str = "debug"
-DEPTH_DIR : str = "depth"
-IMAGES_DIR: str = "images"
-LABELS_DIR: str = "labels"
 
 # --- File Extensions ---
 # Lowercase, with a leading dot. Compare against ``Path.suffix.lower()``.
@@ -92,15 +76,21 @@ CONFIG_EXTENSIONS: frozenset[str] = frozenset({
     ".cfg",
     ".config",
     ".json",
-    ".txt",
     ".yaml",
     ".yml",
 })
 
-# --- Default Extensions ---
-# Each is a member of the matching ``*_EXTENSIONS`` set.
+# --- Deprecated ---
+# Unused in mon; removed in 3.1. Access still works, with a ``DeprecationWarning``.
 
-DEFAULT_CKPT_EXT   : str = ".ckpt"
-DEFAULT_IMAGE_EXT  : str = ".jpg"
-DEFAULT_LABEL_EXT  : str = ".txt"
-DEFAULT_WEIGHTS_EXT: str = ".pt"
+__getattr__ = deprecated_getattr(__name__, {
+    "ANNS_DIR"           : "anns",
+    "DEBUG_DIR"          : "debug",
+    "DEPTH_DIR"          : "depth",
+    "IMAGES_DIR"         : "images",
+    "LABELS_DIR"         : "labels",
+    "DEFAULT_CKPT_EXT"   : ".ckpt",
+    "DEFAULT_IMAGE_EXT"  : ".jpg",
+    "DEFAULT_LABEL_EXT"  : ".txt",
+    "DEFAULT_WEIGHTS_EXT": ".pt",
+}, removal="3.1")

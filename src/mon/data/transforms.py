@@ -2,7 +2,7 @@
 
 Key selection (``ApplyTo``), sizing to a stride multiple, and min-max scaling. Everything
 else (flips, crops, ``Resize``, ``Normalize``, ``ColorJitter``, …) is plain
-``torchvision.transforms.v2``. Pipelines run in two stages (see ``AGENTS.md``): geometric
+``torchvision.transforms.v2``. Pipelines run in two stages (see ``CONVENTIONS.md``, Data): geometric
 transforms on the whole sample, photometric ones only on input keys via ``ApplyTo``::
 
     v2.Compose([

@@ -87,55 +87,64 @@ class HVICIDNet_Weights(WeightsEnum):
         path   = "lle/hvi_cidnet/hvi_cidnet_lol_v1_w_perc.pt",
         name   = "HVI-CIDNet, official LOLv1/w_perc",
         sha256 = "9206385b514014b60bf9396151a011cabf68abb380c2ad87ffde3d53e8227926",
-        meta   = _hf("LOLv1-wperc", "1fa9b69", "1163da200c800681…", "lol_v1", saturation_gain=1.3),
+        meta   = _hf("LOLv1-wperc", "1fa9b69",
+                     "1163da200c800681dcf5723c92cb9010a0d8e02da32510a10d115d2188104b69", "lol_v1", saturation_gain=1.3),
     )
     LOL_V1_WO_PERC = Weights(
         path   = "lle/hvi_cidnet/hvi_cidnet_lol_v1_wo_perc.pt",
         name   = "HVI-CIDNet, official LOLv1/wo_perc",
         sha256 = "2c5afb426fee910dd9806b4e6214f05914fb5988b7982a4624560815aefce2b5",
-        meta   = _hf("LOLv1-woperc", "de3f94c", "928bc914bcec03ab…", "lol_v1", saturation_gain=1.3),
+        meta   = _hf("LOLv1-woperc", "de3f94c",
+                     "928bc914bcec03abd6f2b9e057007961845a75e156b0536ba7c41bb4ac817c4c", "lol_v1", saturation_gain=1.3),
     )
     LOL_V2_REAL_BEST_PSNR = Weights(
         path   = "lle/hvi_cidnet/hvi_cidnet_lol_v2_real.pt",
         name   = "HVI-CIDNet, official LOLv2_real/best_PSNR",
         sha256 = "44a7f92cf02a1da322c1a34b3aa940341dc93fd53840b7f19b49f461200b00a6",
-        meta   = _hf("LOLv2-real-bestPSNR", "c317f57", "f03da46e8dd7181a…", "lol_v2_real", output_gain=0.8),
+        meta   = _hf("LOLv2-real-bestPSNR", "c317f57",
+                     "f03da46e8dd7181a872ac70e56dcf5847ea33d2bed2a73ff25beb0c82863bac8", "lol_v2_real", output_gain=0.8),
     )
     LOL_V2_REAL_BEST_SSIM = Weights(
         path   = "lle/hvi_cidnet/hvi_cidnet_lol_v2_real_ssim.pt",
         name   = "HVI-CIDNet, official LOLv2_real/best_SSIM",
         sha256 = "3d7ad3e93d65effaeb937cf833b1f2b3fb78c7529a4db95c589ff0ca569347c3",
-        meta   = _hf("LOLv2-real-bestSSIM", "5f759d5", "fad7bef532a018dc…", "lol_v2_real", output_gain=0.82),
+        meta   = _hf("LOLv2-real-bestSSIM", "5f759d5",
+                     "fad7bef532a018dc10cb1c873bd97a36b30e06fed06f247a93e932e7264f5b51", "lol_v2_real", output_gain=0.82),
     )
     LOL_V2_SYN_W_PERC = Weights(
         path   = "lle/hvi_cidnet/hvi_cidnet_lol_v2_syn_w_perc.pt",
         name   = "HVI-CIDNet, official LOLv2_syn/w_perc",
         sha256 = "460a9956018935cab61ddef3cea14f1dbbc02a65e12ee4d5b5ab45d704d2575b",
-        meta   = _hf("LOLv2-syn-wperc", "001d921", "aafd2a73dae9770b…", "lol_v2_syn"),
+        meta   = _hf("LOLv2-syn-wperc", "001d921",
+                     "aafd2a73dae9770bbdc7ddff70f1acbd88f846a7316e7936dc0f09b01ca39780", "lol_v2_syn"),
     )
     LOL_V2_SYN_WO_PERC = Weights(
         path   = "lle/hvi_cidnet/hvi_cidnet_lol_v2_syn_wo_perc.pt",
         name   = "HVI-CIDNet, official LOLv2_syn/wo_perc",
         sha256 = "519cc5fc55491cf36b47b8295c0204dde29ba887feeed06a77e716072469e55e",
-        meta   = _hf("LOLv2-syn-woperc", "e30d947", "59a5998b6cacc310…", "lol_v2_syn"),
+        meta   = _hf("LOLv2-syn-woperc", "e30d947",
+                     "59a5998b6cacc31028f9e14971285aa9c7b459153f83f8a5edd209fee880159d", "lol_v2_syn"),
     )
     LOL_BLUR = Weights(
         path   = "lle/hvi_cidnet/hvi_cidnet_lol_blur.pt",
         name   = "HVI-CIDNet, official LOL-Blur",
         sha256 = "eba53573097b4138be26ffc219826cf87eaeafbc0a6ae90cf4b35330070b5494",
-        meta   = _hf("LOL-Blur", "8faacc8", "6b9761dfa3d0f35d…", "lol_blur"),
+        meta   = _hf("LOL-Blur", "8faacc8",
+                     "6b9761dfa3d0f35de8119b5f319449478adcee026303f42829a8fc9aa3aa4291", "lol_blur"),
     )
     SICE = Weights(
         path   = "lle/hvi_cidnet/hvi_cidnet_sice.pt",
         name   = "HVI-CIDNet, official SICE",
         sha256 = "7b0824026124427fe0419465fc06a6be0129356c949794d1d1f52c4173091607",
-        meta   = _hf("SICE", "dc35250", "77b36ad42df18087…", "sice"),
+        meta   = _hf("SICE", "dc35250",
+                     "77b36ad42df18087e2fd527479a8277f3e3ea2730f97897f9cdc70069925ac10", "sice"),
     )
     SID_SONY = Weights(
         path   = "lle/hvi_cidnet/hvi_cidnet_sid_sony.pt",
         name   = "HVI-CIDNet, official Sony-Total-Dark (SID.pth)",
         sha256 = "49678f69495610a2691bb5b2665d2766b57a6a79201a236f7afa84f67c5fec5f",
-        meta   = _hf("Sony-Total-Dark", "bf347b9", "49851ed73c47d61a…", "sid_sony"),
+        meta   = _hf("Sony-Total-Dark", "bf347b9",
+                     "49851ed73c47d61a1e27cfccc68f9d67c6e528e065f23cccace579120564cb25", "sid_sony"),
     )
     DEFAULT = LOL_V1_WO_PERC
 

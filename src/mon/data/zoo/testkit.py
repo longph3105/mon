@@ -11,7 +11,7 @@ size), stored as PNG under ``datasets_dir() / "testkit"``. One dataset id per ta
 - ``testkit_mef``: exposure stacks, 25 SICE test scenes (evenly spaced among those with ≥ 4 exposures) × 4
   exposures (darkest, two in between, brightest) = 100, plus each scene's reference.
 - ``testkit_classify``: CIFAR-10 test, the first 10 images of each class = 100 (32×32, native).
-- ``testkit_efficiency``: model efficiency (params, MACs, speed, memory) across resolutions, not quality: the same
+- ``testkit_efficiency`` (``Task.BENCHMARK``): model efficiency (params, MACs, speed, memory) across resolutions, not quality: the same
   5 dark SICE test scenes (darkest exposure; scenes with a landscape photo of at least 3840×2160, evenly spaced) at
   each of ``EFFICIENCY_SIZES`` (256×256 to 8K), paired with the scene's reference: ``test/images/<W>x<H>/sice_<scene>.png``
   and ``test/targets/<W>x<H>/sice_<scene>.png``. Both get the identical scaling to cover the size and centre crop:
@@ -104,8 +104,8 @@ class TestkitLLEUnpaired(FolderDataset):
 class TestkitMEF(FolderDataset):
     """Testkit exposure stacks: 25 SICE test scenes × 4 exposures and their references, 256×256.
 
-    Stored like ``sice`` (``test/images/<scene>/<k>.png``, ``test/targets/<scene>.png``); one sample
-    per exposure, ``meta.stem`` = ``"<scene>/<k>"`` (stack loading for MEF models comes later).
+    Stored like ``sice`` (``test/images/sice_<scene>/<k>.png``, ``test/targets/sice_<scene>.png``); one
+    sample per exposure, ``meta.stem`` = ``"sice_<scene>/<k>"`` (stack loading for MEF models comes later).
     """
 
     __test__ = False  # "Test…" names: keep pytest from collecting these classes
@@ -127,11 +127,12 @@ class TestkitClassify(ClassFolderDataset):
     layout = classification_layout("test")
 
 
-@register_dataset("testkit_efficiency", tasks={Task.LLE})
+@register_dataset("testkit_efficiency", tasks={Task.BENCHMARK})
 class TestkitEfficiency(FolderDataset):
     """Testkit efficiency ladder: 5 dark SICE scenes and their references at each of ``EFFICIENCY_SIZES``.
 
-    ``meta.stem`` = ``"<W>x<H>/<scene>"``.
+    ``meta.stem`` = ``"<W>x<H>/sice_<scene>"``. Tagged ``Task.BENCHMARK``, not ``Task.LLE``: it measures
+    efficiency, so it stays out of LLE dataset lists.
     """
 
     __test__ = False  # "Test…" names: keep pytest from collecting these classes

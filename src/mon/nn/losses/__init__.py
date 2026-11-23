@@ -11,6 +11,7 @@ Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
     Module          Purpose                                                                            Key names
     ==============  =================================================================================  ===========================================
     reduction       Reduction modes shared by every loss: per-sample values, then mean, sum, or none.  Reduction, reduce_loss
+    retinex         Losses on Retinex illumination maps (SCI family).                                  EdgeAwareSmoothnessLoss
     zero_reference  Zero-reference low-light enhancement losses (Zero-DCE family).                     ExposureControlLoss, SpatialConsistencyLoss
     ==============  =================================================================================  ===========================================
 """
@@ -19,7 +20,7 @@ from typing import TYPE_CHECKING
 
 from mon.core._lazy import make_lazy
 
-_SUBMODULES: tuple[str, ...] = ("reduction", "zero_reference")
+_SUBMODULES: tuple[str, ...] = ("reduction", "retinex", "zero_reference")
 
 # Public name -> submodule. Keep in sync with each submodule's ``__all__``.
 _EXPORTS: dict[str, str] = {
@@ -27,6 +28,8 @@ _EXPORTS: dict[str, str] = {
     "Reduction"                 : "reduction",
     "check_reduction"           : "reduction",
     "reduce_loss"               : "reduction",
+    # retinex
+    "EdgeAwareSmoothnessLoss"   : "retinex",
     # zero_reference
     "ColorConstancyLoss"        : "zero_reference",
     "ExposureControlLoss"       : "zero_reference",
@@ -37,6 +40,7 @@ _EXPORTS: dict[str, str] = {
 # Literal list so static tools (mypy, pyright) see the re-exports; must equal sorted(_EXPORTS).
 __all__ = [
     "ColorConstancyLoss",
+    "EdgeAwareSmoothnessLoss",
     "ExposureControlLoss",
     "IlluminationSmoothnessLoss",
     "Reduction",
@@ -50,6 +54,7 @@ __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
     from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
+    from mon.nn.losses.retinex import EdgeAwareSmoothnessLoss
     from mon.nn.losses.zero_reference import (
         ColorConstancyLoss, ExposureControlLoss, IlluminationSmoothnessLoss, SpatialConsistencyLoss,
     )

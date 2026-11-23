@@ -2,7 +2,8 @@
 
 Stored in the normalized detection layout (``mon.data.dataset.detection_layout``; workspace
 ``data/README.md``): ``<split>/images/`` with YOLO labels in ``<split>/labels/`` (``class cx cy w h``,
-normalized), class ids in ``classes.txt`` order.
+normalized), class ids index ``classes`` (written in the code, in the
+order of the folder's ``classes.txt``, which isn't read).
 
 Also tagged ``Task.LLE``: low-light images with no reference, used to evaluate enhancement
 (no-reference metrics) and enhancement-for-detection.

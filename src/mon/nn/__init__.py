@@ -32,6 +32,7 @@ _EXPORTS: dict[str, str] = {
     "profile_complexity"        : "complexity",
     # losses
     "ColorConstancyLoss"        : "losses",
+    "EdgeAwareSmoothnessLoss"   : "losses",
     "ExposureControlLoss"       : "losses",
     "IlluminationSmoothnessLoss": "losses",
     "Reduction"                 : "losses",
@@ -56,6 +57,7 @@ _EXPORTS: dict[str, str] = {
 __all__ = [
     "ColorConstancyLoss",
     "Complexity",
+    "EdgeAwareSmoothnessLoss",
     "ExposureControlLoss",
     "IlluminationSmoothnessLoss",
     "Reduction",
@@ -83,6 +85,7 @@ __getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
     from mon.nn.complexity import Complexity, count_flops, measure_latency, measure_peak_memory, profile_complexity
     from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
+    from mon.nn.losses.retinex import EdgeAwareSmoothnessLoss
     from mon.nn.losses.zero_reference import (
         ColorConstancyLoss, ExposureControlLoss, IlluminationSmoothnessLoss, SpatialConsistencyLoss,
     )

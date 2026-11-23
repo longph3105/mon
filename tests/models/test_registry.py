@@ -3,6 +3,7 @@
 import importlib
 import inspect
 import pkgutil
+import re
 import subprocess
 import sys
 
@@ -50,6 +51,22 @@ def test_every_entry_resolves_to_a_model_with_weights_enum_and_tasks():
         enum = getattr(entry.obj, "weights_enum", None)
         assert enum is None or issubclass(enum, WeightsEnum)
         assert entry.meta["tasks"] and all(isinstance(t, Task) for t in entry.meta["tasks"])
+
+
+def _hashes(value: object) -> list[object]:
+    return [h for v in value.values() for h in _hashes(v)] if isinstance(value, dict) else [value]
+
+
+def test_every_weights_entry_has_full_hashes_and_a_url_or_a_source():
+    """CONVENTIONS, Weights: ``url`` only for the released file itself; else ``meta["source"]``."""
+    enums = {e.obj.weights_enum for e in MODELS.entries() if getattr(e.obj, "weights_enum", None) is not None}
+    for enum in enums:
+        for member in enum:
+            w, where = member.value, f"{enum.__name__}.{member.name}"
+            assert re.fullmatch(r"[0-9a-f]{64}", w.sha256 or ""), where
+            assert w.url or (w.meta or {}).get("source"), where
+            for h in _hashes((w.meta or {}).get("source_sha256", {})):
+                assert isinstance(h, str) and re.fullmatch(r"[0-9a-f]{64}", h), where
 
 
 def test_every_public_model_class_is_indexed_once():

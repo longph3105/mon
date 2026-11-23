@@ -7,7 +7,8 @@ configured metrics per image: full-reference ones on ``(pred, target)``, no-refe
 or a test set without them, e.g. ``dicm``), only no-reference metrics run, on every prediction.
 
 Writes ``metrics.csv`` (one row per image) and ``metrics.yaml`` (means, directions, the resolved
-config) into ``output_dir`` (default: the prediction folder); with ``gt_mean``, ``metrics_gt_mean.*``.
+config) into ``output_dir`` (default: the prediction folder); with ``gt_mean``, ``metrics_gt_mean.*``. The resolved
+config (with the device used) goes into ``metrics.yaml``, not ``config.yaml``: that file is the predict run's.
 A metric that can't score an image (its ``ValueError``, e.g. an image smaller than NIQE's blocks)
 leaves that cell empty and is logged; the run goes on, ``metrics.yaml`` lists it under ``failed``
 with each metric's ``scored`` count, and means cover the scored images only.
@@ -26,7 +27,7 @@ __all__ = [
 import csv
 import io
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import torch
@@ -210,7 +211,7 @@ def evaluate(cfg: EvaluateConfig | DictConfig | Mapping[str, Any]) -> dict[str, 
         "scored"       : {n: len(rows) - len(failed.get(n, {})) for n in names},
         "failed"       : failed,
         "higher_better": {n: METRICS.entry(n).meta["higher_better"] for n in names},
-        "config"       : OmegaConf.to_container(OmegaConf.structured(config)),
+        "config"       : OmegaConf.to_container(OmegaConf.structured(replace(config, device=str(device)))),
     }, yaml_path, overwrite=True)
     print_dict(means, title=f"{len(rows)} images" + (" (GT mean)" if config.gt_mean else ""))
     logger.info("Wrote %s and %s", csv_path, yaml_path)

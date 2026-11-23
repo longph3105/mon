@@ -49,6 +49,15 @@ def test_scores_match_metrics_and_files(pair):
     assert summary["config"]["data"] == str(gt_dir)
 
 
+def test_metrics_yaml_records_the_resolved_device(pair, monkeypatch):
+    from mon.runners import evaluator
+    monkeypatch.setattr(evaluator, "select_device", lambda spec: torch.device("cpu"))
+    pred_dir, gt_dir, _, _ = pair
+    evaluate(EvaluateConfig(pred=str(pred_dir), data=str(gt_dir), metrics=["psnr"], device="auto"))
+    assert yaml.safe_load((pred_dir / "metrics.yaml").read_text())["config"]["device"] == "cpu"
+    assert not (pred_dir / "config.yaml").exists()  # the predict run's file stays its own
+
+
 def test_existing_files_raise_unless_exist_ok(pair):
     pred_dir, gt_dir, *_ = pair
     cfg = {"pred": str(pred_dir), "data": str(gt_dir), "metrics": FR, "device": "cpu"}

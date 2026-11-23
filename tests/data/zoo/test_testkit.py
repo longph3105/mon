@@ -7,6 +7,7 @@ import pytest
 import torch
 import yaml
 
+from mon.core.enums import Task
 from mon.core.path import datasets_dir
 from mon.data.dataset import DATASETS
 from mon.data.io import write_image
@@ -29,6 +30,12 @@ def test_cover_scales_and_centre_crops():
     for w, h in [(256, 256), (400, 200), (900, 600)]:  # down (area), crop, up (bicubic)
         out = _cover(img, w, h)
         assert out.shape == (h, w, 3) and out[h // 2, w // 2].min() > 200 and out[0, 0].max() == 0
+
+
+def test_task_tags_keep_efficiency_out_of_lle_lists():
+    lle = set(DATASETS.names(tasks=Task.LLE))
+    assert {"testkit_lle", "testkit_lle_unpaired"} <= lle and "testkit_efficiency" not in lle
+    assert "testkit_efficiency" in DATASETS.names(tasks=Task.BENCHMARK)
 
 
 def test_efficiency_sizes_and_parts(tmp_path):

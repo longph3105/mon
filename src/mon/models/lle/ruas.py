@@ -50,6 +50,7 @@ __all__ = [
 ]
 
 from collections.abc import Callable
+from typing import ClassVar
 
 import torch
 from torch import Tensor, nn
@@ -196,7 +197,7 @@ class RUAS(nn.Module):
     last stage's ``illumination`` and the NRM's ``noise``.
     """
 
-    weights_enum = RUAS_Weights
+    weights_enum: ClassVar[type[WeightsEnum]] = RUAS_Weights
 
     def __init__(self, iterations: int = 3, denoise_layers: int = 3, denoise_channels: int = 6) -> None:
         super().__init__()

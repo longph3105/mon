@@ -73,6 +73,8 @@ from torch.nn import functional as F
 from mon.core.weights import Weights, WeightsEnum
 from mon.models.denoise.zs_n2n import pair_downsample
 from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
+from mon.nn.losses.retinex import EdgeAwareSmoothnessLoss
+from mon.nn.losses.zero_reference import IlluminationSmoothnessLoss
 from mon.nn.training import StepOutput, TrainRecipe
 
 _REPO = "https://raw.githubusercontent.com/Doyle59217/ZeroIG/5af4b8aca6b114732f05d7fea70e0fbc874d63ab/weights/"
@@ -238,43 +240,6 @@ def _local_variance(x: Tensor) -> Tensor:
     return ((_patches(x, mode="zeros") - _patches(mean, mode="zeros")) ** 2).mean(dim=(4, 5))
 
 
-def _tv(x: Tensor) -> Tensor:
-    """Squared-difference total variation per sample (Zero-DCE's ``L_TV``)."""
-    h, w = x.shape[-2:]
-    h_tv = (x[:, :, 1:, :] - x[:, :, :-1, :]).pow(2).flatten(1).sum(1)
-    w_tv = (x[:, :, :, 1:] - x[:, :, :, :-1]).pow(2).flatten(1).sum(1)
-    return 2 * (h_tv / ((h - 1) * w) + w_tv / (h * (w - 1)))
-
-
-_SMOOTH_DIRECTIONS = ((1, 0), (0, 1), (1, 1), (1, -1), (2, 0), (0, 2),
-                      (2, 1), (2, -1), (1, 2), (1, -2), (2, 2), (2, -2))
-
-
-def _pairs(x: Tensor, dy: int, dx: int) -> tuple[Tensor, Tensor]:
-    """Pixels ``p`` and ``p + (dy, dx)`` over the region where both exist."""
-    h, w = x.shape[-2:]
-    a = x[:, :, : h - dy, max(0, -dx) : w - max(0, dx)]
-    b = x[:, :, dy:, max(0, dx) : w - max(0, -dx)]
-    return a, b
-
-
-def _smoothness(guide: Tensor, output: Tensor, sigma: float = 10.0) -> Tensor:
-    """Edge-aware smoothness of ``output`` weighted by ``guide`` (per sample)."""
-    b, _, h, w = guide.shape
-    mat  = guide.new_tensor([[0.257, -0.148, 0.439], [0.564, -0.291, -0.368], [0.098, 0.439, -0.071]])
-    bias = guide.new_tensor([16.0 / 255.0, 128.0 / 255.0, 128.0 / 255.0])
-    ycc  = (guide.contiguous().view(-1, 3) @ mat + bias).view(b, 3, h, w)  # official memory reshape
-    k    = -1.0 / (2 * sigma * sigma)
-    total = output.new_zeros(b)
-    for dy, dx in _SMOOTH_DIRECTIONS:
-        ga, gb = _pairs(ycc, dy, dx)
-        oa, ob = _pairs(output, dy, dx)
-        weight = torch.exp((ga - gb).pow(2).sum(1, keepdim=True) * k)
-        term   = (weight * (oa - ob).abs().sum(1, keepdim=True)).flatten(1).mean(1)
-        total  = total + term + term                                    # both orders of each pair, as official
-    return total
-
-
 def _mse(a: Tensor, b: Tensor) -> Tensor:
     return (a - b).pow(2).flatten(1).mean(1)
 
@@ -290,6 +255,8 @@ class ZeroIGLoss(nn.Module):
         super().__init__()
         check_reduction(reduction)
         self.reduction = reduction
+        self.smooth    = EdgeAwareSmoothnessLoss(reduction="none")    # the official SmoothLoss (SCI's)
+        self.tv        = IlluminationSmoothnessLoss(reduction="none")  # Zero-DCE's L_TV
 
     def forward(self, model: ZeroIG, image: Tensor) -> Tensor:
         eps = 1e-4
@@ -330,8 +297,8 @@ class ZeroIGLoss(nn.Module):
 
         loss  = _mse(s2, target_s) * 700
         loss  = loss + _mse(normalized, brightened) * 1000
-        loss  = loss + _smoothness(lo_d, s2) * 5
-        loss  = loss + _tv(s2) * 1600
+        loss  = loss + self.smooth(s2, lo_d) * 5
+        loss  = loss + self.tv(s2) * 1600
         # Residual and consistency (denoise_1), on views of the input (+1e-9, as official).
         v1, v2 = pair_downsample(image + tiny)
         loss  = loss + _mse(v1, l_pred2) * 1000

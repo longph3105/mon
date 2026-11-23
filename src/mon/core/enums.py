@@ -7,15 +7,14 @@ Unknown values raise ``ValueError``; there is no implicit default member.
 
 __all__ = [
     "AliasStrEnum",
-    "BBoxFormat",
-    "RunMode",
     "Split",
-    "Strategy",
     "Task",
 ]
 
 from enum import StrEnum
 from typing import Self
+
+from mon.core._lazy import deprecated_getattr
 
 
 # --- Base ---
@@ -71,7 +70,7 @@ class Split(AliasStrEnum):
     PREDICT = "predict"
 
 
-class RunMode(AliasStrEnum):
+class _RunMode(AliasStrEnum):
     """What a run does."""
 
     TRAIN   = "train"
@@ -79,7 +78,7 @@ class RunMode(AliasStrEnum):
     METRIC  = "metric"
 
 
-class Strategy(AliasStrEnum):
+class _Strategy(AliasStrEnum):
     """How inputs larger or smaller than the model size are handled at inference."""
 
     NATIVE = "native"                # Use the input as-is.
@@ -125,9 +124,19 @@ class Task(AliasStrEnum):
 
 # --- Data ---
 
-class BBoxFormat(AliasStrEnum):
+class _BBoxFormat(AliasStrEnum):
     """Bounding-box coordinate layout."""
 
     XYXY    = "xyxy", "voc"            # [x1, y1, x2, y2], pixels.
     XYWH    = "xywh", "coco"           # [x, y, w, h], top-left corner, pixels.
     CXCYWHN = "cxcywhn", "yolo"        # [cx, cy, w, h], normalized to [0, 1].
+
+
+# --- Deprecated ---
+# Unused in mon; removed in 3.1. Access still works, with a ``DeprecationWarning``.
+
+_RunMode.__name__ = _RunMode.__qualname__ = "RunMode"
+_Strategy.__name__ = _Strategy.__qualname__ = "Strategy"
+_BBoxFormat.__name__ = _BBoxFormat.__qualname__ = "BBoxFormat"
+__getattr__ = deprecated_getattr(__name__, {"BBoxFormat": _BBoxFormat, "RunMode": _RunMode, "Strategy": _Strategy},
+                                 removal="3.1")

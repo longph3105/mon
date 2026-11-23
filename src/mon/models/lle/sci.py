@@ -58,6 +58,7 @@ from torch.nn import functional as F
 
 from mon.core.weights import Weights, WeightsEnum
 from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
+from mon.nn.losses.retinex import EdgeAwareSmoothnessLoss
 from mon.nn.training import StepOutput, TrainRecipe
 
 _REPO = "https://raw.githubusercontent.com/vis-opt-group/SCI"
@@ -302,28 +303,6 @@ class SCIPP(nn.Module):
 
 # --- Loss ---
 
-_YCBCR = ((0.257, -0.148, 0.439), (0.564, -0.291, -0.368), (0.098, 0.439, -0.071))  # rows R, G, B → Y, Cb, Cr
-_YCBCR_BIAS = (16 / 255, 128 / 255, 128 / 255)
-# The 24 official neighbor terms are 12 offsets, each counted twice (a-b and b-a give equal values).
-_OFFSETS = ((1, 0), (0, 1), (1, 1), (1, -1), (2, 0), (0, 2), (2, 1), (2, -1), (1, 2), (1, -2), (2, 2), (2, -2))
-
-
-def _rgb_to_ycbcr(image: Tensor, official: bool) -> Tensor:
-    mat  = torch.tensor(_YCBCR, dtype=torch.float32, device=image.device)
-    bias = torch.tensor(_YCBCR_BIAS, dtype=torch.float32, device=image.device)
-    x = image.float()
-    if official:  # view(-1, 3) on NCHW: groups of three values along W within one channel
-        return (x.contiguous().view(-1, 3) @ mat + bias).view(x.shape)
-    return torch.einsum("bchw,ck->bkhw", x, mat) + bias.view(1, 3, 1, 1)
-
-
-def _pairs(x: Tensor, dy: int, dx: int) -> tuple[Tensor, Tensor]:
-    """Overlapping views ``x[p]`` and ``x[p + (dy, dx)]`` for every valid pixel ``p`` (``dy >= 0``)."""
-    h, w = x.shape[-2:]
-    cols_a, cols_b = (slice(0, w - dx), slice(dx, w)) if dx >= 0 else (slice(-dx, w), slice(0, w + dx))
-    return x[..., : h - dy, cols_a], x[..., dy:, cols_b]
-
-
 class SCILoss(nn.Module):
     """The SCI training objective: ``1.5·MSE(illumination, input) + smoothness(input, illumination)``.
 
@@ -341,19 +320,12 @@ class SCILoss(nn.Module):
         check_reduction(reduction)
         self.official_ycbcr = official_ycbcr
         self.reduction      = reduction
-        self.sigma          = 10.0
+        self.smooth         = EdgeAwareSmoothnessLoss(sigma=10.0, official_ycbcr=official_ycbcr, reduction="none")
 
     def smoothness(self, image: Tensor, illumination: Tensor) -> Tensor:
         """Per-sample edge-aware smoothness ``[B]`` of ``illumination`` guided by ``image``."""
-        guide = _rgb_to_ycbcr(image, self.official_ycbcr)
-        scale = -1.0 / (2 * self.sigma**2)
-        total = illumination.new_zeros(illumination.shape[0])
-        for dy, dx in _OFFSETS:
-            ga, gb = _pairs(guide, dy, dx)
-            ia, ib = _pairs(illumination, dy, dx)
-            weight = torch.exp((ga - gb).pow(2).sum(dim=1, keepdim=True) * scale)
-            total = total + 2 * (weight * (ia - ib).abs().sum(dim=1, keepdim=True)).flatten(1).mean(dim=1)
-        return total
+        out: Tensor = self.smooth(illumination, image)
+        return out
 
     def forward(self, image: Tensor, illumination: Tensor) -> Tensor:
         fidelity = (illumination - image).pow(2).flatten(1).mean(dim=1)

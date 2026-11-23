@@ -58,6 +58,7 @@ from torch import Tensor, nn
 from torch.nn import functional as F
 
 from mon.nn.losses.reduction import Reduction, check_reduction, reduce_loss
+from mon.nn.losses.zero_reference import IlluminationSmoothnessLoss
 
 
 # --- Network ---
@@ -139,14 +140,12 @@ class CoLIELoss(nn.Module):
         self.alpha, self.beta, self.gamma, self.delta = alpha, beta, gamma, delta
         self.exposure  = exposure
         self.reduction = reduction
+        self.tv        = IlluminationSmoothnessLoss(reduction="none")  # Zero-DCE's L_TV
 
     def forward(self, illumination: Tensor, value: Tensor) -> Tensor:
         """Args: ``illumination`` and ``value``, both ``[B, 1, h, w]`` with ``h, w >= 16``."""
-        h, w = illumination.shape[-2:]
         fidelity = (illumination - value).pow(2).flatten(1).mean(1)
-        h_tv = (illumination[..., 1:, :] - illumination[..., :-1, :]).pow(2).flatten(1).sum(1)
-        w_tv = (illumination[..., :, 1:] - illumination[..., :, :-1]).pow(2).flatten(1).sum(1)
-        smooth = 2 * (h_tv / ((h - 1) * w) + w_tv / (h * (w - 1)))
+        smooth   = self.tv(illumination)
         exposure = (F.avg_pool2d(illumination, 16).sqrt() - self.exposure).pow(2).flatten(1).mean(1)
         sparsity = (value / (illumination + 1e-4)).flatten(1).mean(1)
         total = self.alpha * fidelity + self.beta * smooth + self.gamma * exposure + self.delta * sparsity

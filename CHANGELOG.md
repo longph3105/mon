@@ -28,6 +28,13 @@
 - `tools/dataset_overview.py <folder>` writes `overview_<name>.jpg` beside the
   folder, not `overview.jpg` inside it, which `mon predict data=<folder>` then
   read as an input.
+- `testkit_efficiency` is tagged `Task.BENCHMARK` instead of `Task.LLE`, so
+  `DATASETS.names(tasks=Task.LLE)` no longer lists it.
+- `mon evaluate` saves the device it used in `metrics.yaml` (it saved the
+  spec, e.g. `auto`).
+- `HVICIDNet_Weights`: each entry's `meta["source_sha256"]` is the full
+  SHA-256 of its Hugging Face file (it was cut to 16 digits).
+- `RUAS.weights_enum` is annotated `ClassVar`, like every other model's.
 
 ### Changed
 
@@ -38,6 +45,33 @@
   `overview_test.jpg`). `split_dir` is replaced by `overview_path(ds, split)`.
   Move or regenerate existing overviews.
 - `tools/dataset_overview.py`: 10 items per overview by default (was 20).
+- New `mon.nn.losses.retinex.EdgeAwareSmoothnessLoss`: SCI's edge-aware
+  smoothness, now shared by `SCILoss` and `ZeroIGLoss` (each had its own
+  copy). `ZeroIGLoss`, `CoLIELoss` and CLODE use `IlluminationSmoothnessLoss`
+  for Zero-DCE's TV term, and CLODE uses `mon.models.denoise.zs_n2n.pair_downsample`.
+  Values are unchanged.
+- `CONFIG_EXTENSIONS` no longer includes `.txt`, so `Path.is_config_file()` is
+  false for `classes.txt` and YOLO label files.
+
+### Deprecated
+
+- Unused in `mon`, to be removed in 3.1 (access warns with
+  `DeprecationWarning`): the enums `RunMode`, `Strategy` and `BBoxFormat`; the
+  constants `ANNS_DIR`, `DEBUG_DIR`, `DEPTH_DIR`, `IMAGES_DIR`, `LABELS_DIR`,
+  `DEFAULT_CKPT_EXT`, `DEFAULT_IMAGE_EXT`, `DEFAULT_LABEL_EXT` and
+  `DEFAULT_WEIGHTS_EXT`.
+
+### Docs
+
+- CONVENTIONS: a weights entry has a `url` only when the zoo file is the
+  released file itself (a converted file gives `source` and the full
+  `source_sha256`); `evaluate` and `benchmark` save their config in their
+  result file; a dataset's `folder` may be a subfolder of its archive
+  (`lsrw/huawei`, `testkit/lle`) or shared with another dataset (`sice_under`).
+- Docstrings: the detection datasets' class ids (the `classes` list, in the
+  order of `classes.txt`, which isn't read); the `testkit_mef` and
+  `testkit_efficiency` stems (`sice_<scene>/...`); three stale pointers
+  (`transforms`, `metrics.registry`, `fileio`).
 
 ### Tests
 
@@ -51,3 +85,5 @@
   rebuilds, the `python -m mon.data.zoo` CLI); LR schedulers; `runs_dir` and
   `datasets_dir`; `mon evaluate` with real no-reference metrics; 16-bit
   inputs in `mon benchmark`.
+- Every weights entry has a full `sha256`, full `source_sha256` values, and a
+  `url` or a `meta["source"]`.

@@ -2,7 +2,7 @@
 
 ``METRICS`` lists every metric lazily, so listing and filtering imports neither the metric code
 nor PyTorch. Metadata: ``mode`` (``"fr"`` full-reference, ``"nr"`` no-reference) and
-``higher_better``; they match the class attributes (checked by ``tests/metrics/test_registry.py``).
+``higher_better``; they match the class attributes (checked by ``tests/metrics/test_metrics.py``).
 
 Examples:
     >>> METRICS.names(mode="fr")

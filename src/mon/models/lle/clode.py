@@ -67,6 +67,8 @@ from torch.nn import functional as F
 from torchdiffeq import odeint, odeint_adjoint
 
 from mon.core.weights import Weights, WeightsEnum
+from mon.models.denoise.zs_n2n import pair_downsample
+from mon.nn.losses.zero_reference import IlluminationSmoothnessLoss
 
 # The official Drive files (folder 1E1Oi89TJeZIL4pz7d4p-D_Yq1rAG4Uhc) hold 98 tensors; the zoo files
 # keep the 48 that ``forward`` uses, unchanged (checked tensor by tensor).
@@ -130,20 +132,7 @@ class _Denoiser(nn.Module):
         return out
 
 
-def _pair_downsample(image: Tensor) -> tuple[Tensor, Tensor]:
-    """The two diagonal-average half-resolution views used by Zero-Shot Noise2Noise."""
-    c  = image.shape[1]
-    f1 = image.new_tensor([[[[0.0, 0.5], [0.5, 0.0]]]]).repeat(c, 1, 1, 1)
-    f2 = image.new_tensor([[[[0.5, 0.0], [0.0, 0.5]]]]).repeat(c, 1, 1, 1)
-    return F.conv2d(image, f1, stride=2, groups=c), F.conv2d(image, f2, stride=2, groups=c)
-
-
-def _total_variation(x: Tensor) -> Tensor:
-    """Zero-DCE's illumination smoothness term (squared differences; a batch-mean scalar)."""
-    b, _, h, w = x.shape
-    h_tv = (x[:, :, 1:, :] - x[:, :, :h - 1, :]).pow(2).sum()
-    w_tv = (x[:, :, :, 1:] - x[:, :, :, :w - 1]).pow(2).sum()
-    return 2 * (h_tv / ((h - 1) * w) + w_tv / (h * (w - 1))) / b
+_tv = IlluminationSmoothnessLoss()  # Zero-DCE's L_TV of the curve map, a batch mean (parameter-free)
 
 
 class _EnhanceFunc(nn.Module):
@@ -168,11 +157,11 @@ class _EnhanceFunc(nn.Module):
 
     def denoise_loss(self, noisy: Tensor) -> Tensor:
         """Zero-Shot Noise2Noise residual + consistency loss of ``self.denoise`` (batch mean)."""
-        noisy1, noisy2 = _pair_downsample(noisy)
+        noisy1, noisy2 = pair_downsample(noisy)
         pred1    = noisy1 - self.denoise(noisy1)
         pred2    = noisy2 - self.denoise(noisy2)
         loss_res = 0.5 * (F.mse_loss(noisy1, pred2) + F.mse_loss(noisy2, pred1))
-        denoised1, denoised2 = _pair_downsample(noisy - self.denoise(noisy))
+        denoised1, denoised2 = pair_downsample(noisy - self.denoise(noisy))
         loss_cons = 0.5 * (F.mse_loss(pred1, denoised1) + F.mse_loss(pred2, denoised2))
         return loss_res + loss_cons
 
@@ -191,7 +180,7 @@ class _EnhanceFunc(nn.Module):
 
         self.last_curve_map = a
         dx  = a * (x.pow(2) - x)
-        return torch.cat([dx, torch.ones_like(a) * _total_variation(a), torch.ones_like(a) * l_noise], 1)
+        return torch.cat([dx, torch.ones_like(a) * _tv(a), torch.ones_like(a) * l_noise], 1)
 
 
 class _ODEBlock(nn.Module):

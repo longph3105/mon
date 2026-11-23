@@ -128,7 +128,7 @@ def save_yaml(data: Any, path: PathLike, *, overwrite: bool = True) -> Path:
     """Atomically write ``data`` as UTF-8 YAML (key order kept) and return the path.
 
     Uses a safe dumper, so only plain Python types and paths are allowed. For OmegaConf
-    configs, use ``OmegaConf.save``.
+    configs, use ``mon.core.config.save_config``.
 
     Raises:
         FileExistsError: If the file exists and ``overwrite`` is ``False``.

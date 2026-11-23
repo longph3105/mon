@@ -11,8 +11,8 @@ Submodules (kept in sync with the code by ``tests/core/test_init.py``):
     ============  =======================================================  =========================================
     config        Load and save OmegaConf configs.                         load_config, save_config
     console       Logging, progress bars, and the shared rich console.     get_logger, setup_logging, progress_bar
-    constants     Global constants: file extensions, dir names, env vars.  IMAGE_EXTENSIONS, IMAGES_DIR, ZOO_DIR_ENV
-    enums         Shared string enums with aliases.                        Task, Split, RunMode, BBoxFormat
+    constants     Global constants: file extensions, env vars.             IMAGE_EXTENSIONS, ZOO_DIR_ENV
+    enums         Shared string enums with aliases.                        Task, Split
     fileio        Atomic JSON/YAML/text I/O and verified downloads.        load_yaml, save_json, download_file
     path          Path subclass plus model-zoo and weights lookup.         Path, zoo_dir, find_weights, runs_dir
     registry      Name-to-object registries with metadata filtering.       Registry
@@ -56,19 +56,10 @@ _EXPORTS: dict[str, str] = {
     "progress_bar"         : "console",
     "setup_logging"        : "console",
     # constants
-    "ANNS_DIR"             : "constants",
     "CONFIG_EXTENSIONS"    : "constants",
     "DATASETS_DIR_ENV"     : "constants",
     "DATA_DIR_ENV"         : "constants",
-    "DEBUG_DIR"            : "constants",
-    "DEFAULT_CKPT_EXT"     : "constants",
-    "DEFAULT_IMAGE_EXT"    : "constants",
-    "DEFAULT_LABEL_EXT"    : "constants",
-    "DEFAULT_WEIGHTS_EXT"  : "constants",
-    "DEPTH_DIR"            : "constants",
-    "IMAGES_DIR"           : "constants",
     "IMAGE_EXTENSIONS"     : "constants",
-    "LABELS_DIR"           : "constants",
     "RAW_IMAGE_EXTENSIONS" : "constants",
     "RUNS_DIR_ENV"         : "constants",
     "VIDEO_EXTENSIONS"     : "constants",
@@ -76,10 +67,7 @@ _EXPORTS: dict[str, str] = {
     "ZOO_DIR_ENV"          : "constants",
     # enums
     "AliasStrEnum"         : "enums",
-    "BBoxFormat"           : "enums",
-    "RunMode"              : "enums",
     "Split"                : "enums",
-    "Strategy"             : "enums",
     "Task"                 : "enums",
     # fileio
     "download_file"        : "fileio",
@@ -132,27 +120,17 @@ _EXPORTS: dict[str, str] = {
 
 # Literal list so static tools (mypy, pyright) see the re-exports; must equal sorted(_EXPORTS).
 __all__ = [
-    "ANNS_DIR",
     "AliasStrEnum",
     "BASE_KEY",
-    "BBoxFormat",
     "CONFIG_EXTENSIONS",
     "DATASETS_DIR_ENV",
     "DATA_DIR_ENV",
-    "DEBUG_DIR",
-    "DEFAULT_CKPT_EXT",
-    "DEFAULT_IMAGE_EXT",
-    "DEFAULT_LABEL_EXT",
     "DEFAULT_QUIET_LOGGERS",
-    "DEFAULT_WEIGHTS_EXT",
-    "DEPTH_DIR",
     "Entry",
     "Float3",
-    "IMAGES_DIR",
     "IMAGE_EXTENSIONS",
     "Int2",
     "Int3",
-    "LABELS_DIR",
     "OneOrPair",
     "Path",
     "Profiler",
@@ -161,11 +139,9 @@ __all__ = [
     "ReadOnlyDict",
     "Registry",
     "RegistryKeyError",
-    "RunMode",
     "Size",
     "SpeedColumn",
     "Split",
-    "Strategy",
     "Task",
     "TensorOrArray",
     "Timer",
@@ -207,7 +183,14 @@ __all__ = [
 ]
 
 
-__getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals())
+# Deprecated names (removed in 3.1): still reachable as ``mon.core.<name>``, with the submodule's warning.
+_DEPRECATED: dict[str, str] = {
+    **dict.fromkeys(("ANNS_DIR", "DEBUG_DIR", "DEPTH_DIR", "IMAGES_DIR", "LABELS_DIR", "DEFAULT_CKPT_EXT",
+                     "DEFAULT_IMAGE_EXT", "DEFAULT_LABEL_EXT", "DEFAULT_WEIGHTS_EXT"), "constants"),
+    **dict.fromkeys(("BBoxFormat", "RunMode", "Strategy"), "enums"),
+}
+
+__getattr__, __dir__ = make_lazy(__name__, _EXPORTS, _SUBMODULES, globals(), _DEPRECATED)
 
 
 if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
@@ -216,12 +199,10 @@ if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
         DEFAULT_QUIET_LOGGERS, SpeedColumn, get_console, get_logger, print_dict, progress_bar, setup_logging,
     )
     from mon.core.constants import (
-        ANNS_DIR, CONFIG_EXTENSIONS, DATA_DIR_ENV, DATASETS_DIR_ENV, DEBUG_DIR, DEFAULT_CKPT_EXT,
-        DEFAULT_IMAGE_EXT,
-        DEFAULT_LABEL_EXT, DEFAULT_WEIGHTS_EXT, DEPTH_DIR, IMAGE_EXTENSIONS, IMAGES_DIR, LABELS_DIR,
-        RAW_IMAGE_EXTENSIONS, RUNS_DIR_ENV, VIDEO_EXTENSIONS, WEIGHTS_EXTENSIONS, ZOO_DIR_ENV,
+        CONFIG_EXTENSIONS, DATA_DIR_ENV, DATASETS_DIR_ENV, IMAGE_EXTENSIONS, RAW_IMAGE_EXTENSIONS, RUNS_DIR_ENV,
+        VIDEO_EXTENSIONS, WEIGHTS_EXTENSIONS, ZOO_DIR_ENV,
     )
-    from mon.core.enums import AliasStrEnum, BBoxFormat, RunMode, Split, Strategy, Task
+    from mon.core.enums import AliasStrEnum, Split, Task
     from mon.core.fileio import (
         download_file, load_json, load_txt, load_yaml, save_json, save_txt, save_yaml, sha256sum,
     )

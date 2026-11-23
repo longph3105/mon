@@ -2,7 +2,8 @@
 
 Stored in the normalized detection layout (``mon.data.dataset.detection_layout``; workspace
 ``data/README.md``): ``<split>/images/`` (JPEG) with YOLO labels in ``<split>/labels/`` (``class cx cy
-w h``, normalized), class ids in ``classes.txt`` order. Splits follow the AI City Challenge 2024
+w h``, normalized), class ids index ``classes`` (written in the code, in the
+order of the folder's ``classes.txt``, which isn't read). Splits follow the AI City Challenge 2024
 Track 4 release, by camera with none shared: ``train`` is the 2023 train set (cameras 3, 5, 6, 8–18),
 ``val`` the 2023 test set (cameras 1, 2, 4, 7), ``test`` FishEye1Keval (cameras 19–29).
 

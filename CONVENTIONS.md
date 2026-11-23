@@ -36,7 +36,9 @@ writing or changing code; `AGENTS.md` has the general rules.
 ## Data
 
 - A dataset subclasses `FolderDataset` (`ClassFolderDataset` for
-  `<split>/<class>/`), sets `folder` (the dataset id under `datasets_dir()`) and
+  `<split>/<class>/`), sets `folder` (its root under `datasets_dir()`: the
+  archive id, or a subfolder of it, e.g. `lsrw/huawei`; a split view of
+  another dataset shares its folder, e.g. `sice_under`) and
   `layout` (its family's normalized layout: `paired_layout(...)`,
   `detection_layout(...)`, `classification_layout(...)`), and registers with
   `register_dataset` under the same id, in the `mon.data.zoo` module of its
@@ -67,7 +69,11 @@ writing or changing code; `AGENTS.md` has the general rules.
   arch=...)` line in `mon/models/registry.py`, not a decorator
   (`tests/models/test_registry.py` checks the index).
 - Weights: a `WeightsEnum` of `Weights("<task>/<model>/<file>.pt")` (under
-  `zoo_dir()`; naming: `data/README.md`, Zoo) with `url` and `sha256`; the class
+  `zoo_dir()`; naming: `data/README.md`, Zoo) with `sha256`, and `url` only when
+  the zoo file is the released file byte for byte (a download is checked
+  against `sha256`). A converted file (unwrapped, merged, pruned) has no `url`;
+  its `meta` gives `source` and `source_sha256` (full, not shortened); an
+  unreleased one (the owner's training) gives only `source`. The class
   sets `weights_enum: ClassVar[type[WeightsEnum]]`; load through
   `mon.models.load(name, weights=...)` and `resolve_weights(spec, Enum)`. A
   missing file raises, never skips.
@@ -106,7 +112,9 @@ writing or changing code; `AGENTS.md` has the general rules.
 - Runners take a dataclass config (`TrainConfig`, `PredictConfig`,
   `EvaluateConfig`) via `load_config` (YAML + dotlist), resolve it
   (`seed_everything`, `select_device`, run dir) and save it with the seed in the
-  run dir.
+  run dir: `train` and `predict` as `config.yaml`; `evaluate` and `benchmark`
+  inside their result file (`metrics.yaml`, the `output` YAML), since evaluation
+  writes into a predict run dir and a benchmark's `output` is optional.
 - Run dirs: `runs_dir() / "train"` or `"predict"`, or a hand-set
   `"eval"`/`"benchmark"` dir (`$RUNS_DIR`, else `$DATA_DIR/runs`; layout:
   `data/README.md`, Runs). Evaluation writes next to the predictions. An

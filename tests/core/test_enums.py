@@ -2,7 +2,12 @@
 
 import pytest
 
-from mon.core.enums import AliasStrEnum, BBoxFormat, RunMode, Split, Strategy, Task
+import mon.core
+import mon.core.enums as enums
+from mon.core.enums import AliasStrEnum, Split, Task
+
+with pytest.warns(DeprecationWarning):
+    RunMode, Strategy, BBoxFormat = enums.RunMode, enums.Strategy, enums.BBoxFormat
 
 
 class Color(AliasStrEnum):
@@ -75,3 +80,13 @@ def test_values_are_unique_within_each_enum():
     for enum in (Task, Split, RunMode, Strategy, BBoxFormat):
         keys = list(enum._value2member_map_)
         assert len(keys) == len(set(k.lower() for k in keys)), enum.__name__
+
+
+@pytest.mark.parametrize("name", ["RunMode", "Strategy", "BBoxFormat"])
+def test_deprecated_enums_warn_and_keep_their_names(name: str):
+    assert name not in enums.__all__ and name not in dir(mon.core)
+    with pytest.warns(DeprecationWarning, match=f"{name} is deprecated"):
+        cls = getattr(enums, name)
+    with pytest.warns(DeprecationWarning, match=name):
+        assert getattr(mon.core, name) is cls
+    assert cls.__name__ == name
