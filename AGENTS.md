@@ -38,6 +38,13 @@ follow both.
 Before writing or changing code in `src/` or `tests/`, read and follow
 [CONVENTIONS.md](CONVENTIONS.md).
 
+## Weights
+
+- Never commit model weights, checkpoints or run output (`*.pt`, `*.pth`,
+  `*.ckpt`, `*.safetensors`, ...). Weights go in the workspace's `data/zoo/`,
+  run output in `data/runs/` (see `../../data/README.md`). Check
+  `git status` before committing: `.gitignore` doesn't cover every format.
+
 ## Logs
 
 - Log work on this repo in `logs/<machine>/YYYY-MM-DD.md`, not in the
