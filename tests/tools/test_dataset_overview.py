@@ -67,7 +67,7 @@ def test_sample_view_pairs(tool: ModuleType, tmp_path: StdPath):
     assert not tool.is_sequence(ds) and not tool.is_mot_test(ds)
     out = tool.overview(ds, n=20, name="paired test")
     assert out.dtype == np.uint8 and out.ndim == 3 and out.shape[1] <= tool.MAX_W + 20
-    assert tool.split_dir(ds) == tmp_path / "test"
+    assert tool.overview_path(ds, "test") == tmp_path / "test_overview.jpg"
 
 
 def test_boxes_are_drawn_with_class_colors(tool: ModuleType, tmp_path: StdPath):
@@ -115,12 +115,12 @@ def test_mot_test_view(tool: ModuleType, tmp_path: StdPath):
     assert (out == np.array(tool.PALETTE[0])).all(axis=-1).any()
 
 
-def test_class_folder_split_dir(tool: ModuleType, tmp_path: StdPath):
+def test_class_folder_overview_path(tool: ModuleType, tmp_path: StdPath):
     (tmp_path / "classes.txt").write_text("a\nb\n")
     write_image(img(), tmp_path / "test/a/0.png")
     write_image(img(), tmp_path / "test/b/1.png")
     ds = Cls("test", root=tmp_path)
-    assert tool.split_dir(ds) == tmp_path / "test"
+    assert tool.overview_path(ds, "test") == tmp_path / "test_overview.jpg"
     assert tool.overview(ds, n=2).shape[0] > 0
 
 
