@@ -324,14 +324,16 @@ def find_weights(path: str | os.PathLike[str]) -> Path:
 # --- Diagnostics: python -m mon.core.path ---
 
 def main() -> int:
-    """Print where ``mon`` looks for data, datasets, and weights, and whether those exist.
+    """Print where ``mon`` looks for data, datasets, weights, and run outputs, and whether those exist.
 
-    Returns ``0`` if all three are configured and exist, else ``1``.
+    Returns ``0`` if all four are configured and data, datasets, and zoo exist, else
+    ``1``. A missing runs directory is fine: runners create it on first write.
     """
     rows: list[tuple[str, Path | None, str]] = []
     data = os.environ.get(DATA_DIR_ENV, "").strip()
     rows.append(("data", Path(data).expanduser() if data else None, DATA_DIR_ENV if data else f"set {DATA_DIR_ENV}"))
-    for label, env, subdir in (("datasets", DATASETS_DIR_ENV, "datasets"), ("zoo", ZOO_DIR_ENV, "zoo")):
+    dirs = (("datasets", DATASETS_DIR_ENV, "datasets"), ("zoo", ZOO_DIR_ENV, "zoo"), ("runs", RUNS_DIR_ENV, "runs"))
+    for label, env, subdir in dirs:
         resolved = _resolve_env_dir(env, subdir)
         rows.append((label, *resolved) if resolved else (label, None, f"set {env} or {DATA_DIR_ENV}"))
     ok = True
@@ -340,6 +342,8 @@ def main() -> int:
             status, ok = "not configured", False
         elif path.is_dir():
             status = "exists"
+        elif label == "runs":
+            status = "not created yet"
         else:
             status, ok = "missing", False
         print(f"{label:<9} {str(path) if path else '-':<50} {status:<15} ({source})")

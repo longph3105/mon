@@ -35,6 +35,9 @@
 - `HVICIDNet_Weights`: each entry's `meta["source_sha256"]` is the full
   SHA-256 of its Hugging Face file (it was cut to 16 digits).
 - `RUAS.weights_enum` is annotated `ClassVar`, like every other model's.
+- `python -m mon.core.path` lists the runs directory (`$RUNS_DIR`, else
+  `$DATA_DIR/runs`) next to data, datasets and zoo. An unset one fails the
+  check; a missing one doesn't, since runners create it.
 
 ### Changed
 

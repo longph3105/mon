@@ -269,7 +269,7 @@ from mon.core.path import datasets_dir  # noqa: E402
 
 @pytest.fixture
 def clean_env(monkeypatch: pytest.MonkeyPatch):
-    for var in (DATA_DIR_ENV, DATASETS_DIR_ENV, ZOO_DIR_ENV):
+    for var in (DATA_DIR_ENV, DATASETS_DIR_ENV, ZOO_DIR_ENV, RUNS_DIR_ENV):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(path_mod, "_announced", set())
 
@@ -296,7 +296,7 @@ def test_datasets_dir_errors_like_zoo_dir(clean_env):
 def test_main_reports_and_exit_code(clean_env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: pathlib.Path):
     assert path_mod.main() == 1
     out = capsys.readouterr().out
-    assert out.count("not configured") == 3 and "set ZOO_DIR or DATA_DIR" in out
+    assert out.count("not configured") == 4 and "set ZOO_DIR or DATA_DIR" in out and "set RUNS_DIR or DATA_DIR" in out
 
     (tmp_path / "datasets").mkdir()
     monkeypatch.setenv(DATA_DIR_ENV, str(tmp_path))
@@ -305,7 +305,13 @@ def test_main_reports_and_exit_code(clean_env, monkeypatch: pytest.MonkeyPatch, 
     assert "exists" in out and "missing" in out and "(DATA_DIR/zoo)" in out
 
     (tmp_path / "zoo").mkdir()
+    assert path_mod.main() == 0  # runs/ missing is fine: runners create it
+    out = capsys.readouterr().out
+    assert "not created yet" in out and "(DATA_DIR/runs)" in out
+
+    (tmp_path / "runs").mkdir()
     assert path_mod.main() == 0
+    assert capsys.readouterr().out.count("exists") == 4
 
 
 def test_python_dash_m_entry(tmp_path: pathlib.Path):
@@ -313,7 +319,7 @@ def test_python_dash_m_entry(tmp_path: pathlib.Path):
     import subprocess
     import sys
     env = {**os.environ, DATA_DIR_ENV: str(tmp_path)}
-    env.pop(DATASETS_DIR_ENV, None); env.pop(ZOO_DIR_ENV, None)
-    (tmp_path / "datasets").mkdir(); (tmp_path / "zoo").mkdir()
+    env.pop(DATASETS_DIR_ENV, None); env.pop(ZOO_DIR_ENV, None); env.pop(RUNS_DIR_ENV, None)
+    (tmp_path / "datasets").mkdir(); (tmp_path / "zoo").mkdir(); (tmp_path / "runs").mkdir()
     done = subprocess.run([sys.executable, "-m", "mon.core.path"], capture_output=True, text=True, env=env)
-    assert done.returncode == 0 and done.stdout.count("exists") == 3 and not done.stderr
+    assert done.returncode == 0 and done.stdout.count("exists") == 4 and "runs" in done.stdout and not done.stderr

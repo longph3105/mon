@@ -14,6 +14,7 @@ test suite (`tests/docs/test_data_md.py`), top to bottom, in one interpreter.
 | `DATA_DIR`     | Data root                             | none (required)      |
 | `DATASETS_DIR` | Extracted datasets, one folder per id | `$DATA_DIR/datasets` |
 | `ZOO_DIR`      | Pretrained weights                    | `$DATA_DIR/zoo`      |
+| `RUNS_DIR`     | Run outputs (created when needed)     | `$DATA_DIR/runs`     |
 
 Check them with `uv run python -m mon.core.path`.
 
