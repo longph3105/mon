@@ -107,7 +107,9 @@ class Size:
                 return cls(value[0], value[0])
             if len(value) == 2:
                 return cls(value[0], value[1])
-            raise ValueError(f"expected (h, w) or (s,), got {len(value)} values: {tuple(value)}; use Size.from_shape for shapes")
+            raise ValueError(
+                f"expected (h, w) or (s,), got {len(value)} values: {tuple(value)}; use Size.from_shape for shapes",
+            )
         raise TypeError(f"cannot build Size from {type(value).__name__}")
 
     @classmethod

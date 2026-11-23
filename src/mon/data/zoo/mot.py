@@ -64,7 +64,7 @@ class MOT16(FolderDataset):
 
 @register_dataset("mot20", tasks={Task.TRACK, Task.DETECT})
 class MOT20(FolderDataset):
-    """MOT20: 8,931 train frames (4 sequences, 1,134,614 person boxes) and 4,479 test frames (4 sequences, no labels)."""
+    """MOT20: 8,931 train frames (4 sequences, 1,134,614 person boxes), 4,479 test frames (4 sequences, no labels)."""
 
     folder  = "mot20"
     layout  = {

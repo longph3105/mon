@@ -1,12 +1,14 @@
 """Tests for ``mon.core.path``."""
 
+import logging
 import pathlib
 
 import pytest
 
+from mon.core import path as path_mod
 from mon.core.constants import IMAGE_EXTENSIONS, RAW_IMAGE_EXTENSIONS
 from mon.core.constants import DATA_DIR_ENV, DATASETS_DIR_ENV, RUNS_DIR_ENV, ZOO_DIR_ENV
-from mon.core.path import Path, _normalize_exts, datasets_dir, runs_dir, zoo_dir
+from mon.core.path import Path, _normalize_exts, datasets_dir, find_weights, runs_dir, zoo_dir
 
 
 @pytest.fixture
@@ -213,9 +215,6 @@ def test_runs_and_datasets_dirs_resolve_like_zoo_dir(fn, env: str, sub: str, mon
 
 # --- find_weights ---
 
-from mon.core.path import find_weights  # noqa: E402
-
-
 @pytest.fixture
 def zoo(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> pathlib.Path:
     z = tmp_path / "zoo"
@@ -238,7 +237,9 @@ def test_find_weights_relative_to_zoo(zoo: pathlib.Path, monkeypatch: pytest.Mon
     assert find_weights("yolo") == zoo / "yolo"  # directories too
 
 
-def test_find_weights_missing_lists_candidates(zoo: pathlib.Path, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path):
+def test_find_weights_missing_lists_candidates(
+    zoo: pathlib.Path, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path,
+):
     monkeypatch.chdir(tmp_path)
     with pytest.raises(FileNotFoundError, match=r"tried: yolo/x\.pt, .*zoo/yolo/x\.pt"):
         find_weights("yolo/x.pt")
@@ -260,13 +261,6 @@ def test_find_weights_zoo_unset_is_explained(monkeypatch: pytest.MonkeyPatch, tm
 
 # --- Resolution logging and `python -m mon.core.path` ---
 
-import logging  # noqa: E402
-
-from mon.core import path as path_mod  # noqa: E402
-from mon.core.constants import DATASETS_DIR_ENV  # noqa: E402
-from mon.core.path import datasets_dir  # noqa: E402
-
-
 @pytest.fixture
 def clean_env(monkeypatch: pytest.MonkeyPatch):
     for var in (DATA_DIR_ENV, DATASETS_DIR_ENV, ZOO_DIR_ENV, RUNS_DIR_ENV):
@@ -274,10 +268,14 @@ def clean_env(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(path_mod, "_announced", set())
 
 
-def test_resolution_is_logged_once_with_source(clean_env, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, tmp_path: pathlib.Path):
+def test_resolution_is_logged_once_with_source(
+    clean_env, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, tmp_path: pathlib.Path,
+):
     monkeypatch.setenv(DATA_DIR_ENV, str(tmp_path))
     with caplog.at_level(logging.INFO, logger="mon.core.path"):
-        datasets_dir(); datasets_dir(); zoo_dir()
+        datasets_dir()
+        datasets_dir()
+        zoo_dir()
     msgs = [r.getMessage() for r in caplog.records]
     assert msgs == [f"datasets directory: {tmp_path / 'datasets'} (from DATA_DIR/datasets)",
                     f"model zoo directory: {tmp_path / 'zoo'} (from DATA_DIR/zoo)"]
@@ -293,7 +291,9 @@ def test_datasets_dir_errors_like_zoo_dir(clean_env):
         datasets_dir()
 
 
-def test_main_reports_and_exit_code(clean_env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: pathlib.Path):
+def test_main_reports_and_exit_code(
+    clean_env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: pathlib.Path,
+):
     assert path_mod.main() == 1
     out = capsys.readouterr().out
     assert out.count("not configured") == 4 and "set ZOO_DIR or DATA_DIR" in out and "set RUNS_DIR or DATA_DIR" in out
@@ -319,7 +319,11 @@ def test_python_dash_m_entry(tmp_path: pathlib.Path):
     import subprocess
     import sys
     env = {**os.environ, DATA_DIR_ENV: str(tmp_path)}
-    env.pop(DATASETS_DIR_ENV, None); env.pop(ZOO_DIR_ENV, None); env.pop(RUNS_DIR_ENV, None)
-    (tmp_path / "datasets").mkdir(); (tmp_path / "zoo").mkdir(); (tmp_path / "runs").mkdir()
+    env.pop(DATASETS_DIR_ENV, None)
+    env.pop(ZOO_DIR_ENV, None)
+    env.pop(RUNS_DIR_ENV, None)
+    (tmp_path / "datasets").mkdir()
+    (tmp_path / "zoo").mkdir()
+    (tmp_path / "runs").mkdir()
     done = subprocess.run([sys.executable, "-m", "mon.core.path"], capture_output=True, text=True, env=env)
     assert done.returncode == 0 and done.stdout.count("exists") == 4 and "runs" in done.stdout and not done.stderr

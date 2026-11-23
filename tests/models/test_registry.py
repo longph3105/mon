@@ -18,11 +18,12 @@ from mon.models.registry import MODELS, load
 
 
 def _model_modules() -> list[str]:
-    return [m.name for m in pkgutil.walk_packages(mon.models.__path__, "mon.models.") if m.name != "mon.models.registry"]
+    modules = pkgutil.walk_packages(mon.models.__path__, "mon.models.")
+    return [m.name for m in modules if m.name != "mon.models.registry"]
 
 
 def _public_model_classes() -> dict[str, type]:
-    """``"module:Class"`` → class for every public ``nn.Module`` defined in a ``mon.models`` module, except losses (``*Loss``)."""
+    """``"module:Class"`` → class for each public ``nn.Module`` in a ``mon.models`` module, except ``*Loss``."""
     found = {}
     for name in _model_modules():
         module = importlib.import_module(name)
@@ -76,7 +77,10 @@ def test_every_public_model_class_is_indexed_once():
 
 
 def test_entries_by_task_and_arch():
-    assert MODELS.names(tasks=Task.LLE) == ["clode", "colie", "dccnet", "flol", "hvi_cidnet", "pairlie", "retinexnet", "ruas", "sci", "sci++", "sgz", "zero_dce", "zero_dce++", "zero_ig"]
+    assert MODELS.names(tasks=Task.LLE) == [
+        "clode", "colie", "dccnet", "flol", "hvi_cidnet", "pairlie", "retinexnet", "ruas", "sci", "sci++", "sgz",
+        "zero_dce", "zero_dce++", "zero_ig",
+    ]
     assert MODELS.names(arch="zero_dce") == ["zero_dce", "zero_dce++"]
     assert MODELS.get("Zero_DCE++").__name__ == "ZeroDCEPP"
 
@@ -130,7 +134,8 @@ def test_load_errors(tmp_path):
             super().__init__()
             self.fc = nn.Linear(2, 2)
 
-    class Classical(nn.Module): ...  # no parameters
+    class Classical(nn.Module):
+        ...  # no parameters
     MODELS.add(NoWeights, "no_weights_test")
     MODELS.add(Classical, "classical_test")
     try:

@@ -6,19 +6,22 @@ itself isn't a dependency (non-commercial license). Names are re-exported lazily
 
 Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 
-    ========  ==================================================================================================  ===================
-    Module    Purpose                                                                                             Key names
-    ========  ==================================================================================================  ===================
-    base      Metric base class and shared preprocessing: luma, 8-bit levels, border crop.                        Metric, rgb_to_luma
-    brisque   BRISQUE: blind/referenceless image spatial quality evaluator (no-reference; lower is better).       BRISQUE
-    fidelity  Full-reference fidelity metrics: PSNR and SSIM.                                                     PSNR, SSIM, psnr
-    lpips     LPIPS: learned perceptual image patch similarity (lower is better).                                 LPIPS
-    niqe      NIQE: natural image quality evaluator (no-reference; lower is better).                              NIQE
-    nrqm      NRQM: Ma et al.'s no-reference quality metric for super-resolution (higher is better, about 0–10).  NRQM
-    pi        PI: the PIRM 2018 perceptual index, ``((10 - NRQM) + NIQE) / 2`` (no-reference; lower is better).   PI
-    ranking   Composite rankings of methods from their mean metric scores (challenge leaderboards).               combined_rank
-    registry  Metric registry.                                                                                    METRICS
-    ========  ==================================================================================================  ===================
+    ========  =====================================================================================  ===================
+    Module    Purpose                                                                                Key names
+    ========  =====================================================================================  ===================
+    base      Metric base class and shared preprocessing: luma, 8-bit levels, border crop.           Metric, rgb_to_luma
+    brisque   BRISQUE: blind/referenceless image spatial quality evaluator (no-reference; lower is   BRISQUE
+              better).
+    fidelity  Full-reference fidelity metrics: PSNR and SSIM.                                        PSNR, SSIM, psnr
+    lpips     LPIPS: learned perceptual image patch similarity (lower is better).                    LPIPS
+    niqe      NIQE: natural image quality evaluator (no-reference; lower is better).                 NIQE
+    nrqm      NRQM: Ma et al.'s no-reference quality metric for super-resolution (higher is better,  NRQM
+              about 0–10).
+    pi        PI: the PIRM 2018 perceptual index, ``((10 - NRQM) + NIQE) / 2`` (no-reference; lower  PI
+              is better).
+    ranking   Composite rankings of methods from their mean metric scores (challenge leaderboards).  combined_rank
+    registry  Metric registry.                                                                       METRICS
+    ========  =====================================================================================  ===================
 """
 
 from typing import TYPE_CHECKING

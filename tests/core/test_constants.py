@@ -10,7 +10,8 @@ DEPRECATED = ("ANNS_DIR", "DEBUG_DIR", "DEPTH_DIR", "IMAGES_DIR", "LABELS_DIR",
 
 
 def test_extension_sets_are_lowercase_dotted():
-    for s in (c.IMAGE_EXTENSIONS, c.RAW_IMAGE_EXTENSIONS, c.VIDEO_EXTENSIONS, c.WEIGHTS_EXTENSIONS, c.CONFIG_EXTENSIONS):
+    groups = (c.IMAGE_EXTENSIONS, c.RAW_IMAGE_EXTENSIONS, c.VIDEO_EXTENSIONS, c.WEIGHTS_EXTENSIONS, c.CONFIG_EXTENSIONS)
+    for s in groups:
         assert all(e.startswith(".") and e == e.lower() for e in s)
 
 

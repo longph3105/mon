@@ -199,7 +199,7 @@ def _rcos(width: float, position: float) -> tuple[np.ndarray, np.ndarray]:
 
 
 def _mask(values: np.ndarray, ys: np.ndarray, xs: np.ndarray, device: torch.device) -> Tensor:
-    """``interp(values; xs → ys)`` as a float32-rounded float64 ``[1, H, W]`` mask (pyiqa's ``pointOp(...).float()``)."""
+    """``interp(values; xs → ys)`` as a float32-rounded float64 ``[1, H, W]`` mask (pyiqa ``pointOp(...).float()``)."""
     out = np.interp(values.flatten(), xs, ys).reshape(values.shape)
     return torch.from_numpy(out).float().double().to(device)[None]
 
@@ -246,7 +246,7 @@ def _steerable_pyramid(im: Tensor, height: int = 2, nbands: int = 6) -> tuple[Te
 
 
 def _normalize_subbands(bands: list[Tensor], num_scales: int = 2, num_bands: int = 6) -> list[Tensor]:
-    """Divisive normalization of each band by its 3×3 + parent + sibling neighborhood (official ``norm_sender_normalized``)."""
+    """Divisive normalization of each band by its 3×3 + parent + sibling neighborhood (``norm_sender_normalized``)."""
     border, guardband, eps = 1, 16, 1e-12
     out = []
     for si in range(num_scales):
@@ -332,7 +332,7 @@ def _svd_features(img: Tensor) -> Tensor:
 
 
 def nrqm_features(levels: Tensor) -> tuple[Tensor, Tensor, Tensor]:
-    """The three NRQM feature groups of ``[B, 1, H, W]`` float64 gray levels in ``[0, 255]``: ``[B, 18], [B, 45], [B, 75]``."""
+    """The three NRQM feature groups of ``[B, 1, H, W]`` float64 gray levels in ``[0, 255]``: ``[B, 18/45/75]``."""
     pyr = _gauss_pyramid(levels / 255)
     f1 = torch.cat([_block_dct(im) for im in pyr], dim=1)
     f2 = _global_gsm(levels)
@@ -401,7 +401,8 @@ class NRQM(Metric):
             ]
 
     def extra_repr(self) -> str:
-        return f"crop_border={self.crop_border}" + ("" if self.color_space == "yiq" else f", color_space={self.color_space!r}")
+        color = "" if self.color_space == "yiq" else f", color_space={self.color_space!r}"
+        return f"crop_border={self.crop_border}{color}"
 
     def forward(self, pred: Tensor) -> Tensor:
         if pred.ndim != 4 or pred.shape[1] not in (1, 3) or not pred.is_floating_point():

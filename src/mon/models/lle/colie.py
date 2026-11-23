@@ -194,7 +194,7 @@ def fast_guided_filter(lr_guide: Tensor, lr_target: Tensor, hr_guide: Tensor, r:
 
 
 def replace_value(rgb: Tensor, value: Tensor) -> Tensor:
-    """Set the HSV Value (``max`` over channels) of ``rgb [B, 3, H, W]`` to ``value [B, 1, H, W]``, keeping hue and saturation.
+    """Set the HSV Value (``max`` of the channels) of ``rgb [B, 3, H, W]`` to ``value [B, 1, H, W]``; keep H and S.
 
     RGB is linear in V for fixed H and S, so this scales the pixel by ``value / V``; black pixels
     (no hue or saturation) become gray ``value``. Equals an RGB→HSV→RGB round trip.

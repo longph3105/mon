@@ -20,14 +20,22 @@ weights into ``TORCH_HOME``; point it at a scratch directory. Regenerate with:
         <BasicSR checkout> <DATASETS_DIR>/lol_v1
 """
 
+import importlib.util
 import math
-import pprint
 import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 import torch
+
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[1] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
 
 SIZE = (2, 3, 200, 296)
 REAL_STEMS = ("111", "146", "179")  # NIQE needs whole 96×96 blocks: 2×3 of them, with a remainder to crop
@@ -53,8 +61,12 @@ def reference_images() -> tuple[torch.Tensor, torch.Tensor]:
             wave = torch.sin(0.05 * (k + 1) * i + 0.031 * (n + 1) * j + k) * torch.cos(0.017 * j - 0.043 * i)
             target[n, k] = 0.45 + 0.3 * wave + 0.12 * torch.sin(0.6 * i + 0.9 * j + n)
     target = (target + 0.08 * (_hash_noise(SIZE, 1.0) - 0.5)).clamp(0, 1)
-    pred = 0.8 * target.pow(1.15) + 0.06 * (_hash_noise(SIZE, 2.0) - 0.5) + torch.tensor([0.02, -0.01, 0.03]).view(1, 3, 1, 1)
-    quant = lambda t: (t.clamp(0, 1) * 255).round() / 255  # noqa: E731
+    tint = torch.tensor([0.02, -0.01, 0.03]).view(1, 3, 1, 1)
+    pred = 0.8 * target.pow(1.15) + 0.06 * (_hash_noise(SIZE, 2.0) - 0.5) + tint
+
+    def quant(t: torch.Tensor) -> torch.Tensor:
+        return (t.clamp(0, 1) * 255).round() / 255
+
     return quant(pred).float(), quant(target).float()
 
 
@@ -112,7 +124,8 @@ def main(checkout: str, lol_v1: str) -> None:
     names = ("psnr", "psnry", "ssim", "ssimc", "lpips", "lpips-vgg", "niqe")
     metrics = {n: pyiqa.create_metric(n, device="cpu", as_loss=False) for n in names}
     for stem in REAL_STEMS:
-        low, high = read_rgb(root / "test" / "images" / f"{stem}.png"), read_rgb(root / "test" / "targets" / f"{stem}.png")
+        low = read_rgb(root / "test" / "images" / f"{stem}.png")
+        high = read_rgb(root / "test" / "targets" / f"{stem}.png")
         with torch.no_grad():
             scores = {n: float(m(low, high)) for n, m in metrics.items() if n != "niqe"}
             scores["niqe_pred"]   = float(metrics["niqe"](low))
@@ -125,7 +138,7 @@ def main(checkout: str, lol_v1: str) -> None:
                                    for p in p8]
 
     print(f"# Generated with pyiqa {pyiqa.__version__}, lpips 0.1.4, torch {torch.__version__}, BasicSR checkout.")
-    print("REFERENCE: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("REFERENCE", result))
 
 
 if __name__ == "__main__":

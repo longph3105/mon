@@ -6,10 +6,19 @@ Regenerate ``MON_OLD`` in ``test_zs_n2n.py`` from mon_old in its conda env:
 """
 
 import importlib
-import pprint
+import importlib.util
+from pathlib import Path
 from typing import Any
 
 import torch
+
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[2] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
 
 STATS_INDICES = (0, 7, 101, 523, 1000, 2047, -1)
 ITERATIONS = 100
@@ -50,7 +59,7 @@ def main() -> None:
     out = model.fit(x, epochs=ITERATIONS, reset_weights=False)  # defaults: Adam(1e-3), StepLR(1000, 0.5)
     result["restored"] = stats(out["restored"])
     print(f"# Generated from mon_old with torch {torch.__version__}.")
-    print("MON_OLD: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("MON_OLD", result))
 
 
 if __name__ == "__main__":

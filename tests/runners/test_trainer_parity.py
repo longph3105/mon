@@ -18,37 +18,51 @@ import torch
 from mon.data.io import write_image
 from mon.runners.trainer import train
 
-_spec = importlib.util.spec_from_file_location("zero_dce_train_reference", StdPath(__file__).with_name("zero_dce_train_reference.py"))
+_spec = importlib.util.spec_from_file_location(
+    "zero_dce_train_reference", StdPath(__file__).with_name("zero_dce_train_reference.py"),
+)
 assert _spec is not None and _spec.loader is not None
 _ref = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_ref)
 
 # Generated from the official Zero-DCE loop with torch 2.15.0+cu132.
-OFFICIAL: dict = {'init': {'sum': -1.8475460590249462,
-          'sumsq': 32.38603868190064,
-          'values': [0.010812884196639061,
-                     -0.014962579123675823,
-                     0.0007421610062010586,
-                     0.018815496936440468,
-                     -0.001214824616909027,
-                     0.023221846669912338,
-                     -0.0062813907861709595]},
- 'losses': [2.7027347087860107,
-            2.686758518218994,
-            2.65739369392395,
-            2.642648220062256,
-            2.6146130561828613,
-            2.600914716720581],
- 'epoch_mean': [2.6947466135025024, 2.650020956993103, 2.607763886451721],
- 'final': {'sum': -2.3131460917100526,
-           'sumsq': 31.3502140374019,
-           'values': [0.01041758805513382,
-                      -0.015553772449493408,
-                      0.00023975536169018596,
-                      0.018217317759990692,
-                      -0.001798209617845714,
-                      0.022624755278229713,
-                      -0.006883133668452501]}}
+OFFICIAL: dict = {
+    "init": {
+        "sum": -1.8475460590249462,
+        "sumsq": 32.38603868190064,
+        "values": [
+            0.010812884196639061,
+            -0.014962579123675823,
+            0.0007421610062010586,
+            0.018815496936440468,
+            -0.001214824616909027,
+            0.023221846669912338,
+            -0.0062813907861709595,
+        ],
+    },
+    "losses": [
+        2.7027347087860107,
+        2.686758518218994,
+        2.65739369392395,
+        2.642648220062256,
+        2.6146130561828613,
+        2.600914716720581,
+    ],
+    "epoch_mean": [2.6947466135025024, 2.650020956993103, 2.607763886451721],
+    "final": {
+        "sum": -2.3131460917100526,
+        "sumsq": 31.3502140374019,
+        "values": [
+            0.01041758805513382,
+            -0.015553772449493408,
+            0.00023975536169018596,
+            0.018217317759990692,
+            -0.001798209617845714,
+            0.022624755278229713,
+            -0.006883133668452501,
+        ],
+    },
+}
 
 
 def test_zero_dce_loop_matches_official(tmp_path: StdPath):
@@ -76,31 +90,43 @@ def test_zero_dce_init_matches_official():
 # --- Zero-DCE++ (official loop: zero_dcepp_train_reference.py) ---
 
 # Generated from the official Zero-DCE++ loop with torch 2.15.0+cu132.
-OFFICIAL_PP: dict = {'init': {'sum': -9.990068064325897,
-          'sumsq': 176.2159106454262,
-          'values': [-0.0024956068955361843,
-                     0.2642965018749237,
-                     0.389028936624527,
-                     -0.12805600464344025,
-                     -0.015029081143438816,
-                     -0.07392232865095139,
-                     0.09970849752426147]},
- 'losses': [3.221865177154541,
-            3.257899522781372,
-            3.1870546340942383,
-            3.2229838371276855,
-            3.1528141498565674,
-            3.1886701583862305],
- 'epoch_mean': [3.2398823499679565, 3.205019235610962, 3.170742154121399],
- 'final': {'sum': -9.971590512165676,
-           'sumsq': 175.38909743437026,
-           'values': [-0.003065943717956543,
-                      0.2636968493461609,
-                      0.38842910528182983,
-                      -0.1274656057357788,
-                      -0.014430544339120388,
-                      -0.07332700490951538,
-                      0.09910719841718674]}}
+OFFICIAL_PP: dict = {
+    "init": {
+        "sum": -9.990068064325897,
+        "sumsq": 176.2159106454262,
+        "values": [
+            -0.0024956068955361843,
+            0.2642965018749237,
+            0.389028936624527,
+            -0.12805600464344025,
+            -0.015029081143438816,
+            -0.07392232865095139,
+            0.09970849752426147,
+        ],
+    },
+    "losses": [
+        3.221865177154541,
+        3.257899522781372,
+        3.1870546340942383,
+        3.2229838371276855,
+        3.1528141498565674,
+        3.1886701583862305,
+    ],
+    "epoch_mean": [3.2398823499679565, 3.205019235610962, 3.170742154121399],
+    "final": {
+        "sum": -9.971590512165676,
+        "sumsq": 175.38909743437026,
+        "values": [
+            -0.003065943717956543,
+            0.2636968493461609,
+            0.38842910528182983,
+            -0.1274656057357788,
+            -0.014430544339120388,
+            -0.07332700490951538,
+            0.09910719841718674,
+        ],
+    },
+}
 
 
 def test_zero_dcepp_loop_matches_official(tmp_path: StdPath):
@@ -127,31 +153,43 @@ def test_zero_dcepp_default_init_matches_official():
 
 # --- SCI (official loop: sci_train_reference.py) ---
 
-_sci_spec = importlib.util.spec_from_file_location("sci_train_reference", StdPath(__file__).with_name("sci_train_reference.py"))
+_sci_spec = importlib.util.spec_from_file_location(
+    "sci_train_reference", StdPath(__file__).with_name("sci_train_reference.py"),
+)
 assert _sci_spec is not None and _sci_spec.loader is not None
 _sci_ref = importlib.util.module_from_spec(_sci_spec)
 _sci_spec.loader.exec_module(_sci_ref)
 
 # Generated from the official SCI (CVPR) loop with torch 2.15.0+cu132.
-OFFICIAL_SCI: dict = {'init': {'sum': 292.5374370350828,
-          'sumsq': 309.3634275778634,
-          'values': [0.006533919833600521,
-                     -0.000269236508756876,
-                     0.005544594023376703,
-                     -0.03960715979337692,
-                     0.048333972692489624,
-                     -0.032320648431777954,
-                     0.0]},
- 'epoch_mean': [23.04537467956543, 16.39866943359375, 12.457106018066407],
- 'final': {'sum': 1354.3013906779925,
-           'sumsq': 152037.16930079783,
-           'values': [0.005930294282734394,
-                      -0.00370827317237854,
-                      0.0010434042196720839,
-                      -0.042572785168886185,
-                      0.04871005937457085,
-                      -0.03295058384537697,
-                      -0.004436877090483904]}}
+OFFICIAL_SCI: dict = {
+    "init": {
+        "sum": 292.5374370350828,
+        "sumsq": 309.3634275778634,
+        "values": [
+            0.006533919833600521,
+            -0.000269236508756876,
+            0.005544594023376703,
+            -0.03960715979337692,
+            0.048333972692489624,
+            -0.032320648431777954,
+            0.0,
+        ],
+    },
+    "epoch_mean": [23.04537467956543, 16.39866943359375, 12.457106018066407],
+    "final": {
+        "sum": 1354.3013906779925,
+        "sumsq": 152037.16930079783,
+        "values": [
+            0.005930294282734394,
+            -0.00370827317237854,
+            0.0010434042196720839,
+            -0.042572785168886185,
+            0.04871005937457085,
+            -0.03295058384537697,
+            -0.004436877090483904,
+        ],
+    },
+}
 
 
 def test_sci_loop_matches_official(tmp_path: StdPath):
@@ -180,7 +218,7 @@ def test_sci_init_matches_official():
     assert init["sum"] == OFFICIAL_SCI["init"]["sum"] and init["values"] == OFFICIAL_SCI["init"]["values"]
 
 
-# --- Zero-IG (official loop: zero_ig_train_reference.py; one epoch, see there) ---
+# --- Zero-IG (official loop: zero_ig_train_reference.py; two epochs, the second in eval mode) ---
 
 _zig_spec = importlib.util.spec_from_file_location("zero_ig_train_reference",
                                                    StdPath(__file__).with_name("zero_ig_train_reference.py"))
@@ -189,26 +227,45 @@ _zig_ref = importlib.util.module_from_spec(_zig_spec)
 _zig_spec.loader.exec_module(_zig_ref)
 
 # Generated from the official Zero-IG loop with torch 2.15.0+cu132.
-OFFICIAL_ZIG: dict = {'init': {'sum': 508.3129757771328,
-          'sumsq': 641.4822872528225,
-          'values': [-0.006652656476944685,
-                     0.021365534514188766,
-                     0.04261379316449165,
-                     -0.017105618491768837,
-                     -0.006231194827705622,
-                     -0.0014583473093807697,
-                     0.07257840037345886]},
- 'losses': [1178.3555908203125, 924.8494262695312, 745.25830078125, 643.4937133789062],
- 'epoch_mean': [872.9892578125],
- 'final': {'sum': 384.09943533589103,
-           'sumsq': 987.4572639933444,
-           'values': [-0.006342182867228985,
-                      0.021846799179911613,
-                      0.04380583018064499,
-                      -0.016325872391462326,
-                      -0.0068892803974449635,
-                      -0.0026222250889986753,
-                      0.0713874101638794]}}
+OFFICIAL_ZIG: dict = {
+    "init": {
+        "sum": 508.3129757771328,
+        "sumsq": 641.4822872528225,
+        "values": [
+            -0.006652656476944685,
+            0.021365534514188766,
+            0.04261379316449165,
+            -0.017105618491768837,
+            -0.006231194827705622,
+            -0.0014583473093807697,
+            0.07257840037345886,
+        ],
+    },
+    "losses": [
+        1178.3555908203125,
+        924.8494262695312,
+        745.25830078125,
+        643.4937133789062,
+        412.1998596191406,
+        366.7341613769531,
+        335.34832763671875,
+        324.8885498046875,
+    ],
+    "epoch_mean": [872.9892578125, 359.792724609375],
+    "final": {
+        "sum": 396.2874362687917,
+        "sumsq": 987.5439622086118,
+        "values": [
+            -0.006967898458242416,
+            0.021584337577223778,
+            0.044639524072408676,
+            -0.016623731702566147,
+            -0.006514031905680895,
+            -0.003357286099344492,
+            0.07028605788946152,
+        ],
+    },
+}
 
 
 def test_zero_ig_loop_matches_official(tmp_path: StdPath):
@@ -216,14 +273,18 @@ def test_zero_ig_loop_matches_official(tmp_path: StdPath):
         write_image(img, tmp_path / "train" / f"{n:02d}.png")
     run = train({"model": "zero_ig", "data": str(tmp_path / "train"), "epochs": _zig_ref.EPOCHS, "device": "cpu",
                  "num_workers": 0, "run_dir": str(tmp_path / "run")})  # recipe: seed 2, batch 1, file order
-    # The enhancer's batch norm makes the same noise as SCI's (see there), smaller over 4 steps. Measured
-    # 2026-11-23: loss within 2e-8 (relative), weight sum 2.4e-6, sumsq 1.7e-6, values 2.6e-7.
+    # The enhancer's batch norm makes the same noise as SCI's (see there), smaller over 4 steps; in eval mode
+    # (epoch 2) its running statistics amplify it, though the eval-mode loss itself matches the official one
+    # exactly (test_zero_ig.py). Measured 2026-11-24: epoch-1 loss within 2e-8 (relative), epoch 2 within
+    # 3.9e-5; weight sum 3.0e-5, sumsq 1.8e-6, values 3.1e-6.
     rows = list(csv.DictReader((run / "log.csv").open()))
-    assert [float(r["train/loss"]) for r in rows] == pytest.approx(OFFICIAL_ZIG["epoch_mean"], rel=1e-6)
+    first, second = (float(r["train/loss"]) for r in rows)
+    assert first == pytest.approx(OFFICIAL_ZIG["epoch_mean"][0], rel=1e-6)
+    assert second == pytest.approx(OFFICIAL_ZIG["epoch_mean"][1], rel=1e-4)
     final = _ref.weight_stats(torch.load(run / "last.ckpt", weights_only=True)["model"])
-    assert final["sum"] == pytest.approx(OFFICIAL_ZIG["final"]["sum"], rel=2e-5)
+    assert final["sum"] == pytest.approx(OFFICIAL_ZIG["final"]["sum"], rel=1e-4)
     assert final["sumsq"] == pytest.approx(OFFICIAL_ZIG["final"]["sumsq"], rel=2e-5)
-    assert final["values"] == pytest.approx(OFFICIAL_ZIG["final"]["values"], abs=3e-6)
+    assert final["values"] == pytest.approx(OFFICIAL_ZIG["final"]["values"], abs=1e-5)
 
 
 def test_zero_ig_init_matches_official():

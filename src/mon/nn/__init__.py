@@ -5,15 +5,19 @@ Layers and losses are added when a ported model needs them; plain ``torch.nn`` a
 
 Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 
-    ==========  ====================================================================  ===========================================
-    Module      Purpose                                                               Key names
-    ==========  ====================================================================  ===========================================
-    complexity  Model complexity: parameters, FLOPs/MACs, latency, and peak memory.   profile_complexity, count_flops
-    losses      Loss functions shared by several models, one module per family.       ExposureControlLoss, SpatialConsistencyLoss
-    tiling      Tiled inference for large images, blended with a Hann window.         tiled_forward, tile_starts
-    training    Training recipes: a model's step, loss, init, and official defaults.  TrainRecipe
-    utils       Model helpers: parameter counts, freezing, device lookup.             count_parameters, freeze, module_device
-    ==========  ====================================================================  ===========================================
+    ==========  ===========================================================  ===========================================
+    Module      Purpose                                                      Key names
+    ==========  ===========================================================  ===========================================
+    complexity  Model complexity: parameters, FLOPs/MACs, latency, and peak  profile_complexity, count_flops
+                memory.
+    losses      Loss functions shared by several models, one module per      ExposureControlLoss, SpatialConsistencyLoss
+                family.
+    tiling      Tiled inference for large images, blended with a Hann        tiled_forward, tile_starts
+                window.
+    training    Training recipes: a model's step, loss, init, and official   TrainRecipe
+                defaults.
+    utils       Model helpers: parameter counts, freezing, device lookup.    count_parameters, freeze, module_device
+    ==========  ===========================================================  ===========================================
 """
 
 from typing import TYPE_CHECKING

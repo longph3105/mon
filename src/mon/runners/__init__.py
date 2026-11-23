@@ -4,15 +4,17 @@ Names are re-exported lazily (see ``mon.core``).
 
 Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 
-    ===========  ==============================================================================================  ==========================
-    Module       Purpose                                                                                         Key names
-    ===========  ==============================================================================================  ==========================
-    benchmarker  Measure a registered model's complexity: parameters, FLOPs/MACs, latency, peak memory.          BenchmarkConfig, benchmark
-    cli          Command-line entry point: ``mon train``, ``mon predict``, ``mon evaluate``, ``mon benchmark``.  main
-    evaluator    Score saved predictions against targets with image-quality metrics.                             EvaluateConfig, evaluate
-    predictor    Run a model over images and save its outputs.                                                   PredictConfig, predict
-    trainer      Train a registered model with its recipe, validate, checkpoint, and resume.                     TrainConfig, train
-    ===========  ==============================================================================================  ==========================
+    ===========  ===========================================================================  ==========================
+    Module       Purpose                                                                      Key names
+    ===========  ===========================================================================  ==========================
+    benchmarker  Measure a registered model's complexity: parameters, FLOPs/MACs, latency,    BenchmarkConfig, benchmark
+                 peak memory.
+    cli          Command-line entry point: ``mon train``, ``mon predict``, ``mon evaluate``,  main
+                 ``mon benchmark``.
+    evaluator    Score saved predictions against targets with image-quality metrics.          EvaluateConfig, evaluate
+    predictor    Run a model over images and save its outputs.                                PredictConfig, predict
+    trainer      Train a registered model with its recipe, validate, checkpoint, and resume.  TrainConfig, train
+    ===========  ===========================================================================  ==========================
 """
 
 from typing import TYPE_CHECKING

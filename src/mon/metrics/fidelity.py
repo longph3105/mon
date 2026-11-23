@@ -164,4 +164,3 @@ class SSIM(Metric):
 
     def forward(self, pred: Tensor, target: Tensor) -> Tensor:
         return ssim(pred, target, y_channel=self.y_channel, border=self.crop_border, downsample=self.downsample)
-

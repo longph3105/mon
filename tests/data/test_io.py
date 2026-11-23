@@ -88,7 +88,11 @@ def test_write_accepts_hw_and_float(tmp_path: StdPath):
 
 @pytest.mark.parametrize(
     ("image", "exc"),
-    [(torch.zeros(2, 4, 4, dtype=torch.uint8), ValueError), (torch.zeros(1, 3, 4, 4), ValueError), (torch.zeros(3, 4, 4, dtype=torch.int32), TypeError)],
+    [
+        (torch.zeros(2, 4, 4, dtype=torch.uint8), ValueError),
+        (torch.zeros(1, 3, 4, 4), ValueError),
+        (torch.zeros(3, 4, 4, dtype=torch.int32), TypeError),
+    ],
 )
 def test_write_rejects_bad_tensors(tmp_path: StdPath, image: torch.Tensor, exc: type[Exception]):
     with pytest.raises(exc):
@@ -206,7 +210,9 @@ def test_read_image_is_zero_copy_view_and_v2_safe(tmp_path: StdPath):
     img = read_image(write_image(gradient(h=64, w=80), tmp_path / "v.png"))
     assert not img.is_contiguous()  # channels-last view of the decoded array, no CHW copy
     assert img.reshape(3, -1).shape == (3, 64 * 80)
-    t = v2.Compose([v2.RandomResizedCrop(32, antialias=True), v2.RandomHorizontalFlip(), v2.ToDtype(torch.float32, scale=True)])
+    t = v2.Compose([
+        v2.RandomResizedCrop(32, antialias=True), v2.RandomHorizontalFlip(), v2.ToDtype(torch.float32, scale=True),
+    ])
     torch.manual_seed(0)
     out_view = t(img)
     torch.manual_seed(0)

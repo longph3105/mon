@@ -46,9 +46,15 @@ def test_denoising_reduces_error_and_weight_controls_strength():
     g = torch.Generator().manual_seed(0)
     clean = torch.linspace(0.2, 0.8, 64).expand(1, 3, 48, 64).clone()
     noisy = clean + 0.1 * torch.randn(clean.shape, generator=g)
-    err = lambda y: (y - clean).pow(2).mean().item()  # noqa: E731
+
+    def err(y):
+        return (y - clean).pow(2).mean().item()
+
     assert err(tv_denoise(noisy, 0.1)) < err(noisy) / 3
-    tv = lambda y: (y.diff(dim=-1).abs().sum() + y.diff(dim=-2).abs().sum()).item()  # noqa: E731
+
+    def tv(y):
+        return (y.diff(dim=-1).abs().sum() + y.diff(dim=-2).abs().sum()).item()
+
     assert tv(tv_denoise(noisy, 0.3)) < tv(tv_denoise(noisy, 0.05)) < tv(noisy)
 
 

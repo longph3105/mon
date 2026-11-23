@@ -14,13 +14,22 @@ Running it executes third-party code: get the owner's go-ahead first. Regenerate
 
 import importlib.util
 import math
-import pprint
 import sys
 from pathlib import Path
 
 import torch
 
-_spec = importlib.util.spec_from_file_location("zero_dce_train_reference", Path(__file__).with_name("zero_dce_train_reference.py"))
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[1] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
+
+_spec = importlib.util.spec_from_file_location(
+    "zero_dce_train_reference", Path(__file__).with_name("zero_dce_train_reference.py"),
+)
 assert _spec is not None and _spec.loader is not None
 _base = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_base)
@@ -58,7 +67,7 @@ def main(code_dir: str) -> None:
               "epoch_mean": [sum(losses[e * steps:(e + 1) * steps]) / steps for e in range(EPOCHS)],
               "final": weight_stats(net.state_dict())}
     print(f"# Generated from the official Zero-DCE++ loop with torch {torch.__version__}.")
-    print("OFFICIAL_PP: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("OFFICIAL_PP", result))
 
 
 if __name__ == "__main__":

@@ -102,14 +102,16 @@ class HVICIDNet_Weights(WeightsEnum):
         name   = "HVI-CIDNet, official LOLv2_real/best_PSNR",
         sha256 = "44a7f92cf02a1da322c1a34b3aa940341dc93fd53840b7f19b49f461200b00a6",
         meta   = _hf("LOLv2-real-bestPSNR", "c317f57",
-                     "f03da46e8dd7181a872ac70e56dcf5847ea33d2bed2a73ff25beb0c82863bac8", "lol_v2_real", output_gain=0.8),
+                     "f03da46e8dd7181a872ac70e56dcf5847ea33d2bed2a73ff25beb0c82863bac8", "lol_v2_real",
+                     output_gain=0.8),
     )
     LOL_V2_REAL_BEST_SSIM = Weights(
         path   = "lle/hvi_cidnet/hvi_cidnet_lol_v2_real_ssim.pt",
         name   = "HVI-CIDNet, official LOLv2_real/best_SSIM",
         sha256 = "3d7ad3e93d65effaeb937cf833b1f2b3fb78c7529a4db95c589ff0ca569347c3",
         meta   = _hf("LOLv2-real-bestSSIM", "5f759d5",
-                     "fad7bef532a018dc10cb1c873bd97a36b30e06fed06f247a93e932e7264f5b51", "lol_v2_real", output_gain=0.82),
+                     "fad7bef532a018dc10cb1c873bd97a36b30e06fed06f247a93e932e7264f5b51", "lol_v2_real",
+                     output_gain=0.82),
     )
     LOL_V2_SYN_W_PERC = Weights(
         path   = "lle/hvi_cidnet/hvi_cidnet_lol_v2_syn_w_perc.pt",
@@ -228,7 +230,9 @@ class _NormDownsample(nn.Module):
     def __init__(self, in_ch: int, out_ch: int) -> None:
         super().__init__()
         self.prelu = nn.PReLU()
-        self.down  = nn.Sequential(nn.Conv2d(in_ch, out_ch, 3, 1, 1, bias=False), nn.UpsamplingBilinear2d(scale_factor=0.5))
+        self.down  = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, 3, 1, 1, bias=False), nn.UpsamplingBilinear2d(scale_factor=0.5),
+        )
 
     def forward(self, x: Tensor) -> Tensor:
         out: Tensor = self.prelu(self.down(x))
@@ -241,7 +245,9 @@ class _NormUpsample(nn.Module):
     def __init__(self, in_ch: int, out_ch: int) -> None:
         super().__init__()
         self.prelu    = nn.PReLU()
-        self.up_scale = nn.Sequential(nn.Conv2d(in_ch, out_ch, 3, 1, 1, bias=False), nn.UpsamplingBilinear2d(scale_factor=2))
+        self.up_scale = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, 3, 1, 1, bias=False), nn.UpsamplingBilinear2d(scale_factor=2),
+        )
         self.up       = nn.Conv2d(out_ch * 2, out_ch, 1, 1, 0, bias=False)
 
     def forward(self, x: Tensor, skip: Tensor) -> Tensor:

@@ -13,13 +13,21 @@ Running it executes third-party code: get the owner's go-ahead first. Regenerate
     uv run python -I tests/runners/zero_dce_train_reference.py <checkout>/Zero-DCE_code
 """
 
+import importlib.util
 import math
-import pprint
 import sys
 from pathlib import Path
 from typing import Any
 
 import torch
+
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[1] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
 
 SEED, BATCH, EPOCHS, COUNT, SIZE = 0, 8, 3, 16, (48, 64)
 STATS_INDICES = (0, 7, 101, 523, 1000, 2047, -1)
@@ -68,7 +76,7 @@ def main(code_dir: str) -> None:
             img = images[start:start + BATCH]
             _, enhanced, A = net(img)
             loss = (200 * L_TV(A) + torch.mean(L_spa(enhanced, img)) + 5 * torch.mean(L_color(enhanced))
-                     + 10 * torch.mean(L_exp(enhanced)))
+                    + 10 * torch.mean(L_exp(enhanced)))
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(net.parameters(), 0.1)
@@ -79,7 +87,7 @@ def main(code_dir: str) -> None:
               "epoch_mean": [sum(losses[e * steps:(e + 1) * steps]) / steps for e in range(EPOCHS)],
               "final": weight_stats(net.state_dict())}
     print(f"# Generated from the official Zero-DCE loop with torch {torch.__version__}.")
-    print("OFFICIAL: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("OFFICIAL", result))
 
 
 if __name__ == "__main__":

@@ -50,7 +50,10 @@ def test_all_is_sorted_literal_of_exports(package: str):
     pkg = _pkg(package)
     assert pkg.__all__ == sorted(pkg._EXPORTS)
     tree = ast.parse((SRC / package.replace(".", "/") / "__init__.py").read_text())
-    assigns = [n for n in tree.body if isinstance(n, ast.Assign) and any(getattr(t, "id", "") == "__all__" for t in n.targets)]
+    assigns = [
+        n for n in tree.body
+        if isinstance(n, ast.Assign) and any(getattr(t, "id", "") == "__all__" for t in n.targets)
+    ]
     assert assigns and isinstance(assigns[0].value, ast.List), "__all__ must be a literal list for static tools"
 
 
@@ -87,25 +90,35 @@ def test_package_only_imports_allowed_mon_packages(package: str):
             for name in names:
                 if name == "mon" or name.startswith("mon."):
                     top = ".".join(name.split(".")[:2])
-                    assert top in allowed, f"{file.relative_to(SRC)} imports {name}; {package} may import only {sorted(allowed)}"
+                    assert top in allowed, (
+                        f"{file.relative_to(SRC)} imports {name}; {package} may import only {sorted(allowed)}"
+                    )
 
 
 # --- Overview table in the package docstring ---
 
 def _overview_rows(package: str) -> list[tuple[str, str, list[str]]]:
-    """Parse the rST simple table in the package docstring by its ``=`` rule columns."""
+    """Parse the rST simple table in the package docstring by its ``=`` rule columns.
+
+    A row with an empty first column continues the row above (a wrapped purpose or name list).
+    """
     lines = (_pkg(package).__doc__ or "").splitlines()
     rule_idx = [i for i, line in enumerate(lines) if re.fullmatch(r"\s*=+(\s+=+){2}\s*", line)]
     assert len(rule_idx) == 3, "expected header rule, header separator, and closing rule"
     spans = [m.span() for m in re.finditer(r"=+", lines[rule_idx[0]])]
-    rows = []
+    cells: list[list[str]] = []
     for line in lines[rule_idx[1] + 1 : rule_idx[2]]:
         for (_, end), (nxt, _) in zip(spans, spans[1:]):
             assert not line[end:nxt].strip(), f"text in a column gap (misaligned row): {line!r}"
         assert len(line) <= spans[-1][1], f"row wider than the table: {line!r}"
         module, purpose, names = (line[a:b].strip() for a, b in spans)
-        rows.append((module, purpose, [n.strip() for n in names.split(",")]))
-    return rows
+        if module:
+            cells.append([module, purpose, names])
+        else:
+            assert cells, f"continuation row before the first row: {line!r}"
+            cells[-1][1] = f"{cells[-1][1]} {purpose}".strip()
+            cells[-1][2] = f"{cells[-1][2]} {names}".strip()
+    return [(m, p, [n.strip() for n in names.split(",")]) for m, p, names in cells]
 
 
 @pytest.mark.parametrize("package", PACKAGES)

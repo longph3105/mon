@@ -12,11 +12,19 @@ from either implementation (their forward math is the same for these cases):
 """
 
 import importlib.util
-import pprint
 import sys
+from pathlib import Path
 from typing import Any
 
 import torch
+
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[2] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
 
 STATS_INDICES = (0, 7, 101, 523, 1000, 2047, -1)
 
@@ -79,7 +87,10 @@ def _mon_old_models() -> tuple[Any, Any]:
 def main(source: str, zdce_dir: str, zdcepp_dir: str, zdce_weights: str, zdcepp_weights: str) -> None:
     (make_zdce, run_zdce), (make_zdcepp, run_zdcepp) = (
         _official_models(zdce_dir, zdcepp_dir) if source == "official" else _mon_old_models())
-    load = lambda path: torch.load(path, map_location="cpu", weights_only=True)  # noqa: E731
+
+    def load(path):
+        return torch.load(path, map_location="cpu", weights_only=True)
+
     x = reference_input()
     result: dict[str, Any] = {}
     with torch.no_grad():
@@ -95,7 +106,7 @@ def main(source: str, zdce_dir: str, zdcepp_dir: str, zdce_weights: str, zdcepp_
             enhanced, curve = run_zdcepp(net, x.clone())
             result[f"zero_dce++_x{scale}"] = {"enhanced": stats(enhanced), "curve": stats(curve)}
     print(f"# Generated from {source} with torch {torch.__version__}.")
-    print("OFFICIAL: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("OFFICIAL", result))
 
 
 if __name__ == "__main__":

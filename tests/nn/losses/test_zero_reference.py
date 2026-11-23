@@ -4,7 +4,9 @@ import pytest
 import torch
 from torch.nn import functional as F
 
-from mon.nn.losses.zero_reference import ColorConstancyLoss, ExposureControlLoss, IlluminationSmoothnessLoss, SpatialConsistencyLoss
+from mon.nn.losses.zero_reference import (
+    ColorConstancyLoss, ExposureControlLoss, IlluminationSmoothnessLoss, SpatialConsistencyLoss,
+)
 
 # --- Reference: Zero-DCE Myloss.py (as in mon_old/models/enhance/lle/zero_dce/loss.py), batch-level ---
 
@@ -17,7 +19,9 @@ def ref_col(x):
 
 
 def ref_spa(org, enhance):
-    k = lambda m: torch.tensor(m, dtype=torch.float32)[None, None]  # noqa: E731
+    def k(m):
+        return torch.tensor(m, dtype=torch.float32)[None, None]
+
     kernels = [k([[0, 0, 0], [-1, 1, 0], [0, 0, 0]]), k([[0, 0, 0], [0, 1, -1], [0, 0, 0]]),
                k([[0, -1, 0], [0, 1, 0], [0, 0, 0]]), k([[0, 0, 0], [0, 1, 0], [0, -1, 0]])]
     org_pool = F.avg_pool2d(torch.mean(org, 1, keepdim=True), 4)
@@ -78,10 +82,10 @@ def test_odd_sizes_match_reference():
 # --- Reduction, gradients, devices ---
 
 @pytest.mark.parametrize("make", [
-    lambda: (ColorConstancyLoss, lambda l, x, y: l(y)),
-    lambda: (ExposureControlLoss, lambda l, x, y: l(y)),
-    lambda: (SpatialConsistencyLoss, lambda l, x, y: l(y, x)),
-    lambda: (IlluminationSmoothnessLoss, lambda l, x, y: l(y)),
+    lambda: (ColorConstancyLoss, lambda loss, x, y: loss(y)),
+    lambda: (ExposureControlLoss, lambda loss, x, y: loss(y)),
+    lambda: (SpatialConsistencyLoss, lambda loss, x, y: loss(y, x)),
+    lambda: (IlluminationSmoothnessLoss, lambda loss, x, y: loss(y)),
 ])
 def test_reductions_and_gradients(images, make):
     cls, call = make()

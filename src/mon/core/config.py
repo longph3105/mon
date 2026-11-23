@@ -6,7 +6,8 @@ as ``${oc.env:DATA_DIR}`` and ``${data.root}`` stay lazy until access or ``save_
 
 References:
     - OmegaConf: https://omegaconf.readthedocs.io/
-    - ``_base_`` inheritance follows MMEngine configs: https://mmengine.readthedocs.io/en/latest/advanced_tutorials/config.html
+    - ``_base_`` inheritance follows MMEngine configs:
+      https://mmengine.readthedocs.io/en/latest/advanced_tutorials/config.html
 """
 
 __all__ = [

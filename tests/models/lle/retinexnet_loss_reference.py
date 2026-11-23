@@ -12,12 +12,20 @@ Running it executes third-party code: get the owner's go-ahead first. Regenerate
     uv run python -I tests/models/lle/retinexnet_loss_reference.py <checkout>
 """
 
-import pprint
+import importlib.util
 import sys
 from pathlib import Path
 from typing import Any
 
 import torch
+
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[2] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
 
 STATS_INDICES = (0, 7, 101, 523, -1)
 SHAPE = (2, 3, 13, 18)
@@ -75,7 +83,7 @@ def main(checkout: str) -> None:
         grads = torch.autograd.grad(loss, [x[n] for n in wrt], retain_graph=True)
         result[name] = {"loss": loss.item(), "grads": {n: stats(g) for n, g in zip(wrt, grads, strict=True)}}
     print(f"# Generated from the reimplementation's loss with torch {torch.__version__}.")
-    print("REIMPL_LOSS: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("REIMPL_LOSS", result))
 
 
 if __name__ == "__main__":

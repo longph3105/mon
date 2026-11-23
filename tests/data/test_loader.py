@@ -53,15 +53,19 @@ def test_collate_stacks_images_and_lists_targets():
     batch = collate([sample(0, 2), sample(1, 0), sample(2, 5)])
     assert batch["image"].shape == (3, 3, 4, 6) and type(batch["image"]) is torch.Tensor
     assert batch["mask"].shape == (3, 4, 6)
-    assert [len(b) for b in batch["boxes"]] == [2, 0, 5] and all(isinstance(b, tv_tensors.BoundingBoxes) for b in batch["boxes"])
-    assert [len(l) for l in batch["labels"]] == [2, 0, 5]
+    assert [len(b) for b in batch["boxes"]] == [2, 0, 5]
+    assert all(isinstance(b, tv_tensors.BoundingBoxes) for b in batch["boxes"])
+    assert [len(labels) for labels in batch["labels"]] == [2, 0, 5]
     assert [m.index for m in batch["meta"]] == [0, 1, 2]
     assert batch["image"][2].max() == 2
 
 
 def test_collate_lists_boxes_under_any_key_and_non_tensors():
-    s = [{"x": tv_tensors.BoundingBoxes(torch.zeros(k, 4), format="XYXY", canvas_size=(2, 2)), "name": f"n{k}", "y": torch.tensor(k)}
-         for k in (1, 3)]
+    s = [
+        {"x": tv_tensors.BoundingBoxes(torch.zeros(k, 4), format="XYXY", canvas_size=(2, 2)), "name": f"n{k}",
+         "y": torch.tensor(k)}
+        for k in (1, 3)
+    ]
     b = collate(s)
     assert [len(v) for v in b["x"]] == [1, 3] and b["name"] == ["n1", "n3"] and b["y"].tolist() == [1, 3]
     assert {"boxes", "labels", "meta"} <= LIST_KEYS
@@ -120,7 +124,10 @@ def fork_ctx():
 def _worker_rows(seed: int, ctx: str) -> list[tuple[int, int, float, float, float, int]]:
     dl = create_dataloader(Synthetic(8), batch_size=None, seed=seed, num_workers=2, multiprocessing_context=ctx,
                            persistent_workers=False)
-    return [(int(b["index"]), int(b["worker"]), float(b["np"]), float(b["py"]), float(b["torch"]), int(b["threads"])) for b in dl]
+    return [
+        (int(b["index"]), int(b["worker"]), float(b["np"]), float(b["py"]), float(b["torch"]), int(b["threads"]))
+        for b in dl
+    ]
 
 
 @pytest.mark.slow

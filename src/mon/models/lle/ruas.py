@@ -127,7 +127,8 @@ class _Cell(nn.Module):
 
     def __init__(self, channels: int, genotype: tuple[str, ...]) -> None:
         super().__init__()
-        self.c1_d, self.c1_r, self.c2_d, self.c2_r, self.c3_d, self.c3_r, self.c4 = (_OPS[g](channels) for g in genotype)
+        ops = (_OPS[g](channels) for g in genotype)
+        self.c1_d, self.c1_r, self.c2_d, self.c2_r, self.c3_d, self.c3_r, self.c4 = ops
         self.act = nn.LeakyReLU(0.05)
         self.c5  = nn.Conv2d(4 * channels, channels, 1)
 

@@ -1,6 +1,8 @@
 """Tests for ``mon.core.registry``."""
 
 import functools
+import sys
+import textwrap
 
 import pytest
 import torch
@@ -14,10 +16,12 @@ def models() -> Registry[type]:
     reg = Registry[type]("models")
 
     @reg.register("zero_dce", arch="zero_dce", tasks={Task.LLE})
-    class ZeroDCE: ...
+    class ZeroDCE:
+        ...
 
     @reg.register("zero_dce++", arch="zero_dce", tasks={Task.LLE})
-    class ZeroDCEpp: ...
+    class ZeroDCEpp:
+        ...
 
     @reg.register(arch="unet", tasks=[Task.SEGMENT, Task.DENOISE])
     class UNet:
@@ -45,7 +49,8 @@ def test_add_direct_and_explicit_name():
 
 
 def test_duplicate_raises_unless_replace(models: Registry[type]):
-    class Other: ...
+    class Other:
+        ...
     with pytest.raises(RegistryKeyError, match=r"'unet' is already registered in 'models'.*replace=True"):
         models.add(Other, "UNet")
     models.add(Other, "unet", replace=True)
@@ -165,10 +170,6 @@ def test_dataset_split_filter():
 
 
 # --- Autoload ---
-
-import sys  # noqa: E402
-import textwrap  # noqa: E402
-
 
 @pytest.fixture
 def plugin_pkg(tmp_path, monkeypatch: pytest.MonkeyPatch):

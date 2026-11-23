@@ -35,7 +35,8 @@ class TrainRecipe:
         loss: Builds the loss module (moved to the training device by the runner).
         step: ``(model, loss, batch) -> StepOutput`` for one training batch; ``batch`` is the
             collated dict (``"image"``, optional ``"target"``, ``"meta"``), already on the device.
-            The model is in train mode; the runner does backward, clipping, and the optimizer step.
+            The model is in train mode (eval mode after ``eval_mode_after`` epochs, when the config
+            sets it); the runner does backward, clipping, and the optimizer step.
         init: Applied to a freshly built model (training from scratch) after seeding, when the
             official script re-initializes parts the constructor doesn't; ``None``: constructor init.
         defaults: ``TrainConfig`` values of the official recipe (``optimizer``, ``epochs``,
@@ -65,4 +66,6 @@ class TrainRecipe:
         if self.optimizers is not None:
             parts = [p for group in self.optimizers.values() for p in group]
             if not self.optimizers or not all(self.optimizers.values()) or len(parts) != len(set(parts)):
-                raise ValueError(f"TrainRecipe.optimizers must be non-empty, disjoint groups, got {dict(self.optimizers)}")
+                raise ValueError(
+                    f"TrainRecipe.optimizers must be non-empty, disjoint groups, got {dict(self.optimizers)}",
+                )

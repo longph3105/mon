@@ -212,7 +212,10 @@ class ClassList:
                 convention); real classes then start at ``1``.
         """
         start = 1 if background else 0
-        items = [ClassDef(name=name, id=start + i, source_id=raw) for i, (raw, name) in enumerate(sorted(categories.items()))]
+        items = [
+            ClassDef(name=name, id=start + i, source_id=raw)
+            for i, (raw, name) in enumerate(sorted(categories.items()))
+        ]
         if background:
             items.insert(0, ClassDef(name="background", id=0, color=(0, 0, 0)))
         return cls(items)

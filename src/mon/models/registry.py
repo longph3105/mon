@@ -8,8 +8,9 @@ checks that every entry resolves and every public model class in ``mon.models`` 
 
 Examples:
     >>> from mon.core.enums import Task
-    >>> MODELS.names(tasks=Task.LLE)
-    ['clode', 'colie', 'dccnet', 'flol', 'hvi_cidnet', 'pairlie', 'retinexnet', 'ruas', 'sci', 'sci++', 'sgz', 'zero_dce', 'zero_dce++', 'zero_ig']
+    >>> MODELS.names(tasks=Task.LLE)  # doctest: +NORMALIZE_WHITESPACE
+    ['clode', 'colie', 'dccnet', 'flol', 'hvi_cidnet', 'pairlie', 'retinexnet', 'ruas', 'sci', 'sci++', 'sgz',
+     'zero_dce', 'zero_dce++', 'zero_ig']
     >>> load("mertens")  # no parameters: nothing to load
     Mertens(contrast=1.0, saturation=1.0, exposure=1.0, sigma=0.2, levels=None)
     >>> model = load("zero_dce", weights=None)  # random init; weights="default" loads SICE_ME
@@ -70,7 +71,8 @@ MODELS.add_lazy("zero_dce"  , "mon.models.lle.zero_dce:ZeroDCE"  , tasks={Task.L
 MODELS.add_lazy("zero_dce++", "mon.models.lle.zero_dce:ZeroDCEPP", tasks={Task.LLE}, arch="zero_dce",
                 train="mon.models.lle.zero_dce:ZERO_DCEPP_RECIPE")
 MODELS.add_lazy("zero_ig"   , "mon.models.lle.zero_ig:ZeroIG"    , tasks={Task.LLE}, arch="zero_ig",
-                zero_shot=True, fit="mon.models.lle.zero_ig:zero_ig_enhance", train="mon.models.lle.zero_ig:ZERO_IG_RECIPE")
+                zero_shot=True, fit="mon.models.lle.zero_ig:zero_ig_enhance",
+                train="mon.models.lle.zero_ig:ZERO_IG_RECIPE")
 # mef
 MODELS.add_lazy("mertens"   , "mon.models.mef.mertens:Mertens"   , tasks={Task.MEF}, arch="mertens")
 

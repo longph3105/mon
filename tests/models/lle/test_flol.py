@@ -22,46 +22,68 @@ reference_input, stats = _ref.reference_input, _ref.stats
 # Generated from the official code with torch 2.15.0+cu132, float64, on x86_64 (Linux). On arm64 the official
 # output differs by ~1e-3: FFT bins that are real come out ±1e-17 there, flipping their phase between ±π;
 # mon zeroes them (`_exact_real_bins`), which equals x86, so this literal holds on every platform.
-OFFICIAL: dict = {'flolv2_all_111439.pt': {'enhanced': {'shape': [2, 3, 22, 30],
-                                       'sum': 1872.4747737510759,
-                                       'sumsq': 953.6528089839439,
-                                       'values': [0.40828975264277567,
-                                                  0.620106360918379,
-                                                  0.26585639442697956,
-                                                  0.006739327914620424,
-                                                  0.5391137218077029,
-                                                  0.2617158548350651,
-                                                  0.6037064471379506]},
-                          'amplitude_enhanced': {'shape': [2, 3, 22, 30],
-                                                 'sum': 2901.2382496217347,
-                                                 'sumsq': 2203.948743544996,
-                                                 'values': [0.7251857115089706,
-                                                            0.8235343426017129,
-                                                            0.675129386762496,
-                                                            0.38058667104449284,
-                                                            0.6890318068822787,
-                                                            0.6188235212895434,
-                                                            0.7867948277287662]}},
- 'flolv2_UHDLL.pt': {'enhanced': {'shape': [2, 3, 22, 30],
-                                  'sum': 1783.4897192814612,
-                                  'sumsq': 880.4528336011574,
-                                  'values': [0.4229250267387353,
-                                             0.591598684554831,
-                                             0.4015512426599179,
-                                             -0.0036821542345285285,
-                                             0.474488168199505,
-                                             0.3181762565368015,
-                                             0.42601220901952697]},
-                     'amplitude_enhanced': {'shape': [2, 3, 22, 30],
-                                            'sum': 1891.60743703984,
-                                            'sumsq': 944.7344315501073,
-                                            'values': [0.425059610551438,
-                                                       0.5189805291552654,
-                                                       0.41266897534262936,
-                                                       0.23027150886102996,
-                                                       0.4250575807059632,
-                                                       0.42722741850806095,
-                                                       0.4881051036971296]}}}
+OFFICIAL: dict = {
+    "flolv2_all_111439.pt": {
+        "enhanced": {
+            "shape": [2, 3, 22, 30],
+            "sum": 1872.4747737510759,
+            "sumsq": 953.6528089839439,
+            "values": [
+                0.40828975264277567,
+                0.620106360918379,
+                0.26585639442697956,
+                0.006739327914620424,
+                0.5391137218077029,
+                0.2617158548350651,
+                0.6037064471379506,
+            ],
+        },
+        "amplitude_enhanced": {
+            "shape": [2, 3, 22, 30],
+            "sum": 2901.2382496217347,
+            "sumsq": 2203.948743544996,
+            "values": [
+                0.7251857115089706,
+                0.8235343426017129,
+                0.675129386762496,
+                0.38058667104449284,
+                0.6890318068822787,
+                0.6188235212895434,
+                0.7867948277287662,
+            ],
+        },
+    },
+    "flolv2_UHDLL.pt": {
+        "enhanced": {
+            "shape": [2, 3, 22, 30],
+            "sum": 1783.4897192814612,
+            "sumsq": 880.4528336011574,
+            "values": [
+                0.4229250267387353,
+                0.591598684554831,
+                0.4015512426599179,
+                -0.0036821542345285285,
+                0.474488168199505,
+                0.3181762565368015,
+                0.42601220901952697,
+            ],
+        },
+        "amplitude_enhanced": {
+            "shape": [2, 3, 22, 30],
+            "sum": 1891.60743703984,
+            "sumsq": 944.7344315501073,
+            "values": [
+                0.425059610551438,
+                0.5189805291552654,
+                0.41266897534262936,
+                0.23027150886102996,
+                0.4250575807059632,
+                0.42722741850806095,
+                0.4881051036971296,
+            ],
+        },
+    },
+}
 
 # Official file → zoo weights (same tensors).
 ZOO = {"flolv2_all_111439.pt": FLOL_Weights.LOL_V2_REAL, "flolv2_UHDLL.pt": FLOL_Weights.UHD_LL}
@@ -69,6 +91,7 @@ ZOO = {"flolv2_all_111439.pt": FLOL_Weights.LOL_V2_REAL, "flolv2_UHDLL.pt": FLOL
 
 # Parity runs in float64, where mon and the official code agree to 0 on this machine.
 ATOL = 1e-8
+
 
 def assert_matches(actual: torch.Tensor, expected: dict, atol: float = ATOL) -> None:
     got = stats(actual)

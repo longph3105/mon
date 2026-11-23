@@ -82,7 +82,9 @@ def test_gt_mean_raises_psnr_for_a_brightness_error(tmp_path: StdPath):
     pred_dir = _write(tmp_path / "p", {"x.png": target * 0.6})
     gt_dir   = _write(tmp_path / "g", {"x.png": target})
     plain = evaluate({"pred": str(pred_dir), "data": str(gt_dir), "metrics": ["psnr"], "device": "cpu"})
-    fixed = evaluate({"pred": str(pred_dir), "data": str(gt_dir), "metrics": ["psnr"], "device": "cpu", "gt_mean": True})
+    fixed = evaluate(
+        {"pred": str(pred_dir), "data": str(gt_dir), "metrics": ["psnr"], "device": "cpu", "gt_mean": True},
+    )
     assert fixed["psnr"] > plain["psnr"] + 10
 
 
@@ -118,7 +120,7 @@ def test_real_no_reference_metrics_score_saved_files(tmp_path: StdPath):
     pred_dir = _write(tmp_path / "pred", preds)
     means = evaluate({"pred": str(pred_dir), "metrics": ["niqe", "brisque"], "device": "cpu"})
     want = {n: [m(_quant(preds[k])).item() for k in ("a.png", "b.png")] for n, m in (("niqe", niqe),
-                                                                                    ("brisque", brisque))}
+                                                                                     ("brisque", brisque))}
     assert means["niqe"] == pytest.approx(sum(want["niqe"]) / 2, rel=1e-6)
     summary = yaml.safe_load((pred_dir / "metrics.yaml").read_text())
     assert summary["scored"] == {"niqe": 2, "brisque": 3} and list(summary["failed"]["niqe"]) == ["small"]

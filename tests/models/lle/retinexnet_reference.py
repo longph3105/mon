@@ -9,12 +9,20 @@ owner's go-ahead first. Regenerate with:
     uv run python -I tests/models/lle/retinexnet_reference.py <checkout> <checkpoint.pt> [...]
 """
 
-import pprint
+import importlib.util
 import sys
 from pathlib import Path
 from typing import Any
 
 import torch
+
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[2] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
 
 STATS_INDICES = (0, 7, 101, 523, 1000, 2047, -1)
 
@@ -51,15 +59,17 @@ def main(checkout: str, *checkpoints: str) -> None:
         sd = torch.load(path, map_location="cpu", weights_only=True)
         decom, relight = DecomNet().eval(), RelightNet().eval()
         decom.load_state_dict({k.removeprefix("decom_net."): v for k, v in sd.items() if k.startswith("decom_net.")})
-        relight.load_state_dict({k.removeprefix("enhance_net."): v for k, v in sd.items() if k.startswith("enhance_net.")})
+        relight.load_state_dict(
+            {k.removeprefix("enhance_net."): v for k, v in sd.items() if k.startswith("enhance_net.")},
+        )
         with torch.no_grad():
-            r, l = decom(x)
-            delta = relight(l, r)
+            r, illum = decom(x)
+            delta = relight(illum, r)
             enhanced = r * torch.cat([delta, delta, delta], 1)
-        result[Path(path).name] = {"enhanced": stats(enhanced), "reflectance": stats(r), "illumination": stats(l),
+        result[Path(path).name] = {"enhanced": stats(enhanced), "reflectance": stats(r), "illumination": stats(illum),
                                    "illumination_adjusted": stats(delta)}
     print(f"# Generated from the reimplementation with torch {torch.__version__}.")
-    print("REIMPL: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("REIMPL", result))
 
 
 if __name__ == "__main__":

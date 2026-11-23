@@ -122,7 +122,9 @@ def test_yaml_round_trip(tmp_path: StdPath):
 # --- SampleMeta ---
 
 def test_sample_meta_passes_through_v2():
-    meta = SampleMeta(index=3, stem="0001", split=Split.TRAIN, paths={"image": Path("a/0001.png")}, orig_size=Size(8, 10))
+    meta = SampleMeta(
+        index=3, stem="0001", split=Split.TRAIN, paths={"image": Path("a/0001.png")}, orig_size=Size(8, 10),
+    )
     sample = {"image": tv_tensors.Image(torch.zeros(3, 8, 10, dtype=torch.uint8)), "meta": meta}
     out = v2.Compose([v2.RandomHorizontalFlip(p=1.0), v2.Resize((4, 5))])(sample)
     assert out["meta"] is meta and out["image"].shape == (3, 4, 5)

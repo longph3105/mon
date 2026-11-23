@@ -221,7 +221,9 @@ class RetinexNetLoss(nn.Module):
         loss = (r_low * l_adjusted - high).abs().flatten(1).mean(1) + 3 * _smoothness(l_adjusted, r_low)
         return reduce_loss(loss, self.reduction)
 
-    def forward(self, low: Tensor, high: Tensor, out_low: dict[str, Tensor], out_high: dict[str, Tensor]) -> dict[str, Tensor]:
+    def forward(
+        self, low: Tensor, high: Tensor, out_low: dict[str, Tensor], out_high: dict[str, Tensor],
+    ) -> dict[str, Tensor]:
         """Both losses from ``RetinexNet.forward`` on the low image and (its ``reflectance``/``illumination``)
         on the normal-light image: ``{"decomposition": …, "relight": …}``."""
         return {

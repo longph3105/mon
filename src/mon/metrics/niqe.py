@@ -211,7 +211,8 @@ class NIQE(Metric):
         self.register_buffer("window", gaussian_window(7, 7 / 6)[None, None], persistent=False)
 
     def extra_repr(self) -> str:
-        return f"crop_border={self.crop_border}" + ("" if self.color_space == "yiq" else f", color_space={self.color_space!r}")
+        color = "" if self.color_space == "yiq" else f", color_space={self.color_space!r}"
+        return f"crop_border={self.crop_border}{color}"
 
     def forward(self, pred: Tensor) -> Tensor:
         if pred.ndim != 4 or pred.shape[1] not in (1, 3) or not pred.is_floating_point():

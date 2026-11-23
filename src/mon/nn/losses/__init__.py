@@ -7,13 +7,15 @@ Names are re-exported lazily (see ``mon.core``).
 
 Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 
-    ==============  =================================================================================  ===========================================
-    Module          Purpose                                                                            Key names
-    ==============  =================================================================================  ===========================================
-    reduction       Reduction modes shared by every loss: per-sample values, then mean, sum, or none.  Reduction, reduce_loss
-    retinex         Losses on Retinex illumination maps (SCI family).                                  EdgeAwareSmoothnessLoss
-    zero_reference  Zero-reference low-light enhancement losses (Zero-DCE family).                     ExposureControlLoss, SpatialConsistencyLoss
-    ==============  =================================================================================  ===========================================
+    ==============  =====================================================  ===========================================
+    Module          Purpose                                                Key names
+    ==============  =====================================================  ===========================================
+    reduction       Reduction modes shared by every loss: per-sample       Reduction, reduce_loss
+                    values, then mean, sum, or none.
+    retinex         Losses on Retinex illumination maps (SCI family).      EdgeAwareSmoothnessLoss
+    zero_reference  Zero-reference low-light enhancement losses (Zero-DCE  ExposureControlLoss, SpatialConsistencyLoss
+                    family).
+    ==============  =====================================================  ===========================================
 """
 
 from typing import TYPE_CHECKING

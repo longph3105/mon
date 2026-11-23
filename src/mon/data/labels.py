@@ -122,7 +122,10 @@ def read_yolo(path: str | os.PathLike[str], canvas_size: SizeLike, *, missing_ok
         if len(values) == 5:
             scores.append(values[4])
 
-    target = _empty_target(size) if not rows else {"boxes": _boxes(rows, size), "labels": torch.tensor(labels, dtype=torch.int64)}
+    if rows:
+        target = {"boxes": _boxes(rows, size), "labels": torch.tensor(labels, dtype=torch.int64)}
+    else:
+        target = _empty_target(size)
     if ncols == 6:
         target["scores"] = torch.tensor(scores, dtype=torch.float32)
     return target
@@ -155,7 +158,8 @@ def write_yolo(
     from torchvision.transforms.v2.functional import convert_bounding_box_format
 
     h, w = boxes.canvas_size
-    cxcywh = convert_bounding_box_format(boxes, new_format=tv_tensors.BoundingBoxFormat.CXCYWH).as_subclass(torch.Tensor)
+    cxcywh = convert_bounding_box_format(boxes, new_format=tv_tensors.BoundingBoxFormat.CXCYWH)
+    cxcywh = cxcywh.as_subclass(torch.Tensor)
     cxcywh = cxcywh.reshape(-1, 4).to(torch.float64) / torch.tensor([w, h, w, h], dtype=torch.float64)
     ids = torch.as_tensor(labels).reshape(-1).tolist()
     confs = None if scores is None else torch.as_tensor(scores).reshape(-1).tolist()

@@ -28,40 +28,52 @@ _spec.loader.exec_module(_ref)
 reference_images, REAL_STEMS = _ref.reference_images, _ref.REAL_STEMS
 
 # Generated (tests/metrics/metrics_reference.py) with pyiqa 0.1.16, lpips 0.1.4, torch 2.15.0+cu132, BasicSR checkout.
-REFERENCE: dict = {'pyiqa': {'psnr': [16.68532371520996, 16.69416618347168],
-           'psnry': [16.63145637512207, 16.62883758544922],
-           'ssim': [0.8673559398609013, 0.8680106816189251],
-           'ssimc': [0.8203270265195526, 0.8210184466865551],
-           'lpips': [0.068680040538311, 0.08534465730190277],
-           'lpips-vgg': [0.15297581255435944, 0.1487678736448288],
-           'niqe': [548.1413555523488, 540.8499010486305]},
- 'skimage': {'psnr': [16.685325743791843, 16.694167641078753], 'ssim': [0.820327025115919, 0.8210184452442199]},
- 'lpips': {'alex': [0.068680040538311, 0.08534465730190277], 'vgg': [0.15297581255435944, 0.1487678736448288]},
- 'lol_v1': {'111': {'psnr': 5.6122307777404785,
-                    'psnry': 5.604128837585449,
-                    'ssim': 0.19705209756606873,
-                    'ssimc': 0.1913987794618394,
-                    'lpips': 0.5379783511161804,
-                    'lpips-vgg': 0.3945755958557129,
-                    'niqe_pred': 8.65203596190973,
-                    'niqe_target': 4.468111856844746},
-            '146': {'psnr': 6.629547595977783,
-                    'psnry': 6.591195583343506,
-                    'ssim': 0.26062749356538095,
-                    'ssimc': 0.2621304370184836,
-                    'lpips': 0.38978832960128784,
-                    'lpips-vgg': 0.31864967942237854,
-                    'niqe_pred': 6.788621405480913,
-                    'niqe_target': 6.227620277730135},
-            '179': {'psnr': 12.377197265625,
-                    'psnry': 13.64020824432373,
-                    'ssim': 0.43589527527872357,
-                    'ssimc': 0.4352048323566422,
-                    'lpips': 0.3401371240615845,
-                    'lpips-vgg': 0.21591687202453613,
-                    'niqe_pred': 4.984233121553272,
-                    'niqe_target': 3.9365726199087168}},
- 'basicsr_niqe_gray': [548.0347261782667, 540.6891405434175]}
+REFERENCE: dict = {
+    "pyiqa": {
+        "psnr": [16.68532371520996, 16.69416618347168],
+        "psnry": [16.63145637512207, 16.62883758544922],
+        "ssim": [0.8673559398609013, 0.8680106816189251],
+        "ssimc": [0.8203270265195526, 0.8210184466865551],
+        "lpips": [0.068680040538311, 0.08534465730190277],
+        "lpips-vgg": [0.15297581255435944, 0.1487678736448288],
+        "niqe": [548.1413555523488, 540.8499010486305],
+    },
+    "skimage": {"psnr": [16.685325743791843, 16.694167641078753], "ssim": [0.820327025115919, 0.8210184452442199]},
+    "lpips": {"alex": [0.068680040538311, 0.08534465730190277], "vgg": [0.15297581255435944, 0.1487678736448288]},
+    "lol_v1": {
+        "111": {
+            "psnr": 5.6122307777404785,
+            "psnry": 5.604128837585449,
+            "ssim": 0.19705209756606873,
+            "ssimc": 0.1913987794618394,
+            "lpips": 0.5379783511161804,
+            "lpips-vgg": 0.3945755958557129,
+            "niqe_pred": 8.65203596190973,
+            "niqe_target": 4.468111856844746,
+        },
+        "146": {
+            "psnr": 6.629547595977783,
+            "psnry": 6.591195583343506,
+            "ssim": 0.26062749356538095,
+            "ssimc": 0.2621304370184836,
+            "lpips": 0.38978832960128784,
+            "lpips-vgg": 0.31864967942237854,
+            "niqe_pred": 6.788621405480913,
+            "niqe_target": 6.227620277730135,
+        },
+        "179": {
+            "psnr": 12.377197265625,
+            "psnry": 13.64020824432373,
+            "ssim": 0.43589527527872357,
+            "ssimc": 0.4352048323566422,
+            "lpips": 0.3401371240615845,
+            "lpips-vgg": 0.21591687202453613,
+            "niqe_pred": 4.984233121553272,
+            "niqe_target": 3.9365726199087168,
+        },
+    },
+    "basicsr_niqe_gray": [548.0347261782667, 540.6891405434175],
+}
 
 
 def _close(got: torch.Tensor, want: list[float], *, abs: float = 0, rel: float = 0) -> None:
@@ -134,7 +146,10 @@ def test_niqe_needs_two_blocks():
     from mon.metrics.niqe import _niqe_one
 
     with pytest.raises(ValueError, match="at least two 96"):
-        _niqe_one(torch.zeros(96, 100, dtype=torch.float64), torch.zeros(36), torch.eye(36), gaussian_window(7, 7 / 6)[None, None])
+        _niqe_one(
+            torch.zeros(96, 100, dtype=torch.float64), torch.zeros(36), torch.eye(36),
+            gaussian_window(7, 7 / 6)[None, None],
+        )
 
 
 # --- Registry ---
@@ -198,7 +213,10 @@ def _lol_pair(stem: str) -> tuple[torch.Tensor, torch.Tensor]:
         pytest.skip("DATA_DIR / DATASETS_DIR not set")
     if not root.is_dir():
         pytest.skip(f"{root} not on this machine")
-    load = lambda p: read_image(p).float()[None] / 255  # noqa: E731
+
+    def load(p):
+        return read_image(p).float()[None] / 255
+
     return load(root / "images" / f"{stem}.png"), load(root / "targets" / f"{stem}.png")
 
 

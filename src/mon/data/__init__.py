@@ -6,16 +6,17 @@ and data loaders. Image-processing algorithms live in ``mon.ops``, drawing in
 
 Submodules (kept in sync with the code by ``tests/test_namespaces.py``):
 
-    ==========  ===================================================================  ==========================================
-    Module      Purpose                                                              Key names
-    ==========  ===================================================================  ==========================================
-    dataset     Folder-based datasets declared by their on-disk layout.              FolderDataset, ImageFolder, DATASETS
-    io          Read and write images and videos.                                    read_image, write_image, VideoWriter
-    labels      Read and write YOLO, VOC, and COCO box labels.                       read_yolo, read_voc, read_coco, write_yolo
-    loader      Batching for dict samples and reproducible DataLoader construction.  collate, create_dataloader
-    structures  Class definitions and per-sample metadata.                           ClassList, ClassDef, SampleMeta
-    transforms  Sample transforms missing from torchvision v2.                       ApplyTo, PadToMultiple, ResizeToMultiple
-    ==========  ===================================================================  ==========================================
+    ==========  =======================================================  ==========================================
+    Module      Purpose                                                  Key names
+    ==========  =======================================================  ==========================================
+    dataset     Folder-based datasets declared by their on-disk layout.  FolderDataset, ImageFolder, DATASETS
+    io          Read and write images and videos.                        read_image, write_image, VideoWriter
+    labels      Read and write YOLO, VOC, and COCO box labels.           read_yolo, read_voc, read_coco, write_yolo
+    loader      Batching for dict samples and reproducible DataLoader    collate, create_dataloader
+                construction.
+    structures  Class definitions and per-sample metadata.               ClassList, ClassDef, SampleMeta
+    transforms  Sample transforms missing from torchvision v2.           ApplyTo, PadToMultiple, ResizeToMultiple
+    ==========  =======================================================  ==========================================
 """
 
 from typing import TYPE_CHECKING

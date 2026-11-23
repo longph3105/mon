@@ -10,12 +10,20 @@ Running it executes third-party code: get the owner's go-ahead first. Regenerate
     uv run python -I tests/models/lle/pairlie_loss_reference.py <checkout>
 """
 
-import pprint
+import importlib.util
 import sys
 from pathlib import Path
 from typing import Any
 
 import torch
+
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[2] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
 
 STATS_INDICES = (0, 7, 101, 523, -1)
 SHAPE = (2, 3, 13, 18)
@@ -51,12 +59,13 @@ def main(checkout: str) -> None:
     from utils import C_loss, P_loss, R_loss  # official code
 
     x = {k: v.requires_grad_(True) for k, v in inputs().items()}
-    loss = C_loss(x["R1"], x["R2"]) * 1 + R_loss(x["L1"], x["R1"], x["im1"], x["X1"]) * 1 + P_loss(x["im1"], x["X1"]) * 500
+    loss = (C_loss(x["R1"], x["R2"]) * 1 + R_loss(x["L1"], x["R1"], x["im1"], x["X1"]) * 1
+            + P_loss(x["im1"], x["X1"]) * 500)
     names = ["L1", "R1", "X1", "R2"]
     grads = torch.autograd.grad(loss, [x[n] for n in names])
     result = {"loss": loss.item(), "grads": {n: stats(g) for n, g in zip(names, grads, strict=True)}}
     print(f"# Generated from the official PairLIE loss with torch {torch.__version__}.")
-    print("OFFICIAL_LOSS: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("OFFICIAL_LOSS", result))
 
 
 if __name__ == "__main__":

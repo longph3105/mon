@@ -42,7 +42,10 @@ def test_recipe_defaults_sit_under_user_values():
     assert (cfg.optimizer.name, cfg.optimizer.lr, cfg.optimizer.weight_decay, cfg.epochs) == ("adam", 1e-4, 1e-4, 3)
     pp = resolve_train_config({"model": "zero_dce++", "model_args": {"num_iters": 8}})
     assert pp.resize == [512, 512] and pp.model_args == {"scale_factor": 1.0, "num_iters": 8}
-    assert resolve_train_config({"model": "zero_ig", "data": "x"}).shuffle is False
+    zig = resolve_train_config({"model": "zero_ig", "data": "x"})
+    assert zig.shuffle is False and zig.eval_mode_after == 1  # the official script's eval-mode switch
+    assert resolve_train_config({"model": "zero_ig", "data": "x", "eval_mode_after": None}).eval_mode_after is None
+    assert resolve_train_config({"model": "zero_dce"}).eval_mode_after is None
 
 
 @pytest.mark.parametrize(("cfg", "match"), [
@@ -52,6 +55,7 @@ def test_recipe_defaults_sit_under_user_values():
     ({"model": "zero_dce", "optimizer": {"name": "lion"}}, "optimizer.name"),
     ({"model": "zero_dce", "monitor": "psnr"}, "needs val_data"),
     ({"model": "zero_dce", "resize": [32]}, r"resize must be \[H, W\]"),
+    ({"model": "zero_dce", "eval_mode_after": -1}, "eval_mode_after"),
 ])
 def test_invalid_configs(cfg: dict, match: str):
     with pytest.raises(ValueError, match=match):
@@ -70,7 +74,7 @@ def test_registry_recipes_resolve():
 def test_run_writes_log_checkpoints_and_loadable_weights(folder: StdPath, tmp_path: StdPath):
     run = train(_cfg(folder, tmp_path, epochs=2, save_every=1))
     assert {p.name for p in run.iterdir()} == {"config.yaml", "log.csv", "last.ckpt", "best.pt",
-                                              "epoch_0001.pt", "epoch_0002.pt"}
+                                               "epoch_0001.pt", "epoch_0002.pt"}
     rows = list(csv.DictReader((run / "log.csv").open()))
     assert [r["epoch"] for r in rows] == ["1", "2"] and rows[1]["step"] == "4"
     assert {"train/loss", "train/spatial", "train/exposure", "train/color", "train/smoothness"} <= set(rows[0])
@@ -188,9 +192,29 @@ def test_each_recipe_trains_one_epoch(model: str, folder: StdPath, tmp_path: Std
     assert float(row["train/loss"]) > 0 and row["step"] == "4"
 
 
+def test_eval_mode_after_switches_the_model_for_later_epochs(
+    folder: StdPath, tmp_path: StdPath, monkeypatch: pytest.MonkeyPatch,
+):
+    real, modes = trainer._recipe("zero_dce"), []
+
+    def step(model, loss, batch):
+        modes.append(model.training)
+        return real.step(model, loss, batch)
+
+    monkeypatch.setattr(trainer, "_recipe", lambda name: TrainRecipe(loss=real.loss, step=step))
+    train(_cfg(folder, tmp_path, epochs=3, eval_mode_after=1))
+    assert modes == [True, True, False, False, False, False]  # 2 steps per epoch
+
+
+def test_validation_keeps_the_training_mode():
+    model = torch.nn.BatchNorm2d(3).eval()
+    trainer._validate_epoch(model, [], {}, 1, None, torch.device("cpu"))
+    assert not model.training
+
+
 def test_non_finite_loss_raises(folder: StdPath, tmp_path: StdPath, monkeypatch: pytest.MonkeyPatch):
     real = trainer._recipe("zero_dce")
-    bad  = TrainRecipe(loss=real.loss, step=lambda m, l, b: {"loss": m(b["image"])["enhanced"].sum() * float("nan")})
+    bad  = TrainRecipe(loss=real.loss, step=lambda m, loss, b: {"loss": m(b["image"])["enhanced"].sum() * float("nan")})
     monkeypatch.setattr(trainer, "_recipe", lambda name: bad)
     with pytest.raises(FloatingPointError, match="non-finite loss"):
         train(_cfg(folder, tmp_path))

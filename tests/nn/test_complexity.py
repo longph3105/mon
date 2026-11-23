@@ -21,7 +21,8 @@ def test_count_flops_conv_and_linear():
 
 def test_count_flops_sees_functional_conv():
     weight = torch.randn(4, 3, 3, 3)
-    assert count_flops(lambda x: F.conv2d(x, weight, padding=1), torch.zeros(1, 3, 5, 5)) == 2 * _conv_macs(3, 4, 3, 5, 5)
+    flops = count_flops(lambda x: F.conv2d(x, weight, padding=1), torch.zeros(1, 3, 5, 5))
+    assert flops == 2 * _conv_macs(3, 4, 3, 5, 5)
 
 
 def test_zero_dce_macs_per_pixel():

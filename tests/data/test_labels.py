@@ -141,7 +141,11 @@ def test_voc_unknown_class_raises_instead_of_class_zero(tmp_path: StdPath):
     ("xml", "match"),
     [
         ("<annotation><size><width>2</width>", "invalid XML"),
-        ("<annotation><object><name>cat</name><bndbox><xmin>1</xmin><ymin>1</ymin><xmax>2</xmax><ymax>2</ymax></bndbox></object></annotation>", "no <size>"),
+        (
+            "<annotation><object><name>cat</name><bndbox><xmin>1</xmin><ymin>1</ymin><xmax>2</xmax><ymax>2</ymax>"
+            "</bndbox></object></annotation>",
+            "no <size>",
+        ),
         (VOC.format(w=W, h=H).replace("<xmin>1</xmin>", "<xmin>0</xmin>"), "invalid box"),          # VOC is 1-based
         (VOC.format(w=W, h=H).replace("<xmax>50</xmax>", "<xmax>a</xmax>"), "bad coordinate"),
         (VOC.format(w=W, h=H).replace("<ymax>40</ymax>", ""), "missing <ymax>"),
@@ -217,7 +221,10 @@ def test_coco_skips_degenerate_boxes_with_warning(tmp_path: StdPath, caplog: pyt
     ("overrides", "match"),
     [
         ({"annotations": [{"id": 1, "image_id": 9, "category_id": 1, "bbox": [0, 0, 1, 1]}]}, "unknown image_id 9"),
-        ({"annotations": [{"id": 1, "image_id": 1, "category_id": 99, "bbox": [0, 0, 1, 1]}]}, "unknown category_id 99"),
+        (
+            {"annotations": [{"id": 1, "image_id": 1, "category_id": 99, "bbox": [0, 0, 1, 1]}]},
+            "unknown category_id 99",
+        ),
         ({"images": [{"id": 1, "file_name": "a.jpg", "height": 1, "width": 1}] * 2}, "duplicate image"),
     ],
 )

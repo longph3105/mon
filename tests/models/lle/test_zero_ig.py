@@ -18,83 +18,136 @@ reference_input, stats = _ref.reference_input, _ref.stats
 
 # Official model.py / loss.py / train.py (Doyle59217/ZeroIG 5af4b8a), CPU. Output of zero_ig_reference.py.
 # Generated from the official code with torch 2.15.0+cu132.
-OFFICIAL: dict = {'inference': {'LOL.pt': {'enhanced': {'shape': [1, 3, 24, 30],
-                                       'sum': 1572.0751309701227,
-                                       'sumsq': 1250.4902248542585,
-                                       'values': [0.6698089838027954,
-                                                  0.9566454887390137,
-                                                  0.6882104873657227,
-                                                  0.14699077606201172,
-                                                  0.8735415935516357,
-                                                  0.9262012243270874,
-                                                  0.7781505584716797]},
-                          'enhanced_noisy': {'shape': [1, 3, 24, 30],
-                                             'sum': 1712.4116000048816,
-                                             'sumsq': 1509.2871435552304,
-                                             'values': [0.6058545708656311,
-                                                        1.0,
-                                                        1.0,
-                                                        0.07531283050775528,
-                                                        1.0,
-                                                        0.9893598556518555,
-                                                        0.9314242005348206]}},
-               'LSRW-Huawei.pt': {'enhanced': {'shape': [1, 3, 24, 30],
-                                               'sum': 1398.871166691184,
-                                               'sumsq': 973.1215576304696,
-                                               'values': [0.5567468404769897,
-                                                          0.7515758275985718,
-                                                          0.8662751317024231,
-                                                          0.19582709670066833,
-                                                          0.814521312713623,
-                                                          0.6805074214935303,
-                                                          0.8177321553230286]},
-                                  'enhanced_noisy': {'shape': [1, 3, 24, 30],
-                                                     'sum': 1490.811042908579,
-                                                     'sumsq': 1178.4986412703242,
-                                                     'values': [0.5055021047592163,
-                                                                0.9430994391441345,
-                                                                0.8960272073745728,
-                                                                0.05756089836359024,
-                                                                0.8831288814544678,
-                                                                0.8167310357093811,
-                                                                0.864656925201416]}},
-               'LSRW-Nikon.pt': {'enhanced': {'shape': [1, 3, 24, 30],
-                                              'sum': 1239.0710333318057,
-                                              'sumsq': 801.0267907430125,
-                                              'values': [0.3836566209793091,
-                                                         0.6733974814414978,
-                                                         0.5972006320953369,
-                                                         0.2665241062641144,
-                                                         0.5560068488121033,
-                                                         0.5604835152626038,
-                                                         0.8325422406196594]},
-                                 'enhanced_noisy': {'shape': [1, 3, 24, 30],
-                                                    'sum': 1212.4555169455707,
-                                                    'sumsq': 778.8733050932852,
-                                                    'values': [0.4514715373516083,
-                                                               0.7095491290092468,
-                                                               0.6299106478691101,
-                                                               0.055880289524793625,
-                                                               0.6165976524353027,
-                                                               0.6236698031425476,
-                                                               0.9254141449928284]}}},
- 'loss': {'value': 1772.6572265625,
-          'grad': {'shape': [86572],
-                   'sum': 186170.90366726468,
-                   'sumsq': 561282635.0715733,
-                   'values': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.542525053024292]}},
- 'fit': {'steps': 5,
-         'last_loss': 226.57550048828125,
-         'enhanced': {'shape': [1, 3, 24, 30],
-                      'sum': 806.6651013344672,
-                      'sumsq': 376.86265311900104,
-                      'values': [0.32629919052124023,
-                                 0.5360052585601807,
-                                 0.42785772681236267,
-                                 0.13339638710021973,
-                                 0.3595494031906128,
-                                 0.3760564923286438,
-                                 0.4458864629268646]}}}
+OFFICIAL: dict = {
+    "inference": {
+        "LOL.pt": {
+            "enhanced": {
+                "shape": [1, 3, 24, 30],
+                "sum": 1572.0751309701227,
+                "sumsq": 1250.4902248542585,
+                "values": [
+                    0.6698089838027954,
+                    0.9566454887390137,
+                    0.6882104873657227,
+                    0.14699077606201172,
+                    0.8735415935516357,
+                    0.9262012243270874,
+                    0.7781505584716797,
+                ],
+            },
+            "enhanced_noisy": {
+                "shape": [1, 3, 24, 30],
+                "sum": 1712.4116000048816,
+                "sumsq": 1509.2871435552304,
+                "values": [
+                    0.6058545708656311,
+                    1.0,
+                    1.0,
+                    0.07531283050775528,
+                    1.0,
+                    0.9893598556518555,
+                    0.9314242005348206,
+                ],
+            },
+        },
+        "LSRW-Huawei.pt": {
+            "enhanced": {
+                "shape": [1, 3, 24, 30],
+                "sum": 1398.871166691184,
+                "sumsq": 973.1215576304696,
+                "values": [
+                    0.5567468404769897,
+                    0.7515758275985718,
+                    0.8662751317024231,
+                    0.19582709670066833,
+                    0.814521312713623,
+                    0.6805074214935303,
+                    0.8177321553230286,
+                ],
+            },
+            "enhanced_noisy": {
+                "shape": [1, 3, 24, 30],
+                "sum": 1490.811042908579,
+                "sumsq": 1178.4986412703242,
+                "values": [
+                    0.5055021047592163,
+                    0.9430994391441345,
+                    0.8960272073745728,
+                    0.05756089836359024,
+                    0.8831288814544678,
+                    0.8167310357093811,
+                    0.864656925201416,
+                ],
+            },
+        },
+        "LSRW-Nikon.pt": {
+            "enhanced": {
+                "shape": [1, 3, 24, 30],
+                "sum": 1239.0710333318057,
+                "sumsq": 801.0267907430125,
+                "values": [
+                    0.3836566209793091,
+                    0.6733974814414978,
+                    0.5972006320953369,
+                    0.2665241062641144,
+                    0.5560068488121033,
+                    0.5604835152626038,
+                    0.8325422406196594,
+                ],
+            },
+            "enhanced_noisy": {
+                "shape": [1, 3, 24, 30],
+                "sum": 1212.4555169455707,
+                "sumsq": 778.8733050932852,
+                "values": [
+                    0.4514715373516083,
+                    0.7095491290092468,
+                    0.6299106478691101,
+                    0.055880289524793625,
+                    0.6165976524353027,
+                    0.6236698031425476,
+                    0.9254141449928284,
+                ],
+            },
+        },
+    },
+    "loss": {
+        "value": 1772.6572265625,
+        "grad": {
+            "shape": [86572],
+            "sum": 186170.90366726468,
+            "sumsq": 561282635.0715733,
+            "values": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.542525053024292],
+        },
+    },
+    "loss_eval": {
+        "value": 187.08677673339844,
+        "grad": {
+            "shape": [86572],
+            "sum": 26857.19558366407,
+            "sumsq": 9505151.297671031,
+            "values": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.43185433745384216],
+        },
+    },
+    "fit": {
+        "steps": 5,
+        "last_loss": 195.8741455078125,
+        "enhanced": {
+            "shape": [1, 3, 24, 30],
+            "sum": 796.0372074605693,
+            "sumsq": 367.81020679047066,
+            "values": [
+                0.33550238609313965,
+                0.5571589469909668,
+                0.46118199825286865,
+                0.14903052151203156,
+                0.3247506022453308,
+                0.356512188911438,
+                0.4289173483848572,
+            ],
+        },
+    },
+}
 
 ZOO = {"LOL.pt": ZeroIG_Weights.LOL_V1, "LSRW-Huawei.pt": ZeroIG_Weights.LSRW_HUAWEI,
        "LSRW-Nikon.pt": ZeroIG_Weights.LSRW_NIKON}
@@ -128,14 +181,15 @@ def test_released_weights_load_strictly_and_match_official_inference(name):
     assert_matches(out["enhanced_noisy"], OFFICIAL["inference"][name]["enhanced_noisy"])
 
 
-def test_loss_and_gradients_match_official():
-    model = ZeroIG().train()
+@pytest.mark.parametrize(("mode", "key"), [("train", "loss"), ("eval", "loss_eval")])
+def test_loss_and_gradients_match_official(mode, key):
+    model = ZeroIG().train(mode == "train")  # eval: how the official training runs after its first epoch
     model.load_state_dict(released(ZeroIG_Weights.LOL_V1))
     loss = ZeroIGLoss()(model, reference_input())
     loss.backward()
-    assert loss.item() == pytest.approx(OFFICIAL["loss"]["value"], rel=1e-6)
+    assert loss.item() == pytest.approx(OFFICIAL[key]["value"], rel=1e-6)
     grads = stats(torch.cat([p.grad.flatten() for p in model.parameters()]))
-    expected = OFFICIAL["loss"]["grad"]
+    expected = OFFICIAL[key]["grad"]
     assert grads["shape"] == expected["shape"]
     assert grads["sum"] == pytest.approx(expected["sum"], rel=1e-6)
     assert grads["sumsq"] == pytest.approx(expected["sumsq"], rel=1e-6)
@@ -198,6 +252,17 @@ def test_fit_is_seeded_batched_and_validates():
         zero_ig_enhance(torch.rand(1, 3, 13, 16), iterations=1)
     with pytest.raises(ValueError, match="iterations"):
         zero_ig_enhance(x, iterations=0)
+    with pytest.raises(ValueError, match="eval_mode_after"):
+        zero_ig_enhance(x, iterations=1, eval_mode_after=-1)
+
+
+def test_fit_eval_mode_after_is_the_official_switch_and_can_be_turned_off():
+    x = reference_input()
+    official = zero_ig_enhance(x, iterations=3, seed=2)
+    assert torch.equal(official, zero_ig_enhance(x, iterations=3, seed=2, eval_mode_after=1))
+    train_mode = zero_ig_enhance(x, iterations=3, seed=2, eval_mode_after=None)
+    assert torch.equal(train_mode, zero_ig_enhance(x, iterations=3, seed=2, eval_mode_after=3))  # never reached
+    assert not torch.allclose(official, train_mode, atol=1e-4)
 
 
 # --- Registry ---

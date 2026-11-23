@@ -9,12 +9,20 @@ the owner's go-ahead first. Regenerate with:
     uv run python -I tests/models/lle/dccnet_reference.py <checkout>/src $DATA_DIR/zoo/lle/dccnet/dccnet_lol_v1.pt
 """
 
-import pprint
+import importlib.util
 import sys
 from pathlib import Path
 from typing import Any
 
 import torch
+
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[2] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
 
 STATS_INDICES = (0, 7, 101, 523, 1000, 2047, -1)
 
@@ -52,7 +60,7 @@ def main(src: str, weights: str) -> None:
         gray, color_hist, enhanced = net.eval()(reference_input())
     result = {"enhanced": stats(enhanced), "gray": stats(gray), "color_hist": stats(color_hist)}
     print(f"# Generated from the official code with torch {torch.__version__}.")
-    print("OFFICIAL: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("OFFICIAL", result))
 
 
 if __name__ == "__main__":

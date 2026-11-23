@@ -48,7 +48,9 @@ def tile_starts(length: int, tile: int, stride: int) -> list[int]:
     return starts
 
 
-def hann_window_2d(height: int, width: int, *, device: torch.device | None = None, dtype: torch.dtype = torch.float32) -> Tensor:
+def hann_window_2d(
+    height: int, width: int, *, device: torch.device | None = None, dtype: torch.dtype = torch.float32,
+) -> Tensor:
     """A ``[1, 1, height, width]`` Hann window, strictly positive (edges are not 0).
 
     Built from a symmetric Hann window of length ``n + 2`` with its two zero ends dropped.

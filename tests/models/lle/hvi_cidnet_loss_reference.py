@@ -17,12 +17,20 @@ Running it executes third-party code: get the owner's go-ahead first. Regenerate
     uv run python -I tests/models/lle/hvi_cidnet_loss_reference.py <checkout>
 """
 
-import pprint
+import importlib.util
 import sys
 from pathlib import Path
 from typing import Any
 
 import torch
+
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[2] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
 
 STATS_INDICES = (0, 7, 101, 523, -1)
 SHAPE = (2, 3, 24, 32)
@@ -89,7 +97,7 @@ def main(checkout: str) -> None:
     result = {"loss": loss.item(), "loss_rgb": loss_rgb.item(), "loss_hvi": loss_hvi.item(),
               "grad_pred": stats(g_pred), "grad_density_k": g_k.item()}
     print(f"# Generated from the official HVI-CIDNet loss with torch {torch.__version__}.")
-    print("OFFICIAL_LOSS: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("OFFICIAL_LOSS", result))
 
 
 if __name__ == "__main__":

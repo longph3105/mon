@@ -75,7 +75,7 @@ def rgb_to_luma(x: Tensor) -> Tensor:
 
 
 def rgb_to_y(x: Tensor, color_space: YColorSpace = "yiq") -> Tensor:
-    """``[B, 3, H, W]`` RGB in ``[0, 1]`` → ``[B, 1, H, W]`` Y of ``color_space`` in ``[0, 1]`` (pyiqa's ``to_y_channel``).
+    """``[B, 3, H, W]`` RGB in ``[0, 1]`` → ``[B, 1, H, W]`` ``color_space`` Y in ``[0, 1]`` (pyiqa ``to_y_channel``).
 
     ``"ycbcr"`` is MATLAB ``rgb2ycbcr``'s Y: ``(65.481 R + 128.553 G + 24.966 B + 16) / 255``. 1-channel input is
     returned as is.

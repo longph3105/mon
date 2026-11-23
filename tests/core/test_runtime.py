@@ -19,7 +19,8 @@ def test_available_devices_real_system():
     devices = available_devices()
     assert devices[0] == "cpu"
     assert ("mps" in devices) == torch.backends.mps.is_available()
-    assert sum(d.startswith("cuda:") for d in devices) == (torch.cuda.device_count() if torch.cuda.is_available() else 0)
+    cuda = torch.cuda.device_count() if torch.cuda.is_available() else 0
+    assert sum(d.startswith("cuda:") for d in devices) == cuda
 
 
 # --- select_device ---
@@ -124,7 +125,10 @@ def test_seed_none_draws_logs_and_returns(caplog: pytest.LogCaptureFixture):
     assert _draws() == first
 
 
-@pytest.mark.parametrize(("seed", "exc"), [(-1, ValueError), (2**32, ValueError), (1.5, TypeError), (True, TypeError), ("1", TypeError)])
+@pytest.mark.parametrize(
+    ("seed", "exc"),
+    [(-1, ValueError), (2**32, ValueError), (1.5, TypeError), (True, TypeError), ("1", TypeError)],
+)
 def test_seed_validation(seed, exc: type[Exception]):
     with pytest.raises(exc):
         seed_everything(seed)

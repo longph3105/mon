@@ -7,7 +7,8 @@ of TorchCodec, an extra dependency that needs system FFmpeg.
 
 References:
     - tv_tensors: https://pytorch.org/vision/stable/tv_tensors.html
-    - torchvision codec deprecation: https://meta-pytorch.org/torchcodec/0.16/generated_examples/migration/torchvision_migration.html
+    - torchvision codec deprecation:
+      https://meta-pytorch.org/torchcodec/0.16/generated_examples/migration/torchvision_migration.html
 """
 
 __all__ = [
@@ -310,7 +311,8 @@ class VideoWriter:
                 raise ValueError(f"could not open a {self.fourcc!r} writer for {self.path}")
             self._writer, self._size = writer, size
         elif size != self._size:
-            raise ValueError(f"frame size {size.hw} differs from the first frame {self._size.hw if self._size else None}")
+            first = self._size.hw if self._size else None
+            raise ValueError(f"frame size {size.hw} differs from the first frame {first}")
         self._writer.write(arr)
         self.frames += 1
 
@@ -323,5 +325,7 @@ class VideoWriter:
     def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> None:
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None,
+    ) -> None:
         self.close()

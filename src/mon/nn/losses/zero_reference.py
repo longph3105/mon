@@ -133,7 +133,8 @@ class SpatialConsistencyLoss(_ZeroReferenceLoss):
         right = [[0, 0, 0], [0, 1, -1], [0, 0, 0]]
         up    = [[0, -1, 0], [0, 1, 0], [0, 0, 0]]
         down  = [[0, 0, 0], [0, 1, 0], [0, -1, 0]]
-        self.register_buffer("kernels", torch.tensor([left, right, up, down], dtype=torch.float32).unsqueeze(1), persistent=False)
+        kernels = torch.tensor([left, right, up, down], dtype=torch.float32).unsqueeze(1)
+        self.register_buffer("kernels", kernels, persistent=False)
 
     def forward(self, pred: Tensor, input: Tensor) -> Tensor:
         _check_image(pred, "pred")

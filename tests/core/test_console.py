@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from omegaconf import OmegaConf
 from rich.logging import RichHandler
+from rich.progress import Progress
 
 import mon.core.console as mc
 
@@ -141,9 +142,6 @@ def test_print_dict_plain_and_omegaconf():
 
 # --- progress_bar ---
 
-from rich.progress import Progress  # noqa: E402
-
-
 class _FakeTask:
     def __init__(self, speed: float | None) -> None:
         self.speed = speed
@@ -167,8 +165,13 @@ def test_progress_bar_tracks_and_renders(no_rank: None):
     assert "Predicting" in out and "5/5" in out
 
 
-@pytest.mark.parametrize(("rank", "disable", "expected"), [(None, None, False), ("1", None, True), ("0", None, False), ("1", False, False), (None, True, True)])
-def test_progress_bar_rank_zero_only(monkeypatch: pytest.MonkeyPatch, no_rank: None, rank: str | None, disable: bool | None, expected: bool):
+@pytest.mark.parametrize(
+    ("rank", "disable", "expected"),
+    [(None, None, False), ("1", None, True), ("0", None, False), ("1", False, False), (None, True, True)],
+)
+def test_progress_bar_rank_zero_only(
+    monkeypatch: pytest.MonkeyPatch, no_rank: None, rank: str | None, disable: bool | None, expected: bool,
+):
     if rank is not None:
         monkeypatch.setenv("RANK", rank)
     assert mc.progress_bar(disable=disable).disable is expected

@@ -11,11 +11,11 @@ size), stored as PNG under ``datasets_dir() / "testkit"``. One dataset id per ta
 - ``testkit_mef``: exposure stacks, 25 SICE test scenes (evenly spaced among those with ≥ 4 exposures) × 4
   exposures (darkest, two in between, brightest) = 100, plus each scene's reference.
 - ``testkit_classify``: CIFAR-10 test, the first 10 images of each class = 100 (32×32, native).
-- ``testkit_efficiency`` (``Task.BENCHMARK``): model efficiency (params, MACs, speed, memory) across resolutions, not quality: the same
-  5 dark SICE test scenes (darkest exposure; scenes with a landscape photo of at least 3840×2160, evenly spaced) at
-  each of ``EFFICIENCY_SIZES`` (256×256 to 8K), paired with the scene's reference: ``test/images/<W>x<H>/sice_<scene>.png``
-  and ``test/targets/<W>x<H>/sice_<scene>.png``. Both get the identical scaling to cover the size and centre crop:
-  ``INTER_AREA`` down, bicubic up (only 8K, which exceeds every SICE photo).
+- ``testkit_efficiency`` (``Task.BENCHMARK``): model efficiency (params, MACs, speed, memory) across resolutions,
+  not quality: the same 5 dark SICE test scenes (darkest exposure; scenes with a landscape photo of at least
+  3840×2160, evenly spaced) at each of ``EFFICIENCY_SIZES`` (256×256 to 8K), paired with the scene's reference:
+  ``test/images/<W>x<H>/sice_<scene>.png`` and ``test/targets/<W>x<H>/sice_<scene>.png``. Both get the identical
+  scaling to cover the size and centre crop: ``INTER_AREA`` down, bicubic up (only 8K, which exceeds every SICE photo).
   ``mon benchmark data=testkit_efficiency`` measures a model on it.
 
 Inputs and targets of a pair get the identical resize and crop, so they stay aligned. Stems are

@@ -44,7 +44,8 @@ def collate(samples: Sequence[Sample]) -> dict[str, Any]:
     for key in keys:
         values = [s[key] for s in samples]
         first = values[0]
-        if key in LIST_KEYS or not isinstance(first, torch.Tensor) or isinstance(first, (tv_tensors.BoundingBoxes, tv_tensors.KeyPoints)):
+        ragged = isinstance(first, (tv_tensors.BoundingBoxes, tv_tensors.KeyPoints))
+        if key in LIST_KEYS or not isinstance(first, torch.Tensor) or ragged:
             batch[key] = values
             continue
         shapes = {tuple(v.shape) for v in values}

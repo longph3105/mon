@@ -45,7 +45,8 @@ def _ladder(root, sizes=((40, 24), (64, 64), (24, 40))):
     gen = torch.Generator().manual_seed(0)
     for w, h in sizes:
         for i in range(2):
-            write_image(torch.randint(0, 80, (3, h, w), dtype=torch.uint8, generator=gen), root / f"{w}x{h}" / f"{i}.png")
+            image = torch.randint(0, 80, (3, h, w), dtype=torch.uint8, generator=gen)
+            write_image(image, root / f"{w}x{h}" / f"{i}.png")
     return root
 
 

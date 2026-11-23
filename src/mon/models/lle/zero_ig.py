@@ -12,7 +12,8 @@ luminance, an edge-aware smoothness and a TV term), Zero-Shot Noise2Noise residu
 consistency terms on pair-downsampled views (for both denoisers), color (blurred images),
 illumination and texture-consistency terms, and a local-variance term. ``zero_ig_enhance`` fits a
 fresh network to each image with the official recipe (Adam, lr 3e-4, weight decay 3e-4, gradient
-norm clipped at 5, 2001 steps, BatchNorm in training mode: see below), then runs it in eval mode.
+norm clipped at 5, 2001 steps, batch norm in eval mode after the first: see below), then runs it in
+eval mode.
 
 The official repository also releases dataset-trained weights (LOL, LSRW-Huawei, LSRW-Nikon); its
 README says they are *not* the models behind the paper's results and recommends fitting each image.
@@ -32,13 +33,11 @@ per-sample (``reduction="mean"`` equals the official value for any batch); the G
 is built on the input's device instead of CUDA; ``Finetunemodel``'s non-strict loading is replaced
 by strict loading. ``mon_old`` (``models/enhance/lle/zero_ig``) vendored the official network.
 
-Not reproduced (open): ``train.py`` calls ``model.train()`` once, before its loop, and its epoch-0 test
-pass calls ``model.eval()`` without switching back, so after the first epoch the official training (per
-image: after the first step) runs with batch norm in eval mode, on running statistics it no longer
-updates. ``zero_ig_enhance`` and ``ZERO_IG_RECIPE`` train in training mode throughout. The recipe's
-loop-parity test covers one epoch (before the switch); the fit test's reference
-(``zero_ig_reference.py``) runs its 5 steps in training mode, which the official script does for the
-first step only.
+Reproduced from the official code: ``train.py`` calls ``model.train()`` once, before its loop, and its
+epoch-0 test pass calls ``model.eval()`` without switching back, so after the first epoch the official
+training (per image: after the first step) runs with batch norm in eval mode, on running statistics it no
+longer updates. ``zero_ig_enhance(eval_mode_after=1)`` and ``ZERO_IG_RECIPE`` (``eval_mode_after: 1``)
+do the same; ``eval_mode_after=None`` trains in training mode throughout.
 
 Examples:
     >>> import torch
@@ -331,18 +330,23 @@ def zero_ig_enhance(
     lr          : float = 3e-4,
     weight_decay: float = 3e-4,
     clip_norm   : float = 5.0,
+    eval_mode_after: int | None = 1,
     seed        : int | None = None,
 ) -> Tensor:
     """Enhance and denoise each image by fitting a fresh ``ZeroIG`` to it (works under ``torch.inference_mode``).
 
     Official recipe: enhancer re-initialized (``N(0, 0.02)``), Adam (``lr``, ``weight_decay``), gradient norm
-    clipped at ``clip_norm``, ``iterations`` steps with BatchNorm in training mode, then one eval-mode forward.
+    clipped at ``clip_norm``, ``iterations`` steps (batch norm in eval mode after ``eval_mode_after``), then one
+    eval-mode forward.
 
     Args:
         image: ``[B, 3, H, W]`` or ``[3, H, W]`` float in ``[0, 1]`` at native resolution (``H, W`` even).
         iterations: Adam steps per image (official: 2001 epochs over one image).
         lr, weight_decay: Adam settings (official: 3e-4 both).
         clip_norm: Gradient-norm clip (official: 5).
+        eval_mode_after: Steps in training mode; the rest run in eval mode (batch norm on running statistics,
+            no longer updated), as the official script does by never switching back after its epoch-0 test
+            pass (official: 1). ``None``: training mode throughout.
         seed: Seed for the initialization (each image starts from the same weights; the global RNG is left
             untouched); ``None`` uses the global RNG. The official script seeds 2.
 
@@ -350,7 +354,7 @@ def zero_ig_enhance(
         The enhanced, denoised images (the model's ``enhanced``), same shape as ``image``.
 
     Raises:
-        ValueError: For other shapes, odd sizes, or ``iterations < 1``.
+        ValueError: For other shapes, odd sizes, ``iterations < 1`` or ``eval_mode_after < 0``.
     """
     if image.ndim not in (3, 4):
         raise ValueError(f"image must be [B, 3, H, W] or [3, H, W], got shape {tuple(image.shape)}")
@@ -358,6 +362,8 @@ def zero_ig_enhance(
         raise ValueError(f"zero_ig_enhance needs even H and W, got {tuple(image.shape[-2:])}")
     if iterations < 1:
         raise ValueError(f"iterations must be >= 1, got {iterations}")
+    if eval_mode_after is not None and eval_mode_after < 0:
+        raise ValueError(f"eval_mode_after must be >= 0 or None, got {eval_mode_after}")
     batch   = image if image.ndim == 4 else image[None]
     loss_fn = ZeroIGLoss()
     outputs = []
@@ -372,7 +378,9 @@ def zero_ig_enhance(
                     part.apply(_enhance_init)
             model = model.to(device=x.device, dtype=x.dtype).train()
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=weight_decay)
-            for _ in range(iterations):
+            for k in range(iterations):
+                if k == eval_mode_after:
+                    model.eval()
                 optimizer.zero_grad()
                 loss = loss_fn(model, x)
                 loss.backward()
@@ -403,6 +411,7 @@ ZERO_IG_RECIPE = TrainRecipe(
     defaults = {
         "batch_size": 1, "epochs": 2001, "seed": 2, "shuffle": False,
         "optimizer": {"name": "adam", "lr": 3e-4, "betas": [0.9, 0.999], "weight_decay": 3e-4}, "grad_clip": 5.0,
+        "eval_mode_after": 1,
     },
     source   = "Doyle59217/ZeroIG train.py (5af4b8a): full images in file order, batch 1, 2001 epochs, seed 2",
     notes    = "the official optimizer uses capturable=True on CUDA (same math); per-image fitting is zero_ig_enhance",

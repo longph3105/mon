@@ -6,20 +6,31 @@ hard-codes CUDA):
 
 - ``inference``: ``Finetunemodel.forward`` with each released weights file;
 - ``loss``: ``Network._loss`` in training mode with ``weights/LOL.pt``, plus gradient statistics;
+- ``loss_eval``: the same in eval mode (batch norm on running statistics), as the official training runs
+  after its first epoch;
 - ``fit``: the official ``train.py`` recipe for ``FIT_STEPS`` steps from seed 2 (Adam without
-  ``capturable``, which needs CUDA), then the eval-mode output.
+  ``capturable``, which needs CUDA), the first in training mode and the rest in eval mode (the script's
+  epoch-0 test pass calls ``model.eval()`` and never switches back), then the eval-mode output.
 
 Running it executes third-party code: get the owner's go-ahead first. Regenerate with:
 
     uv run python -I tests/models/lle/zero_ig_reference.py <checkout>
 """
 
-import pprint
+import importlib.util
 import sys
 from pathlib import Path
 from typing import Any
 
 import torch
+
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[2] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
 
 STATS_INDICES = (0, 7, 101, 523, 1000, 2047, -1)
 FILES = ("LOL.pt", "LSRW-Huawei.pt", "LSRW-Nikon.pt")
@@ -73,13 +84,22 @@ def main(checkout: str) -> None:
     grads = torch.cat([p.grad.flatten() for p in net.parameters()])
     result["loss"] = {"value": loss.item(), "grad": stats(grads)}
 
+    net = Network().eval()
+    net.load_state_dict(torch.load(root / "weights" / "LOL.pt", map_location="cpu", weights_only=True))
+    loss = net._loss(x)
+    loss.backward()
+    grads = torch.cat([p.grad.flatten() for p in net.parameters()])
+    result["loss_eval"] = {"value": loss.item(), "grad": stats(grads)}
+
     torch.manual_seed(2)
     net = Network()
     for part in (net.enhance.in_conv, net.enhance.conv, net.enhance.out_conv):
         part.apply(net.enhance_weights_init)
     optimizer = torch.optim.Adam(net.parameters(), lr=3e-4, betas=(0.9, 0.999), weight_decay=3e-4)
     net.train()
-    for _ in range(FIT_STEPS):
+    for k in range(FIT_STEPS):
+        if k == 1:
+            net.eval()  # train.py: the epoch-0 test pass, never switched back
         optimizer.zero_grad()
         step_loss = net._loss(x)
         step_loss.backward()
@@ -91,7 +111,7 @@ def main(checkout: str) -> None:
     result["fit"] = {"steps": FIT_STEPS, "last_loss": step_loss.item(), "enhanced": stats(outs[13])}  # H3
 
     print(f"# Generated from the official code with torch {torch.__version__}.")
-    print("OFFICIAL: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("OFFICIAL", result))
 
 
 if __name__ == "__main__":

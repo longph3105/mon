@@ -216,4 +216,3 @@ def evaluate(cfg: EvaluateConfig | DictConfig | Mapping[str, Any]) -> dict[str, 
     print_dict(means, title=f"{len(rows)} images" + (" (GT mean)" if config.gt_mean else ""))
     logger.info("Wrote %s and %s", csv_path, yaml_path)
     return means
-

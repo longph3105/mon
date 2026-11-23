@@ -23,35 +23,49 @@ reference_input, stats, SETTINGS = _ref.reference_input, _ref.stats, _ref.SETTIN
 
 # mon_old CoLIE.forward_step after torch.manual_seed(0), low-resolution results (output of colie_reference.py).
 # Generated from mon_old with torch 2.14.0.
-MON_OLD: dict = {'value_lr': {'shape': [1, 1, 32, 32],
-              'sum': 201.62577287480235,
-              'sumsq': 42.29143461708906,
-              'values': [0.27701330184936523,
-                         0.19042789936065674,
-                         0.22851742804050446,
-                         0.27340295910835266,
-                         0.2503262460231781,
-                         0.28053203225135803]},
- 'illumination_lr': {'shape': [1, 1, 32, 32],
-                     'sum': 559.2204475998878,
-                     'sumsq': 307.28463862330557,
-                     'values': [0.6103748083114624,
-                                0.5351461172103882,
-                                0.580457866191864,
-                                0.6122844815254211,
-                                0.6000648736953735,
-                                0.6374959945678711]},
- 'enhanced_v_lr': {'shape': [1, 1, 32, 32],
-                   'sum': 364.74534829705954,
-                   'sumsq': 134.98997336734033,
-                   'values': [0.45376694202423096,
-                              0.355776309967041,
-                              0.3936169445514679,
-                              0.4464563727378845,
-                              0.41709578037261963,
-                              0.439983993768692]},
- 'mon_old_output_mean': 0.2561054825782776,
- 'input_mean': 0.14065666496753693}
+MON_OLD: dict = {
+    "value_lr": {
+        "shape": [1, 1, 32, 32],
+        "sum": 201.62577287480235,
+        "sumsq": 42.29143461708906,
+        "values": [
+            0.27701330184936523,
+            0.19042789936065674,
+            0.22851742804050446,
+            0.27340295910835266,
+            0.2503262460231781,
+            0.28053203225135803,
+        ],
+    },
+    "illumination_lr": {
+        "shape": [1, 1, 32, 32],
+        "sum": 559.2204475998878,
+        "sumsq": 307.28463862330557,
+        "values": [
+            0.6103748083114624,
+            0.5351461172103882,
+            0.580457866191864,
+            0.6122844815254211,
+            0.6000648736953735,
+            0.6374959945678711,
+        ],
+    },
+    "enhanced_v_lr": {
+        "shape": [1, 1, 32, 32],
+        "sum": 364.74534829705954,
+        "sumsq": 134.98997336734033,
+        "values": [
+            0.45376694202423096,
+            0.355776309967041,
+            0.3936169445514679,
+            0.4464563727378845,
+            0.41709578037261963,
+            0.439983993768692,
+        ],
+    },
+    "mon_old_output_mean": 0.2561054825782776,
+    "input_mean": 0.14065666496753693,
+}
 
 
 def assert_matches(actual: torch.Tensor, expected: dict, atol: float) -> None:
@@ -94,10 +108,16 @@ def test_guided_filter_matches_definition():
     torch.manual_seed(0)
     g_lr, t_lr = torch.rand(2, 1, 20, 24, dtype=torch.float64), torch.rand(2, 1, 20, 24, dtype=torch.float64)
     g_hr = torch.rand(2, 1, 50, 61, dtype=torch.float64)
-    box = lambda t: F.avg_pool2d(t, 3, 1, 1, count_include_pad=False)  # noqa: E731  (mean over the truncated window)
+
+    def box(t):  # mean over the truncated window
+        return F.avg_pool2d(t, 3, 1, 1, count_include_pad=False)
+
     a = (box(g_lr * t_lr) - box(g_lr) * box(t_lr)) / (box(g_lr**2) - box(g_lr) ** 2 + 1e-8)
     b = box(t_lr) - a * box(g_lr)
-    up = lambda t: F.interpolate(t, (50, 61), mode="bilinear", align_corners=True)  # noqa: E731
+
+    def up(t):
+        return F.interpolate(t, (50, 61), mode="bilinear", align_corners=True)
+
     assert torch.allclose(fast_guided_filter(g_lr, t_lr, g_hr), up(a) * g_hr + up(b), atol=1e-9)
     assert torch.allclose(fast_guided_filter(g_lr, 2 * g_lr + 0.1, g_hr), 2 * g_hr + 0.1, atol=1e-6)  # linear map kept
     with pytest.raises(ValueError, match="must exceed"):
@@ -143,7 +163,8 @@ def test_loss_terms():
     illumination = v + torch.rand(2, 1, 32, 32) * 0.5
     loss = CoLIELoss(alpha=1, beta=20, gamma=8, delta=5, exposure=0.5)
     expected = (F.mse_loss(illumination, v) + 20 * IlluminationSmoothnessLoss()(illumination)
-                + 8 * ((F.avg_pool2d(illumination, 16) ** 0.5 - 0.5) ** 2).mean() + 5 * (v / (illumination + 1e-4)).mean())
+                + 8 * ((F.avg_pool2d(illumination, 16) ** 0.5 - 0.5) ** 2).mean()
+                + 5 * (v / (illumination + 1e-4)).mean())
     assert torch.allclose(loss(illumination, v), expected)
     per_sample = CoLIELoss(reduction="none")(illumination, v)
     assert per_sample.shape == (2,) and torch.allclose(per_sample.mean(), CoLIELoss()(illumination, v))

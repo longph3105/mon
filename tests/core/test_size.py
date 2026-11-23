@@ -44,7 +44,10 @@ def test_from_any(value, expected):
     assert Size.from_any(value).hw == expected
 
 
-@pytest.mark.parametrize(("value", "exc"), [((3, 224, 224), ValueError), ((), ValueError), ("224", TypeError), (2.0, TypeError), (None, TypeError)])
+@pytest.mark.parametrize(
+    ("value", "exc"),
+    [((3, 224, 224), ValueError), ((), ValueError), ("224", TypeError), (2.0, TypeError), (None, TypeError)],
+)
 def test_from_any_rejects_ambiguous(value, exc):
     with pytest.raises(exc):
         Size.from_any(value)

@@ -225,7 +225,8 @@ class FolderDataset(Dataset[Sample]):
         primary_name = next(iter(self.modalities))
         keys = list(indexed[primary_name])
         if not keys:
-            raise ValueError(f"{name}: no {primary_name!r} files found in {self.root / self.modalities[primary_name].dir}")
+            folder = self.root / self.modalities[primary_name].dir
+            raise ValueError(f"{name}: no {primary_name!r} files found in {folder}")
 
         pair = {
             m: {k: self.pair_key(m, k) for k in keys} if m != primary_name else {k: k for k in keys}
@@ -239,8 +240,12 @@ class FolderDataset(Dataset[Sample]):
         if incomplete:
             detail = "; ".join(f"{m}: {len(ks)} missing (e.g. {ks[:3]})" for m, ks in missing.items() if ks)
             if on_missing == "error":
-                raise ValueError(f"{name} [{self.split.value}]: required files missing for {len(incomplete)} sample(s): {detail}")
-            logger.warning("%s [%s]: skipping %d incomplete sample(s): %s", name, self.split.value, len(incomplete), detail)
+                raise ValueError(
+                    f"{name} [{self.split.value}]: required files missing for {len(incomplete)} sample(s): {detail}",
+                )
+            logger.warning(
+                "%s [%s]: skipping %d incomplete sample(s): %s", name, self.split.value, len(incomplete), detail,
+            )
         return [
             (k, {m: indexed[m][pair[m][k]] for m in self.modalities if pair[m][k] in indexed[m]})
             for k in keys if k not in incomplete
@@ -498,7 +503,9 @@ class ImageFolder(Dataset[Sample]):
             if path.suffix.lower() not in _READABLE_IMAGE_EXTS:
                 raise ValueError(f"not a readable image: {path} (accepted: {', '.join(sorted(_READABLE_IMAGE_EXTS))})")
             if path.stem in items:
-                raise ValueError(f"two inputs share the stem {path.stem!r}: {items[path.stem]}, {path}; pass their folder instead")
+                raise ValueError(
+                    f"two inputs share the stem {path.stem!r}: {items[path.stem]}, {path}; pass their folder instead",
+                )
             items[path.stem] = path
         return list(items.items())  # given order kept
 
@@ -575,6 +582,7 @@ def _parse_splits(caller: str, splits: tuple[Split | str, ...]) -> list[Split]:
     if len(set(parsed)) != len(parsed):
         raise ValueError(f"duplicate splits: {[s.value for s in parsed]}")
     return parsed
+
 
 def detection_layout(*splits: Split | str) -> dict[Split, dict[str, Modality]]:
     """Layout for detection datasets: ``<split>/images/`` → ``image``, ``<split>/labels/`` (YOLO) → boxes.

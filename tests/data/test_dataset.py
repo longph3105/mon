@@ -147,7 +147,8 @@ def test_optional_modalities(tmp_path: StdPath):
     (tmp_path / "labels/a.txt").write_text("2 0.5 0.5 0.2 0.4\n")
     ds = WithOptional("train", root=tmp_path)
     a, b = ds[0], ds[1]
-    assert a["depth"].dtype == torch.uint16 and a["depth"].shape == (1, 10, 20) and int(a["depth"].float().max()) == 5000  # torch lacks max() for uint16
+    assert a["depth"].dtype == torch.uint16 and a["depth"].shape == (1, 10, 20)
+    assert int(a["depth"].float().max()) == 5000  # torch lacks max() for uint16
     assert a["boxes"].tolist() == [[8.0, 3.0, 12.0, 7.0]] and a["labels"].tolist() == [2]
     assert "depth" not in b and b["boxes"].shape == (0, 4) and b["boxes"].canvas_size == (10, 20)
 
@@ -211,7 +212,11 @@ def _make(layout, **cls_attrs) -> type[FolderDataset]:
         ({}, {}, "is empty"),
         ({"label": Modality("l", kind="yolo")}, {}, "primary"),
         ({"image": Modality("i", required=False)}, {}, "primary"),
-        ({"image": Modality("i"), "a": Modality("a", kind="yolo"), "b": Modality("b", kind="voc")}, {"classes": ClassList()}, "at most one box"),
+        (
+            {"image": Modality("i"), "a": Modality("a", kind="yolo"), "b": Modality("b", kind="voc")},
+            {"classes": ClassList()},
+            "at most one box",
+        ),
         ({"image": Modality("i"), "ann": Modality("a", kind="voc")}, {}, "need `classes`"),
         ({"image": Modality("i"), "labels": Modality("l")}, {}, "reserved"),
     ],
@@ -246,7 +251,8 @@ def test_argument_and_filesystem_errors(paired_root: StdPath, tmp_path: StdPath)
 
 def test_register_dataset_derives_splits():
     @register_dataset("tmp_paired_test", tasks={Task.LLE})
-    class TmpPaired(Paired): ...
+    class TmpPaired(Paired):
+        ...
 
     try:
         entry = DATASETS.entry("tmp_paired_test")

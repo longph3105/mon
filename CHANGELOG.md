@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- Zero-IG trains like the official `train.py`, which never switches back to
+  training mode after its epoch-0 test pass: batch norm runs in eval mode
+  after the first epoch (`mon train model=zero_ig`) or the first step
+  (`zero_ig_enhance`, `mon predict model=zero_ig`). Opt out with
+  `eval_mode_after=null` (`mon train`) or `fit_args.eval_mode_after=null`
+  (`mon predict`). New `TrainConfig.eval_mode_after` for any recipe;
+  validation now leaves the model in the mode it found.
 - `SCI()` initializes like the official `CVPR/train.py`: each of the six
   sub-blocks once, in the script's order. `self.apply` also re-drew the shared
   `conv`/`convs` blocks through `blocks` (17 initializations of 11 layers), so

@@ -115,6 +115,9 @@ class TrainConfig:
         epochs: Training epochs.
         optimizer, scheduler: See ``OptimizerConfig``, ``SchedulerConfig``.
         grad_clip: Max gradient norm (``clip_grad_norm_``); ``None``: no clipping.
+        eval_mode_after: Train in eval mode (batch norm uses its running statistics and stops
+            updating them) after this many epochs; ``None``: train mode throughout. Only for recipes
+            whose official script does this (Zero-IG: ``1``).
         amp: Mixed precision (float16 autocast + gradient scaling; CUDA only).
         seed: Global seed (``None``: drawn and saved). ``deterministic``: deterministic algorithms.
         device: ``select_device`` spec.
@@ -149,6 +152,7 @@ class TrainConfig:
     optimizer   : OptimizerConfig = field(default_factory=OptimizerConfig)
     scheduler   : SchedulerConfig = field(default_factory=SchedulerConfig)
     grad_clip   : float | None = None
+    eval_mode_after: int | None = None
     amp         : bool = False
     seed        : int | None = None
     deterministic: bool = False
@@ -227,6 +231,8 @@ def _validate(cfg: TrainConfig) -> None:
         raise ValueError(f"optimizer.name must be adam, adamw or sgd, got {cfg.optimizer.name!r}")
     if cfg.scheduler.name not in ("none", "step", "multistep", "cosine"):
         raise ValueError(f"scheduler.name must be none, step, multistep or cosine, got {cfg.scheduler.name!r}")
+    if cfg.eval_mode_after is not None and cfg.eval_mode_after < 0:
+        raise ValueError(f"eval_mode_after must be >= 0 or None, got {cfg.eval_mode_after}")
     if cfg.cache_device not in ("cpu", "device"):
         raise ValueError(f"cache_device must be 'cpu' or 'device', got {cfg.cache_device!r}")
     if cfg.cache and (cfg.crop is not None or cfg.hflip):
@@ -244,7 +250,8 @@ def _validate(cfg: TrainConfig) -> None:
 def _resume_config(user: dict[str, Any]) -> TrainConfig:
     extra = sorted(set(k for k, v in user.items() if v is not None) - _RESUME_KEYS)
     if extra:
-        raise ValueError(f"resume uses the run's saved config; only {sorted(_RESUME_KEYS - {'resume'})} may change, got {extra}")
+        allowed = sorted(_RESUME_KEYS - {"resume"})
+        raise ValueError(f"resume uses the run's saved config; only {allowed} may change, got {extra}")
     run_dir = _resume_dir(str(user["resume"]))
     saved   = OmegaConf.merge(OmegaConf.structured(TrainConfig), OmegaConf.load(run_dir / "config.yaml"))
     changes = {k: v for k, v in user.items() if k != "resume" and v is not None}
@@ -269,7 +276,8 @@ def _dataset(data: str, split: str, transform: v2.Transform) -> tuple[Dataset[Sa
     if path.is_dir():
         return ImageFolder(path, transform=transform), path.name
     if data not in DATASETS:
-        raise FileNotFoundError(f"data {data!r} is neither a folder nor a dataset id (datasets: {', '.join(DATASETS.names())})")
+        known = ", ".join(DATASETS.names())
+        raise FileNotFoundError(f"data {data!r} is neither a folder nor a dataset id (datasets: {known})")
     return DATASETS.build(data, split, transform=transform), f"{data}_{split}"
 
 
@@ -388,7 +396,9 @@ def _optimizer(cfg: OptimizerConfig, params: Any) -> torch.optim.Optimizer:
     return cls(params, lr=cfg.lr, betas=(cfg.betas[0], cfg.betas[1]), weight_decay=cfg.weight_decay)
 
 
-def _scheduler(cfg: SchedulerConfig, optimizer: torch.optim.Optimizer, epochs: int) -> torch.optim.lr_scheduler.LRScheduler | None:
+def _scheduler(
+    cfg: SchedulerConfig, optimizer: torch.optim.Optimizer, epochs: int,
+) -> torch.optim.lr_scheduler.LRScheduler | None:
     if cfg.name == "step":
         return torch.optim.lr_scheduler.StepLR(optimizer, cfg.step_size, cfg.gamma)
     if cfg.name == "multistep":
@@ -462,6 +472,7 @@ def _append_csv(path: Path, row: dict[str, Any], columns: list[str]) -> None:
 @torch.inference_mode()
 def _validate_epoch(model: nn.Module, loader: Any, metrics: Mapping[str, Metric], multiple: int,
                     output_key: str | None, device: torch.device) -> dict[str, float]:
+    training = model.training
     model.eval()
     sums = dict.fromkeys(metrics, 0.0)
     count = 0
@@ -478,7 +489,7 @@ def _validate_epoch(model: nn.Module, loader: Any, metrics: Mapping[str, Metric]
             score = metric(pred, target) if metric.mode == "fr" else metric(pred)
             sums[name] += float(score.sum())
         count += pred.shape[0]
-    model.train()
+    model.train(training)
     return {f"val/{n}": v / max(count, 1) for n, v in sums.items()}
 
 
@@ -594,6 +605,7 @@ def train(cfg: TrainConfig | DictConfig | Mapping[str, Any]) -> Path:
             if loader.generator is not None:
                 loader.generator.manual_seed(seed + epoch)  # same order and worker seeds after a resume
             t0, sums, batches = time.perf_counter(), dict[str, float](), 0
+            model.train(config.eval_mode_after is None or epoch < config.eval_mode_after)
             for batch in loader:
                 active = recipe.schedule(step + 1) if recipe.schedule is not None else ""
                 if active is None:  # a scheduled step without an update: the batch is consumed
@@ -625,14 +637,17 @@ def train(cfg: TrainConfig | DictConfig | Mapping[str, Any]) -> Path:
             for sched in scheds.values():
                 if sched is not None:
                     sched.step()
-            row: dict[str, Any] = {"epoch": epoch + 1, "step": step, "lr": lr, "seconds": round(time.perf_counter() - t0, 3)}
+            seconds = round(time.perf_counter() - t0, 3)
+            row: dict[str, Any] = {"epoch": epoch + 1, "step": step, "lr": lr, "seconds": seconds}
             row |= {f"train/{k}": v / max(batches, 1) for k, v in sums.items()}
             last = epoch + 1 == config.epochs
             if val_loader is not None and ((epoch + 1) % config.val_every == 0 or last):
                 row |= _validate_epoch(model, val_loader, metrics, multiple, config.output_key, device)
 
             value = row.get("train/loss" if monitor == "loss" else f"val/{monitor}")  # none: no step updated
-            if value is not None and (best["value"] is None or (value > best["value"] if higher else value < best["value"])):
+            if value is not None and (
+                best["value"] is None or (value > best["value"] if higher else value < best["value"])
+            ):
                 best = {"name": monitor, "value": float(value), "epoch": epoch + 1}
                 _save(model.state_dict(), run_dir / "best.pt")
             if config.save_every and (epoch + 1) % config.save_every == 0:

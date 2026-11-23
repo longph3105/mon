@@ -81,7 +81,9 @@ class ApplyTo(torch.nn.Module):
             raise TypeError(f"ApplyTo expects a dict sample, got {type(sample).__name__}")
         missing = [k for k in self.keys if k not in sample]
         if missing and not self.missing_ok:
-            raise KeyError(f"sample has no key(s) {missing}; available: {sorted(sample)} (pass missing_ok=True to skip)")
+            raise KeyError(
+                f"sample has no key(s) {missing}; available: {sorted(sample)} (pass missing_ok=True to skip)",
+            )
         selected = {k: sample[k] for k in self.keys if k in sample}
         out      = dict(sample)
         if selected:
@@ -214,7 +216,8 @@ def pad_to_multiple(
     padded = size.round_up(divisor)
     if padded == size:
         return x, size
-    return F.pad(x, [0, 0, padded.width - size.width, padded.height - size.height], fill=fill, padding_mode=padding_mode), size
+    pad = [0, 0, padded.width - size.width, padded.height - size.height]
+    return F.pad(x, pad, fill=fill, padding_mode=padding_mode), size
 
 
 def crop_to(x: torch.Tensor, size: Size | int | Sequence[int]) -> torch.Tensor:

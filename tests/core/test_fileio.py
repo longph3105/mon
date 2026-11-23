@@ -1,5 +1,6 @@
 """Tests for ``mon.core.fileio``."""
 
+import hashlib
 import os
 import pathlib
 from pathlib import Path as StdPath
@@ -11,7 +12,7 @@ import torch
 import yaml
 
 from mon.core import fileio
-from mon.core.fileio import load_json, load_txt, load_yaml, save_json, save_txt, save_yaml
+from mon.core.fileio import download_file, load_json, load_txt, load_yaml, save_json, save_txt, save_yaml, sha256sum
 from mon.core.path import Path
 
 
@@ -127,10 +128,6 @@ def test_load_missing_file_raises(tmp_path: StdPath):
 
 
 # --- sha256sum / download_file ---
-
-import hashlib  # noqa: E402
-
-from mon.core.fileio import download_file, sha256sum  # noqa: E402
 
 PAYLOAD = b"pretend these are weights" * 100
 DIGEST  = hashlib.sha256(PAYLOAD).hexdigest()

@@ -304,4 +304,3 @@ def predict(cfg: PredictConfig | DictConfig | Mapping[str, Any]) -> Path:
     profiler.print_summary(f"{config.model} on {label}")
     logger.info("Saved %d images to %s", count, run_dir)
     return run_dir
-

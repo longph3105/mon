@@ -13,12 +13,19 @@ it at a scratch directory. Regenerate with:
 """
 
 import importlib.util
-import pprint
 import sys
 from pathlib import Path
 from typing import Any
 
 import torch
+
+_fmt_spec = importlib.util.spec_from_file_location(
+    "reference_format", Path(__file__).parents[1] / "reference_format.py",
+)
+assert _fmt_spec is not None and _fmt_spec.loader is not None
+_fmt = importlib.util.module_from_spec(_fmt_spec)
+_fmt_spec.loader.exec_module(_fmt)
+format_literal = _fmt.format_literal
 
 METRICS = ("brisque", "nrqm", "pi")
 
@@ -53,7 +60,7 @@ def main(lol_v1: str) -> None:
         }
     print(f"# Generated with pyiqa {pyiqa.__version__}, torch {torch.__version__}; lol_v1 order: "
           f"{', '.join(f'{s} image, {s} target' for s in ref.REAL_STEMS)}.")
-    print("NR_REFERENCE: dict = " + pprint.pformat(result, width=118, sort_dicts=False))
+    print(format_literal("NR_REFERENCE", result))
 
 
 if __name__ == "__main__":
