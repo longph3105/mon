@@ -60,7 +60,8 @@ Before writing or changing code in `src/` or `tests/`, read and follow
   (metrics, parity numbers), and what is left open.
 - Each machine writes only to its own folder. Never rewrite or delete earlier
   entries; add a correction as a new entry.
-- Logs up to 3.0.0 were cleared on the `3.0.1` branch; read them at the
-  `v3.0.0` tag (`git show v3.0.0:logs/<machine>/YYYY-MM-DD.md`).
+- Each version branch starts with empty logs. Older logs stay at the
+  release tags: up to 3.0.0 at `v3.0.0`, 3.0.1 at `v3.0.1`
+  (`git show v3.0.1:logs/<machine>/YYYY-MM-DD.md`).
 - Logs are committed like any other change in this repo (only when the owner
   asks), with the message `logs: <machine> <short title>`.
