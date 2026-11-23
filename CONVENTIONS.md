@@ -5,6 +5,9 @@ writing or changing code; `AGENTS.md` has the general rules.
 
 ## General
 
+- Follow [PEP 8](https://peps.python.org/pep-0008/), except: lines up to 120
+  characters, and the owner's alignment of `=` and `:` stays. Wrapped
+  brackets use a hanging indent with a trailing comma (one item per line).
 - Google-style docstrings; every module has a one-line docstring, plus
   `References:` (paper or source links) when ported or adapted. Strip
   `mon_old`'s shebang and `# -*- coding: utf-8 -*-` lines.
