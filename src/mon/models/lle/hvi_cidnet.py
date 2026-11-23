@@ -486,7 +486,7 @@ class _VGG19Features(nn.Module):
         for i, layer in enumerate(self.features):
             x = layer(x)
             if i in taps:
-                out.append(x)
+                out.append(x.clone())  # torchvision's next ReLU is in place: without a copy the tap turns post-ReLU
         return out
 
 

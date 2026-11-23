@@ -13,21 +13,24 @@ from mon.core.weights import resolve_weights
 from mon.models.registry import MODELS, load
 
 CASES = [  # (model, weights, mean PSNR, tolerance)
-    ("zero_dce",   "default",   16.4971, 5e-3),
-    ("zero_dce++", "default",   16.2052, 5e-3),
-    ("sci",        "easy",      11.5024, 5e-3),
-    ("sci",        "medium",    13.7053, 5e-3),
-    ("sci",        "difficult", 14.6500, 5e-3),
-    ("sci++",      "default",   13.5350, 5e-3),
-    ("pairlie",    "default",   16.7572, 5e-3),
-    ("dccnet",     "default",   21.8438, 5e-3),
-    ("hvi_cidnet", "default",   22.4841, 5e-3),
-    ("retinexnet", "default",   16.2308, 5e-3),
-    ("flol",       "default",   19.1995, 3e-2),
-    ("ruas",       "lol_v1",    12.2862, 5e-3),
-    ("ruas",       "upe",       11.5522, 5e-3),
-    ("ruas",       "darkface",  12.0249, 5e-3),
-    ("sgz",        "default",   15.7665, 5e-3),
+    ("zero_dce",   "default",     16.4971, 5e-3),
+    ("zero_dce++", "default",     16.2052, 5e-3),
+    ("sci",        "easy",        11.5024, 5e-3),
+    ("sci",        "medium",      13.7053, 5e-3),
+    ("sci",        "difficult",   14.6500, 5e-3),
+    ("sci++",      "default",     13.5350, 5e-3),
+    ("pairlie",    "default",     16.7572, 5e-3),
+    ("dccnet",     "default",     21.8438, 5e-3),
+    ("hvi_cidnet", "default",     22.4841, 5e-3),
+    ("retinexnet", "default",     16.2308, 5e-3),
+    ("flol",       "default",     19.1995, 3e-2),
+    ("ruas",       "lol_v1",      12.2862, 5e-3),
+    ("ruas",       "upe",         11.5522, 5e-3),
+    ("ruas",       "darkface",    12.0249, 5e-3),
+    ("sgz",        "default",     15.7665, 5e-3),
+    ("zero_ig",    "lol_v1",      14.8716, 5e-3),  # the trained networks, no per-image fit; 2026-11-23, CPU = CUDA
+    ("zero_ig",    "lsrw_huawei", 14.9773, 5e-3),
+    ("zero_ig",    "lsrw_nikon",  14.5997, 5e-3),
     pytest.param("clode", "default", 16.8303, 1e-2, marks=pytest.mark.gpu),  # adaptive ODE solver: minutes on CPU
 ]
 

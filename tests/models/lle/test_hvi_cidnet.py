@@ -232,6 +232,44 @@ def test_readme_psnr(dataset: str, member: HVICIDNet_Weights, gains: dict, expec
 
 # --- Loss ---
 
+_lspec = importlib.util.spec_from_file_location("hvi_cidnet_loss_reference",
+                                                Path(__file__).with_name("hvi_cidnet_loss_reference.py"))
+assert _lspec and _lspec.loader
+_lref = importlib.util.module_from_spec(_lspec)
+_lspec.loader.exec_module(_lref)
+
+# Generated from the official HVI-CIDNet loss with torch 2.15.0+cu132.
+OFFICIAL_LOSS: dict = {'loss': 6.2214274406433105,
+ 'loss_rgb': 1.9700795412063599,
+ 'loss_hvi': 4.25134801864624,
+ 'grad_pred': {'sum': -5.928337073069997,
+               'sumsq': 0.5349315709228746,
+               'values': [-0.004492592997848988,
+                          0.002265436574816704,
+                          0.0027453068178147078,
+                          -0.006366691552102566,
+                          0.029706519097089767]},
+ 'grad_density_k': -1.2252554893493652}
+
+
+def test_loss_matches_official():
+    from mon.models.lle.hvi_cidnet import HVICIDNetLoss
+
+    torch.manual_seed(_lref.VGG_SEED)
+    loss_fn = HVICIDNetLoss(pretrained_backbone=False)  # the reference's seeded VGG-19
+    x = _lref.inputs()
+    pred = x["pred"].requires_grad_(True)
+    k = torch.tensor([_lref.DENSITY_K], requires_grad=True)
+    loss = loss_fn(pred, x["target"], k)
+    assert loss.item() == pytest.approx(OFFICIAL_LOSS["loss"], rel=1e-6)
+    g_pred, g_k = torch.autograd.grad(loss, [pred, k])
+    got = _lref.stats(g_pred)
+    assert got["sum"] == pytest.approx(OFFICIAL_LOSS["grad_pred"]["sum"], rel=1e-5)
+    assert got["sumsq"] == pytest.approx(OFFICIAL_LOSS["grad_pred"]["sumsq"], rel=1e-5)
+    assert got["values"] == pytest.approx(OFFICIAL_LOSS["grad_pred"]["values"], rel=1e-5, abs=1e-9)
+    assert g_k.item() == pytest.approx(OFFICIAL_LOSS["grad_density_k"], rel=1e-5)
+
+
 def _loss(**kw):
     from mon.models.lle.hvi_cidnet import HVICIDNetLoss
 

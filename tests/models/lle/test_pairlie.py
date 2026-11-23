@@ -122,6 +122,57 @@ def test_batch_independence_and_small_sizes():
 
 # --- Loss ---
 
+_lspec = importlib.util.spec_from_file_location("pairlie_loss_reference",
+                                                Path(__file__).with_name("pairlie_loss_reference.py"))
+assert _lspec and _lspec.loader
+_lref = importlib.util.module_from_spec(_lspec)
+_lspec.loader.exec_module(_lref)
+
+# Generated from the official PairLIE loss with torch 2.15.0+cu132.
+OFFICIAL_LOSS: dict = {'loss': 18.790653228759766,
+ 'grads': {'L1': {'sum': 0.5139898679153703,
+                  'sumsq': 0.012062491491188137,
+                  'values': [0.004054706078022718,
+                             0.004035044461488724,
+                             -0.0005480038234964013,
+                             0.004172489047050476,
+                             0.006129732821136713]},
+           'R1': {'sum': 0.09827967794262804,
+                  'sumsq': 0.0021969887858123045,
+                  'values': [0.002759053837507963,
+                             0.0005522723658941686,
+                             -0.002682353137061,
+                             -9.511085227131844e-05,
+                             -0.00038150936597958207]},
+           'X1': {'sum': -7.987538380592014,
+                  'sumsq': 26.088069385284882,
+                  'values': [0.017147010192275047,
+                             -0.1663847267627716,
+                             0.25991079211235046,
+                             0.027788715437054634,
+                             -0.1604386568069458]},
+           'R2': {'sum': -0.0032117450953421667,
+                  'sumsq': 0.00045329615720123744,
+                  'values': [-0.0011273467680439353,
+                             -7.143455150071532e-05,
+                             0.0005196553538553417,
+                             0.00033498930861242115,
+                             0.0004636509402189404]}}}
+
+
+def test_loss_matches_official():
+    x = {k: v.requires_grad_(True) for k, v in _lref.inputs().items()}
+    out1 = {"illumination": x["L1"], "reflectance": x["R1"], "denoised": x["X1"]}
+    loss = PairLIELoss()(x["im1"], out1, {"reflectance": x["R2"]})
+    assert loss.item() == pytest.approx(OFFICIAL_LOSS["loss"], rel=1e-6)
+    names = ["L1", "R1", "X1", "R2"]
+    for name, grad in zip(names, torch.autograd.grad(loss, [x[n] for n in names]), strict=True):
+        want, got = OFFICIAL_LOSS["grads"][name], _lref.stats(grad)
+        assert got["sum"] == pytest.approx(want["sum"], rel=1e-5, abs=1e-9), name
+        assert got["sumsq"] == pytest.approx(want["sumsq"], rel=1e-5), name
+        assert got["values"] == pytest.approx(want["values"], rel=1e-5, abs=1e-9), name
+
+
 def test_loss_follows_official_definition():
     torch.manual_seed(0)
     model = PairLIE(channels=8)

@@ -12,7 +12,7 @@ luminance, an edge-aware smoothness and a TV term), Zero-Shot Noise2Noise residu
 consistency terms on pair-downsampled views (for both denoisers), color (blurred images),
 illumination and texture-consistency terms, and a local-variance term. ``zero_ig_enhance`` fits a
 fresh network to each image with the official recipe (Adam, lr 3e-4, weight decay 3e-4, gradient
-norm clipped at 5, 2001 steps, BatchNorm in training mode), then runs it in eval mode.
+norm clipped at 5, 2001 steps, BatchNorm in training mode: see below), then runs it in eval mode.
 
 The official repository also releases dataset-trained weights (LOL, LSRW-Huawei, LSRW-Nikon); its
 README says they are *not* the models behind the paper's results and recommends fitting each image.
@@ -31,6 +31,14 @@ directional smoothness terms are 12 directions counted twice, as in the official
 per-sample (``reduction="mean"`` equals the official value for any batch); the Gaussian blur kernel
 is built on the input's device instead of CUDA; ``Finetunemodel``'s non-strict loading is replaced
 by strict loading. ``mon_old`` (``models/enhance/lle/zero_ig``) vendored the official network.
+
+Not reproduced (open): ``train.py`` calls ``model.train()`` once, before its loop, and its epoch-0 test
+pass calls ``model.eval()`` without switching back, so after the first epoch the official training (per
+image: after the first step) runs with batch norm in eval mode, on running statistics it no longer
+updates. ``zero_ig_enhance`` and ``ZERO_IG_RECIPE`` train in training mode throughout. The recipe's
+loop-parity test covers one epoch (before the switch); the fit test's reference
+(``zero_ig_reference.py``) runs its 5 steps in training mode, which the official script does for the
+first step only.
 
 Examples:
     >>> import torch

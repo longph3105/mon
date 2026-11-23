@@ -242,6 +242,77 @@ def test_lol_v1_psnr_regression(member: RetinexNet_Weights, expected: float, reg
 
 # --- Loss ---
 
+_lspec = importlib.util.spec_from_file_location("retinexnet_loss_reference",
+                                                Path(__file__).with_name("retinexnet_loss_reference.py"))
+assert _lspec and _lspec.loader
+_lref = importlib.util.module_from_spec(_lspec)
+_lspec.loader.exec_module(_lref)
+
+# Generated from the reimplementation's loss with torch 2.15.0+cu132.
+REIMPL_LOSS: dict = {'decomposition': {'loss': 0.4895414113998413,
+                   'grads': {'r_low': {'sum': -0.026732932978120516,
+                                       'sumsq': 7.945507092618043e-05,
+                                       'values': [0.00039959067362360656,
+                                                  -0.00016224960563704371,
+                                                  0.00024204149667639285,
+                                                  -0.00020793740986846387,
+                                                  -0.00030000272090546787]},
+                             'l_low': {'sum': -0.09480029676342383,
+                                       'sumsq': 0.0004401383099496252,
+                                       'values': [0.001042630523443222,
+                                                  -0.0005344994715414941,
+                                                  0.0009607065003365278,
+                                                  -0.0009972148109227419,
+                                                  0.00021038981503807008]},
+                             'r_high': {'sum': -0.2645087370474357,
+                                        'sumsq': 0.00031388858254397716,
+                                        'values': [-0.00031991576543077826,
+                                                   -0.00039405617280863225,
+                                                   0.0006429197965189815,
+                                                   -0.00032160134287551045,
+                                                   -0.0004441533819772303]},
+                             'l_high': {'sum': -0.10831197957304539,
+                                        'sumsq': 0.0002843863148785529,
+                                        'values': [-0.0009967256337404251,
+                                                   4.6518107410520315e-05,
+                                                   0.0007750748191028833,
+                                                   -0.0008666767971590161,
+                                                   5.2435731049627066e-05]}}},
+ 'relight': {'loss': 0.4995548725128174,
+             'grads': {'r_low': {'sum': -0.8122088516975055,
+                                 'sumsq': 0.0028138926302911683,
+                                 'values': [-0.00039552271482534707,
+                                            -6.913233664818108e-05,
+                                            -0.00034892535768449306,
+                                            -0.0002905079163610935,
+                                            -0.0009256251505576074]},
+                       'l_adjusted': {'sum': -0.3983304318244336,
+                                      'sumsq': 0.007170822620490723,
+                                      'values': [-0.0012364319991320372,
+                                                 -0.0009686285047791898,
+                                                 -0.0008533927612006664,
+                                                 -0.004197234287858009,
+                                                 0.004401967860758305]}}}}
+
+
+def test_loss_matches_the_reimplementation():
+    from mon.models.lle.retinexnet import RetinexNetLoss
+
+    raw = _lref.inputs()
+    x = {k: v.requires_grad_(True) for k, v in raw.items() if k not in ("low", "high")}
+    out = RetinexNetLoss()(raw["low"], raw["high"],
+                           {"reflectance": x["r_low"], "illumination": x["l_low"], "illumination_adjusted": x["l_adjusted"]},
+                           {"reflectance": x["r_high"], "illumination": x["l_high"]})
+    for name, want in REIMPL_LOSS.items():
+        assert out[name].item() == pytest.approx(want["loss"], rel=1e-6), name
+        grads = torch.autograd.grad(out[name], [x[n] for n in want["grads"]], retain_graph=True)
+        for (n, w), g in zip(want["grads"].items(), grads, strict=True):
+            got = _lref.stats(g)
+            assert got["sum"] == pytest.approx(w["sum"], rel=1e-5, abs=1e-9), (name, n)
+            assert got["sumsq"] == pytest.approx(w["sumsq"], rel=1e-5), (name, n)
+            assert got["values"] == pytest.approx(w["values"], rel=1e-5, abs=1e-9), (name, n)
+
+
 def _naive_gradient(x: torch.Tensor, direction: str) -> torch.Tensor:
     """|x[i, j] − x[i, j−1]| (x) or |x[i, j] − x[i−1, j]| (y) on an [H+1, W+1] grid, zeros outside."""
     b, c, h, w = x.shape

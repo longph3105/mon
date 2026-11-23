@@ -96,6 +96,28 @@ def test_no_targets_runs_no_reference_only(pair, monkeypatch: pytest.MonkeyPatch
         evaluate({"pred": str(pred_dir), "metrics": FR, "device": "cpu", "exist_ok": True})
 
 
+def test_real_no_reference_metrics_score_saved_files(tmp_path: StdPath):
+    from mon.metrics.registry import METRICS
+
+    try:
+        niqe, brisque = METRICS.build("niqe"), METRICS.build("brisque")
+    except (FileNotFoundError, RuntimeError) as err:
+        pytest.skip(f"metric model not available: {err}")
+    gen   = torch.Generator().manual_seed(0)
+    preds = {"a.png": torch.rand(3, 192, 192, generator=gen), "b.png": torch.rand(3, 96, 288, generator=gen),
+             "small.png": torch.rand(3, 64, 64, generator=gen)}  # below NIQE's two 96×96 blocks
+    pred_dir = _write(tmp_path / "pred", preds)
+    means = evaluate({"pred": str(pred_dir), "metrics": ["niqe", "brisque"], "device": "cpu"})
+    want = {n: [m(_quant(preds[k])).item() for k in ("a.png", "b.png")] for n, m in (("niqe", niqe),
+                                                                                    ("brisque", brisque))}
+    assert means["niqe"] == pytest.approx(sum(want["niqe"]) / 2, rel=1e-6)
+    summary = yaml.safe_load((pred_dir / "metrics.yaml").read_text())
+    assert summary["scored"] == {"niqe": 2, "brisque": 3} and list(summary["failed"]["niqe"]) == ["small"]
+    assert summary["higher_better"] == {"niqe": False, "brisque": False}
+    rows = {r["stem"]: r for r in csv.DictReader((pred_dir / "metrics.csv").open())}
+    assert float(rows["b"]["brisque"]) == pytest.approx(want["brisque"][1], rel=1e-6)
+
+
 def test_missing_prediction_and_size_mismatch(pair, tmp_path: StdPath):
     pred_dir, gt_dir, *_ = pair
     extra_gt = _write(tmp_path / "gt2", {"a.png": torch.rand(3, 24, 40), "zzz.png": torch.rand(3, 8, 8)})

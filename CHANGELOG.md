@@ -4,6 +4,15 @@
 
 ### Fixed
 
+- `SCI()` initializes like the official `CVPR/train.py`: each of the six
+  sub-blocks once, in the script's order. `self.apply` also re-drew the shared
+  `conv`/`convs` blocks through `blocks` (17 initializations of 11 layers), so
+  `mon train model=sci` started from different weights than the official
+  script (training losses about 20% off). Released weights are unaffected.
+- `HVICIDNetLoss`: the perceptual term compares pre-ReLU VGG-19 features, as
+  the official extractor (which copies each tap) does. torchvision's next
+  in-place ReLU overwrote `conv1_2`, `conv2_2` and `conv3_4`, so the term used
+  post-ReLU features for those three layers.
 - `mon train resume=<run> epochs=<more>` with `scheduler.name=cosine` anneals
   over the new `epochs`. It used to keep the saved `T_max`, so the LR reached
   `eta_min` at the old end and then rose again.
@@ -27,3 +36,16 @@
   named like a folder's. `split_dir` is replaced by `overview_path(ds, split)`.
   Move or regenerate existing overviews.
 - `tools/dataset_overview.py`: 10 items per overview by default (was 20).
+
+### Tests
+
+- Training-loop parity with the official scripts for `zero_dce++`, `sci` and
+  `zero_ig` (one epoch: the official Zero-IG loop switches to eval mode after
+  it; see `mon.models.lle.zero_ig`), next to `zero_dce` and `sci++`.
+- Loss parity with the official code for `HVICIDNetLoss`, `RetinexNetLoss` and
+  `PairLIELoss`, gradients included.
+- `zero_ig` (its three released weights) in the testkit regression.
+- The testkit builders on synthetic sources (every part, `--part`
+  rebuilds, the `python -m mon.data.zoo` CLI); LR schedulers; `runs_dir` and
+  `datasets_dir`; `mon evaluate` with real no-reference metrics; 16-bit
+  inputs in `mon benchmark`.

@@ -5,8 +5,8 @@ import pathlib
 import pytest
 
 from mon.core.constants import IMAGE_EXTENSIONS, RAW_IMAGE_EXTENSIONS
-from mon.core.constants import DATA_DIR_ENV, ZOO_DIR_ENV
-from mon.core.path import Path, _normalize_exts, zoo_dir
+from mon.core.constants import DATA_DIR_ENV, DATASETS_DIR_ENV, RUNS_DIR_ENV, ZOO_DIR_ENV
+from mon.core.path import Path, _normalize_exts, datasets_dir, runs_dir, zoo_dir
 
 
 @pytest.fixture
@@ -194,6 +194,21 @@ def test_zoo_dir_unset_raises(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv(DATA_DIR_ENV, raising=False)
     with pytest.raises(RuntimeError, match="ZOO_DIR"):
         zoo_dir()
+
+
+@pytest.mark.parametrize(("fn", "env", "sub"), [(runs_dir, RUNS_DIR_ENV, "runs"),
+                                                (datasets_dir, DATASETS_DIR_ENV, "datasets")])
+def test_runs_and_datasets_dirs_resolve_like_zoo_dir(fn, env: str, sub: str, monkeypatch: pytest.MonkeyPatch,
+                                                     tmp_path: pathlib.Path):
+    monkeypatch.setenv(env, str(tmp_path / "own"))
+    monkeypatch.setenv(DATA_DIR_ENV, "/elsewhere")
+    assert fn() == tmp_path / "own" and type(fn()) is Path
+    monkeypatch.setenv(env, " ")  # blank counts as unset
+    assert fn() == Path(f"/elsewhere/{sub}")
+    monkeypatch.delenv(env)
+    monkeypatch.delenv(DATA_DIR_ENV)
+    with pytest.raises(RuntimeError, match=env):
+        fn()
 
 
 # --- find_weights ---

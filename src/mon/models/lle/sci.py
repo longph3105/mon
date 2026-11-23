@@ -227,7 +227,11 @@ class SCI(nn.Module):
         self.stages    = stages
         self.enhance   = _Enhance(layers=1, channels=3)
         self.calibrate = _Calibrate(layers=3, channels=16)
-        self.apply(_official_init)
+        # As CVPR/train.py: each sub-block once, in this order. ``self.apply`` would also reach the shared
+        # ``conv``/``convs`` through ``blocks`` and re-draw them (17 inits of 11 layers), changing every draw.
+        for block in (self.enhance.in_conv, self.enhance.conv, self.enhance.out_conv,
+                      self.calibrate.in_conv, self.calibrate.convs, self.calibrate.out_conv):
+            block.apply(_official_init)
 
     def forward(self, image: Tensor) -> dict[str, Tensor]:
         illumination = self.enhance(image)

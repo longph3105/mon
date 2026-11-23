@@ -126,3 +126,20 @@ def test_benchmark_data_peak_ignores_other_images(tmp_path):
         return r["rows"][0]["peak_memory"]
 
     assert peak(4) == peak(1)
+
+
+def test_benchmark_data_scales_8_and_16_bit_images_to_unit_range(tmp_path, monkeypatch):
+    import mon.runners.benchmarker as bm
+
+    write_image(torch.full((3, 16, 16), 255, dtype=torch.uint8), tmp_path / "imgs" / "8bit.png")
+    write_image(torch.full((3, 16, 24), 65535, dtype=torch.uint16), tmp_path / "imgs" / "16bit.png")
+    seen: list[float] = []
+    real = bm.count_flops
+
+    def spy(model, x):  # noqa: ANN001, ANN202
+        seen.append(float(x.max()))
+        return real(model, x)
+
+    monkeypatch.setattr(bm, "count_flops", spy)
+    benchmark({"model": "zero_dce", "data": str(tmp_path / "imgs"), "device": "cpu", "latency": False})
+    assert seen == [1.0, 1.0]  # white in both: / 255 and / 65535

@@ -1,8 +1,11 @@
-"""Training-loop parity with official scripts: Zero-DCE ``lowlight_train.py`` (see ``zero_dce_train_reference.py``)
-and SCI++ ``TPAMI/train.py`` (reference loop below).
+"""Training-loop parity with official scripts: Zero-DCE and Zero-DCE++ ``lowlight_train.py`` (see
+``zero_dce_train_reference.py``, ``zero_dcepp_train_reference.py``), SCI ``CVPR/train.py``
+(``sci_train_reference.py``), Zero-IG ``train.py`` (``zero_ig_train_reference.py``) and SCI++
+``TPAMI/train.py`` (reference loop below).
 
 Same seeded init, same 8-bit images in file order, the recipe's optimizer and clipping, on CPU: the
-runner must reproduce the official per-epoch losses and final weights to float32 rounding.
+runner must reproduce the official per-epoch losses and final weights to float32 rounding (SCI: to the
+tolerance its batch norms allow; see its test).
 """
 
 import csv
@@ -68,6 +71,169 @@ def test_zero_dce_init_matches_official():
     torch.manual_seed(_ref.SEED)
     init = _ref.weight_stats(ZeroDCE().state_dict())
     assert init["sum"] == OFFICIAL["init"]["sum"] and init["values"] == OFFICIAL["init"]["values"]
+
+
+# --- Zero-DCE++ (official loop: zero_dcepp_train_reference.py) ---
+
+# Generated from the official Zero-DCE++ loop with torch 2.15.0+cu132.
+OFFICIAL_PP: dict = {'init': {'sum': -9.990068064325897,
+          'sumsq': 176.2159106454262,
+          'values': [-0.0024956068955361843,
+                     0.2642965018749237,
+                     0.389028936624527,
+                     -0.12805600464344025,
+                     -0.015029081143438816,
+                     -0.07392232865095139,
+                     0.09970849752426147]},
+ 'losses': [3.221865177154541,
+            3.257899522781372,
+            3.1870546340942383,
+            3.2229838371276855,
+            3.1528141498565674,
+            3.1886701583862305],
+ 'epoch_mean': [3.2398823499679565, 3.205019235610962, 3.170742154121399],
+ 'final': {'sum': -9.971590512165676,
+           'sumsq': 175.38909743437026,
+           'values': [-0.003065943717956543,
+                      0.2636968493461609,
+                      0.38842910528182983,
+                      -0.1274656057357788,
+                      -0.014430544339120388,
+                      -0.07332700490951538,
+                      0.09910719841718674]}}
+
+
+def test_zero_dcepp_loop_matches_official(tmp_path: StdPath):
+    for n, img in enumerate(_ref.reference_images()):
+        write_image(img, tmp_path / "train" / f"{n:02d}.png")
+    run = train({"model": "zero_dce++", "data": str(tmp_path / "train"), "resize": None, "shuffle": False,
+                 "epochs": _ref.EPOCHS, "batch_size": _ref.BATCH, "seed": _ref.SEED, "device": "cpu",
+                 "num_workers": 0, "run_dir": str(tmp_path / "run")})
+    rows = list(csv.DictReader((run / "log.csv").open()))
+    assert [float(r["train/loss"]) for r in rows] == pytest.approx(OFFICIAL_PP["epoch_mean"], rel=1e-6)
+    final = _ref.weight_stats(torch.load(run / "last.ckpt", weights_only=True)["model"])
+    assert final["sum"] == pytest.approx(OFFICIAL_PP["final"]["sum"], rel=1e-5)
+    assert final["sumsq"] == pytest.approx(OFFICIAL_PP["final"]["sumsq"], rel=1e-6)
+    assert final["values"] == pytest.approx(OFFICIAL_PP["final"]["values"], abs=1e-7)
+
+
+def test_zero_dcepp_default_init_matches_official():
+    from mon.models.lle.zero_dce import ZeroDCEPP
+
+    torch.manual_seed(_ref.SEED)
+    init = _ref.weight_stats(ZeroDCEPP(scale_factor=1.0).state_dict())
+    assert init["sum"] == OFFICIAL_PP["init"]["sum"] and init["values"] == OFFICIAL_PP["init"]["values"]
+
+
+# --- SCI (official loop: sci_train_reference.py) ---
+
+_sci_spec = importlib.util.spec_from_file_location("sci_train_reference", StdPath(__file__).with_name("sci_train_reference.py"))
+assert _sci_spec is not None and _sci_spec.loader is not None
+_sci_ref = importlib.util.module_from_spec(_sci_spec)
+_sci_spec.loader.exec_module(_sci_ref)
+
+# Generated from the official SCI (CVPR) loop with torch 2.15.0+cu132.
+OFFICIAL_SCI: dict = {'init': {'sum': 292.5374370350828,
+          'sumsq': 309.3634275778634,
+          'values': [0.006533919833600521,
+                     -0.000269236508756876,
+                     0.005544594023376703,
+                     -0.03960715979337692,
+                     0.048333972692489624,
+                     -0.032320648431777954,
+                     0.0]},
+ 'epoch_mean': [23.04537467956543, 16.39866943359375, 12.457106018066407],
+ 'final': {'sum': 1354.3013906779925,
+           'sumsq': 152037.16930079783,
+           'values': [0.005930294282734394,
+                      -0.00370827317237854,
+                      0.0010434042196720839,
+                      -0.042572785168886185,
+                      0.04871005937457085,
+                      -0.03295058384537697,
+                      -0.004436877090483904]}}
+
+
+def test_sci_loop_matches_official(tmp_path: StdPath):
+    for n, img in enumerate(_sci_ref.reference_images()):
+        write_image(img, tmp_path / "train" / f"{n:02d}.png")
+    run = train({"model": "sci", "data": str(tmp_path / "train"), "shuffle": False, "epochs": _sci_ref.EPOCHS,
+                 "device": "cpu", "num_workers": 0, "run_dir": str(tmp_path / "run")})  # recipe: seed 2, batch 1
+    # Not float32-exact, unlike Zero-DCE: SCI's convolutions before a batch norm have biases with zero true
+    # gradient, and Adam (eps 1e-8) turns their ~1e-7 rounding noise into ~lr steps, so ulp-level differences
+    # between mon's network and the official one (same init, same first-step loss) grow. Measured 2026-11-23:
+    # losses within 2.8e-4 (relative), weight sum 4.6e-5, values 9e-5. A recipe error is far outside these:
+    # the init that re-drew the shared blocks gave losses 20% off.
+    rows = list(csv.DictReader((run / "log.csv").open()))
+    assert [float(r["train/loss"]) for r in rows] == pytest.approx(OFFICIAL_SCI["epoch_mean"], rel=1e-3)
+    final = _ref.weight_stats(torch.load(run / "last.ckpt", weights_only=True)["model"])
+    assert final["sum"] == pytest.approx(OFFICIAL_SCI["final"]["sum"], rel=2e-4)
+    assert final["sumsq"] == pytest.approx(OFFICIAL_SCI["final"]["sumsq"], rel=1e-6)
+    assert final["values"] == pytest.approx(OFFICIAL_SCI["final"]["values"], abs=5e-4)
+
+
+def test_sci_init_matches_official():
+    from mon.models.lle.sci import SCI
+
+    torch.manual_seed(_sci_ref.SEED)
+    init = _ref.weight_stats(SCI().state_dict())
+    assert init["sum"] == OFFICIAL_SCI["init"]["sum"] and init["values"] == OFFICIAL_SCI["init"]["values"]
+
+
+# --- Zero-IG (official loop: zero_ig_train_reference.py; one epoch, see there) ---
+
+_zig_spec = importlib.util.spec_from_file_location("zero_ig_train_reference",
+                                                   StdPath(__file__).with_name("zero_ig_train_reference.py"))
+assert _zig_spec is not None and _zig_spec.loader is not None
+_zig_ref = importlib.util.module_from_spec(_zig_spec)
+_zig_spec.loader.exec_module(_zig_ref)
+
+# Generated from the official Zero-IG loop with torch 2.15.0+cu132.
+OFFICIAL_ZIG: dict = {'init': {'sum': 508.3129757771328,
+          'sumsq': 641.4822872528225,
+          'values': [-0.006652656476944685,
+                     0.021365534514188766,
+                     0.04261379316449165,
+                     -0.017105618491768837,
+                     -0.006231194827705622,
+                     -0.0014583473093807697,
+                     0.07257840037345886]},
+ 'losses': [1178.3555908203125, 924.8494262695312, 745.25830078125, 643.4937133789062],
+ 'epoch_mean': [872.9892578125],
+ 'final': {'sum': 384.09943533589103,
+           'sumsq': 987.4572639933444,
+           'values': [-0.006342182867228985,
+                      0.021846799179911613,
+                      0.04380583018064499,
+                      -0.016325872391462326,
+                      -0.0068892803974449635,
+                      -0.0026222250889986753,
+                      0.0713874101638794]}}
+
+
+def test_zero_ig_loop_matches_official(tmp_path: StdPath):
+    for n, img in enumerate(_zig_ref.reference_images()):
+        write_image(img, tmp_path / "train" / f"{n:02d}.png")
+    run = train({"model": "zero_ig", "data": str(tmp_path / "train"), "epochs": _zig_ref.EPOCHS, "device": "cpu",
+                 "num_workers": 0, "run_dir": str(tmp_path / "run")})  # recipe: seed 2, batch 1, file order
+    # The enhancer's batch norm makes the same noise as SCI's (see there), smaller over 4 steps. Measured
+    # 2026-11-23: loss within 2e-8 (relative), weight sum 2.4e-6, sumsq 1.7e-6, values 2.6e-7.
+    rows = list(csv.DictReader((run / "log.csv").open()))
+    assert [float(r["train/loss"]) for r in rows] == pytest.approx(OFFICIAL_ZIG["epoch_mean"], rel=1e-6)
+    final = _ref.weight_stats(torch.load(run / "last.ckpt", weights_only=True)["model"])
+    assert final["sum"] == pytest.approx(OFFICIAL_ZIG["final"]["sum"], rel=2e-5)
+    assert final["sumsq"] == pytest.approx(OFFICIAL_ZIG["final"]["sumsq"], rel=2e-5)
+    assert final["values"] == pytest.approx(OFFICIAL_ZIG["final"]["values"], abs=3e-6)
+
+
+def test_zero_ig_init_matches_official():
+    from mon.models.lle.zero_ig import ZeroIG, _init_enhancer
+
+    torch.manual_seed(_zig_ref.SEED)
+    model = ZeroIG()
+    _init_enhancer(model)
+    init = _ref.weight_stats(model.state_dict())
+    assert init["sum"] == OFFICIAL_ZIG["init"]["sum"] and init["values"] == OFFICIAL_ZIG["init"]["values"]
 
 
 # --- SCI++ (two alternating optimizers) ---

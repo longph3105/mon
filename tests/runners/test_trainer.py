@@ -1,6 +1,7 @@
 """Tests for ``mon.runners.trainer`` and ``mon train`` (tiny synthetic data; CPU unless marked ``gpu``)."""
 
 import csv
+import math
 from pathlib import Path as StdPath
 
 import pytest
@@ -93,6 +94,24 @@ def test_resume_continues_exactly(folder: StdPath, tmp_path: StdPath):
     assert train({"resume": str(resumed / "last.ckpt"), "epochs": 3}) == resumed  # done: no-op
     with pytest.raises(ValueError, match="only"):
         train({"resume": str(resumed), "batch_size": 4})
+
+
+@pytest.mark.parametrize(("scheduler", "factors"), [
+    ({"name": "none"}, [1, 1, 1, 1]),
+    ({"name": "step", "step_size": 2, "gamma": 0.5}, [1, 1, 0.5, 0.5]),
+    ({"name": "multistep", "milestones": [1, 3], "gamma": 0.1}, [1, 0.1, 0.1, 0.01]),
+    ({"name": "cosine"}, [1, (1 + math.cos(math.pi / 4)) / 2, 0.5, (1 + math.cos(3 * math.pi / 4)) / 2]),
+])
+def test_schedulers_step_once_per_epoch(scheduler: dict, factors: list[float], folder: StdPath, tmp_path: StdPath):
+    run  = train(_cfg(folder, tmp_path, epochs=4, scheduler=scheduler))
+    lrs  = [float(r["lr"]) for r in csv.DictReader((run / "log.csv").open())]  # the LR each epoch trained with
+    base = resolve_train_config({"model": "zero_dce"}).optimizer.lr
+    assert lrs == pytest.approx([base * f for f in factors], rel=1e-6)
+
+
+def test_unknown_scheduler_raises(folder: StdPath, tmp_path: StdPath):
+    with pytest.raises(ValueError, match="scheduler.name"):
+        train(_cfg(folder, tmp_path, scheduler={"name": "linear"}))
 
 
 def test_longer_cosine_resume_anneals_over_the_new_epochs(folder: StdPath, tmp_path: StdPath):
