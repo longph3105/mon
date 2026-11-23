@@ -45,6 +45,12 @@ Before writing or changing code in `src/` or `tests/`, read and follow
   run output in `data/runs/` (see `../../data/README.md`). Check
   `git status` before committing: `.gitignore` doesn't cover every format.
 
+## GPU
+
+- One GPU job at a time to prevent OOM. Before starting training, a
+  benchmark or GPU tests, check that nothing else is using the GPU
+  (`nvidia-smi`), and wait or ask the owner if something is.
+
 ## Logs
 
 - Log work on this repo in `logs/<machine>/YYYY-MM-DD.md`, not in the
