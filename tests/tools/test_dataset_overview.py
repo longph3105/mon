@@ -67,7 +67,7 @@ def test_sample_view_pairs(tool: ModuleType, tmp_path: StdPath):
     assert not tool.is_sequence(ds) and not tool.is_mot_test(ds)
     out = tool.overview(ds, n=20, name="paired test")
     assert out.dtype == np.uint8 and out.ndim == 3 and out.shape[1] <= tool.MAX_W + 20
-    assert tool.overview_path(ds, "test") == tmp_path / "test_overview.jpg"
+    assert tool.overview_path(ds, "test") == tmp_path / "overview_test.jpg"
 
 
 def test_boxes_are_drawn_with_class_colors(tool: ModuleType, tmp_path: StdPath):
@@ -115,12 +115,25 @@ def test_mot_test_view(tool: ModuleType, tmp_path: StdPath):
     assert (out == np.array(tool.PALETTE[0])).all(axis=-1).any()
 
 
+class Under(FolderDataset):  # like sice_under: its test split lives in test_under/ of a shared root
+    layout = {Split.TEST: {"image": Modality("test_under/images"), "target": Modality("test_under/targets")}}
+
+
+def test_overview_path_follows_the_split_folder(tool: ModuleType, tmp_path: StdPath):
+    for k in range(2):
+        for split in ("test", "test_under"):
+            write_image(img(20), tmp_path / f"{split}/images/{k}.png")
+            write_image(img(200), tmp_path / f"{split}/targets/{k}.png")
+    assert tool.overview_path(Paired("test", root=tmp_path), "test") == tmp_path / "overview_test.jpg"
+    assert tool.overview_path(Under("test", root=tmp_path), "test") == tmp_path / "overview_test_under.jpg"
+
+
 def test_class_folder_overview_path(tool: ModuleType, tmp_path: StdPath):
     (tmp_path / "classes.txt").write_text("a\nb\n")
     write_image(img(), tmp_path / "test/a/0.png")
     write_image(img(), tmp_path / "test/b/1.png")
     ds = Cls("test", root=tmp_path)
-    assert tool.overview_path(ds, "test") == tmp_path / "test_overview.jpg"
+    assert tool.overview_path(ds, "test") == tmp_path / "overview_test.jpg"
     assert tool.overview(ds, n=2).shape[0] > 0
 
 
@@ -129,7 +142,7 @@ def test_write_overviews_folder(tool: ModuleType, tmp_path: StdPath):
     write_image(img(), folder / "x/a.png")
     write_image(img(), folder / "b.png")
     logs: list[str] = []
-    out = folder.resolve().parent / "imgs_overview.jpg"  # beside the folder: ImageFolder reads all of it
+    out = folder.resolve().parent / "overview_imgs.jpg"  # beside the folder: ImageFolder reads all of it
     assert tool.write_overviews(str(folder), log=logs.append) == [out]
     assert cv2.imread(str(out)) is not None
     assert sorted(stem for stem, _ in ImageFolder(folder).items()) == ["b", "x/a"]  # not an input

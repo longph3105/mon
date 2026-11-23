@@ -1,4 +1,4 @@
-"""Dataset overview images: ``<split>_overview.jpg`` with random samples and their annotations, for a visual check.
+"""Dataset overview images: ``overview_<split>.jpg`` with random samples and their annotations, for a visual check.
 
 Usage (from a mon checkout)::
 
@@ -6,7 +6,7 @@ Usage (from a mon checkout)::
     uv run python tools/dataset_overview.py fisheye8k --split val --n 30 --seed 1
     uv run python tools/dataset_overview.py path/to/folder         # any image folder (images only)
 
-Each split gets ``<dataset root>/<split>_overview.jpg`` (``<name>_overview.jpg`` beside a folder): ``n`` random
+Each split gets ``<dataset root>/overview_<split>.jpg`` (``overview_<name>.jpg`` beside a folder): ``n`` random
 items (``seed``), a title naming what is drawn, and a caption per tile. An existing overview is kept unless
 ``--overwrite``. Views, picked from the dataset's layout and samples:
 
@@ -255,8 +255,20 @@ def overview(ds: Any, *, n: int = 10, seed: int = 0, name: str = "", max_seq: in
 # --- CLI ---
 
 def overview_path(ds: Any, split: str) -> Path:
-    """Where a split's overview goes: ``<dataset root>/<split>_overview.jpg``."""
-    return Path(ds.root) / f"{split}_overview.jpg"
+    """Where a split's overview goes: ``<dataset root>/overview_<split folder>.jpg``.
+
+    The split folder is the first path part its modality folders share (``test/images`` → ``test``), which is
+    the split name except where a dataset keeps a split elsewhere: ``sice_under``'s test split is
+    ``sice/test_under/``, so its overview is ``overview_test_under.jpg``, apart from ``sice``'s
+    ``overview_test.jpg`` in the same root. A ``ClassFolderDataset`` uses its layout's split folder.
+    """
+    if isinstance(ds, FolderDataset):
+        parts  = [Path(m.dir).parts for m in ds.modalities.values()]
+        common = [p[0] for p in zip(*parts, strict=False) if len(set(p)) == 1]
+        folder = common[0] if common else split
+    else:
+        folder = Path(str(type(ds).layout[ds.split])).parts[0]
+    return Path(ds.root) / f"overview_{folder}.jpg"
 
 
 def write_overviews(spec: str, splits: Sequence[str] = (), *, n: int = 10, seed: int = 0, out: str | None = None,
@@ -272,7 +284,7 @@ def write_overviews(spec: str, splits: Sequence[str] = (), *, n: int = 10, seed:
         folder = Path(spec).expanduser().resolve()  # resolved: "." has no name to put beside it
         if not folder.is_dir():
             raise SystemExit(f"{spec!r} is neither a dataset id nor a folder")
-        jobs.append((ImageFolder(folder), folder.parent / f"{folder.name}_overview.jpg", folder.name))
+        jobs.append((ImageFolder(folder), folder.parent / f"overview_{folder.name}.jpg", folder.name))
     written = []
     for ds, path, name in jobs:
         path = Path(out) if out and len(jobs) == 1 else path
@@ -294,8 +306,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("--n", type=int, default=10, help="items per overview")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--max-seq", type=int, default=9, help="inputs per group in the sequence view")
-    p.add_argument("--out", help="output file (one split only); default: <dataset root>/<split>_overview.jpg, "
-                                 "or <name>_overview.jpg beside a folder")
+    p.add_argument("--out", help="output file (one split only); default: <dataset root>/overview_<split>.jpg, "
+                                 "or overview_<name>.jpg beside a folder")
     p.add_argument("--overwrite", action="store_true", help="replace an existing overview")
     a = p.parse_args(argv)
     write_overviews(a.spec, a.split, n=a.n, seed=a.seed, out=a.out, overwrite=a.overwrite, max_seq=a.max_seq)

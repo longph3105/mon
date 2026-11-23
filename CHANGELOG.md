@@ -25,15 +25,17 @@
   only.
 - `mon` prints an error line (exit code 2) for a `run_dir` that is a file,
   instead of a `NotADirectoryError` traceback.
-- `tools/dataset_overview.py <folder>` writes `<name>_overview.jpg` beside the
+- `tools/dataset_overview.py <folder>` writes `overview_<name>.jpg` beside the
   folder, not `overview.jpg` inside it, which `mon predict data=<folder>` then
   read as an input.
 
 ### Changed
 
 - `tools/dataset_overview.py`: a dataset split's overview goes to
-  `<dataset root>/<split>_overview.jpg` instead of `<split>/overview.jpg`,
-  named like a folder's. `split_dir` is replaced by `overview_path(ds, split)`.
+  `<dataset root>/overview_<split>.jpg` instead of `<split>/overview.jpg`,
+  named like a folder's. A split kept in another folder is named after that
+  folder (`sice_under`: `sice/overview_test_under.jpg`, beside `sice`'s
+  `overview_test.jpg`). `split_dir` is replaced by `overview_path(ds, split)`.
   Move or regenerate existing overviews.
 - `tools/dataset_overview.py`: 10 items per overview by default (was 20).
 
