@@ -155,6 +155,13 @@ def test_cli_usage(capsys: pytest.CaptureFixture[str]):
     assert main(["train"]) == 2 and "model is required" in capsys.readouterr().err
 
 
+def test_cli_run_dir_that_is_a_file(images: StdPath, tmp_path: StdPath, capsys: pytest.CaptureFixture[str]):
+    run_file = tmp_path / "run"
+    run_file.write_text("")
+    args = ["predict", "model=zero_dce", "weights=null", "device=cpu", f"data={images}", f"run_dir={run_file}"]
+    assert main(args) == 2 and "not a directory" in capsys.readouterr().err  # an error line, no traceback
+
+
 def test_weights_meta_picks_the_official_output(images: StdPath, tmp_path: StdPath):
     from mon.runners.predictor import _weights_output_key
 

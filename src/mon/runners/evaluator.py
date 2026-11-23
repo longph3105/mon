@@ -8,6 +8,9 @@ or a test set without them, e.g. ``dicm``), only no-reference metrics run, on ev
 
 Writes ``metrics.csv`` (one row per image) and ``metrics.yaml`` (means, directions, the resolved
 config) into ``output_dir`` (default: the prediction folder); with ``gt_mean``, ``metrics_gt_mean.*``.
+A metric that can't score an image (its ``ValueError``, e.g. an image smaller than NIQE's blocks)
+leaves that cell empty and is logged; the run goes on, ``metrics.yaml`` lists it under ``failed``
+with each metric's ``scored`` count, and means cover the scored images only.
 
 ``gt_mean`` rescales each prediction so its mean gray level equals the target's, then clips to
 ``[0, 1]``, before the full-reference metrics (no-reference metrics see the prediction as saved).
@@ -29,6 +32,7 @@ from typing import Any
 import torch
 from omegaconf import MISSING, DictConfig, OmegaConf
 from torch import Tensor
+from torchvision.transforms.v2.functional import to_dtype
 
 from mon.core.console import get_logger, print_dict, progress_bar
 from mon.core.fileio import _atomic_write_text, save_yaml
@@ -112,8 +116,9 @@ def _gt_mean(pred: Tensor, target: Tensor) -> Tensor:
 
 
 def _load(path: Path, device: torch.device) -> Tensor:
-    image: Tensor = read_image(path).as_subclass(Tensor)
-    return image[None].to(device, torch.float32) / 255
+    """``[1, C, H, W]`` float in ``[0, 1]``: 8-bit files / 255, 16-bit (PNG/TIFF) / 65535."""
+    image: Tensor = to_dtype(read_image(path), torch.float32, scale=True).as_subclass(Tensor)
+    return image[None].to(device)
 
 
 def _write_csv(path: Path, header: list[str], rows: list[list[Any]]) -> None:
@@ -127,7 +132,7 @@ def _write_csv(path: Path, header: list[str], rows: list[list[Any]]) -> None:
 # --- Public API ---
 
 def evaluate(cfg: EvaluateConfig | DictConfig | Mapping[str, Any]) -> dict[str, float]:
-    """Score ``cfg.pred`` and write the metric files; return the mean of each metric that ran.
+    """Score ``cfg.pred`` and write the metric files; return the mean of each metric that scored an image.
 
     Raises:
         ValueError: Unknown metric, a target without a prediction, or a pred/target size mismatch.
@@ -168,6 +173,7 @@ def evaluate(cfg: EvaluateConfig | DictConfig | Mapping[str, Any]) -> dict[str, 
 
     metrics: dict[str, Metric] = {n: METRICS.build(n, **config.metric_args.get(n, {})).to(device) for n in names}
     rows: list[list[Any]] = []
+    failed: dict[str, dict[str, str]] = {}  # metric -> {stem: error}
     with torch.inference_mode(), progress_bar() as pbar:
         for key, pred_path, target_path in pbar.track(pairs, description="Evaluating"):
             pred   = _load(pred_path, device)
@@ -178,16 +184,31 @@ def evaluate(cfg: EvaluateConfig | DictConfig | Mapping[str, Any]) -> dict[str, 
             scored = _gt_mean(pred, target) if (config.gt_mean and target is not None) else pred
             row: list[Any] = [key]
             for name, metric in metrics.items():
-                score = metric(scored, target) if metric.mode == "fr" else metric(pred)
+                try:
+                    score = metric(scored, target) if metric.mode == "fr" else metric(pred)
+                except ValueError as err:  # this image can't be scored (e.g. smaller than NIQE's blocks)
+                    logger.warning("%s: %s failed: %s", key, name, err)
+                    failed.setdefault(name, {})[key] = str(err)
+                    row.append(None)
+                    continue
                 row.append(float(score[0]))
             rows.append(row)
 
-    means = {n: sum(r[i + 1] for r in rows) / len(rows) for i, n in enumerate(names)}
+    means: dict[str, float] = {}
+    for i, n in enumerate(names):
+        scores = [r[i + 1] for r in rows if r[i + 1] is not None]
+        if scores:
+            means[n] = sum(scores) / len(scores)
+    if failed:
+        logger.warning("Means leave out unscored images: %s",
+                       ", ".join(f"{n} {len(f)}/{len(rows)}" for n, f in failed.items()))
     out_dir.mkdir(parents=True, exist_ok=True)
-    _write_csv(csv_path, ["stem", *names], rows)
+    _write_csv(csv_path, ["stem", *names], [[("" if v is None else v) for v in r] for r in rows])
     save_yaml({
         "count"        : len(rows),
         "mean"         : means,
+        "scored"       : {n: len(rows) - len(failed.get(n, {})) for n in names},
+        "failed"       : failed,
         "higher_better": {n: METRICS.entry(n).meta["higher_better"] for n in names},
         "config"       : OmegaConf.to_container(OmegaConf.structured(config)),
     }, yaml_path, overwrite=True)

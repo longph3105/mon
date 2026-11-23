@@ -55,7 +55,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     setup_logging()
     try:
         _run(command, path, rest)
-    except (ValueError, KeyError, FileNotFoundError, FileExistsError) as err:  # config/data errors: no traceback
+    except (ValueError, KeyError, FileNotFoundError, FileExistsError, NotADirectoryError) as err:  # config/data errors
         print(f"mon {command}: error: {err}", file=sys.stderr)
         return 2
     return 0

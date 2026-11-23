@@ -6,7 +6,7 @@ Usage (from a mon checkout)::
     uv run python tools/dataset_overview.py fisheye8k --split val --n 30 --seed 1
     uv run python tools/dataset_overview.py path/to/folder         # any image folder (images only)
 
-Each split gets ``<dataset root>/<split>/overview.jpg`` (``<folder>/overview.jpg`` for a folder): ``n`` random
+Each split gets ``<dataset root>/<split>/overview.jpg`` (``<name>_overview.jpg`` beside a folder): ``n`` random
 items (``seed``), a title naming what is drawn, and a caption per tile. An existing overview is kept unless
 ``--overwrite``. Views, picked from the dataset's layout and samples:
 
@@ -17,7 +17,8 @@ items (``seed``), a title naming what is drawn, and a caption per tile. An exist
 - **mot_test**: MOTChallenge test splits (images only in mon): frames from ``seq/<seq>/img1/`` with the public
   detections from ``seq/<seq>/det/det.txt``.
 
-Not data: the file sits directly in the split folder, where no mon loader reads samples.
+Not data: the file sits directly in the split folder, where no mon loader reads samples. A plain folder is
+read whole (``ImageFolder``, e.g. ``mon predict data=<folder>``), so its overview goes beside it, not inside.
 """
 
 from __future__ import annotations
@@ -274,10 +275,10 @@ def write_overviews(spec: str, splits: Sequence[str] = (), *, n: int = 20, seed:
             ds = DATASETS.build(spec, s)
             jobs.append((ds, split_dir(ds) / "overview.jpg", f"{spec} {s}"))
     else:
-        folder = Path(spec).expanduser()
+        folder = Path(spec).expanduser().resolve()  # resolved: "." has no name to put beside it
         if not folder.is_dir():
             raise SystemExit(f"{spec!r} is neither a dataset id nor a folder")
-        jobs.append((ImageFolder(folder), folder / "overview.jpg", folder.name))
+        jobs.append((ImageFolder(folder), folder.parent / f"{folder.name}_overview.jpg", folder.name))
     written = []
     for ds, path, name in jobs:
         path = Path(out) if out and len(jobs) == 1 else path
@@ -299,7 +300,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("--n", type=int, default=20, help="items per overview")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--max-seq", type=int, default=9, help="inputs per group in the sequence view")
-    p.add_argument("--out", help="output file (one split only); default: <split>/overview.jpg")
+    p.add_argument("--out", help="output file (one split only); default: <split>/overview.jpg, or <name>_overview.jpg beside a folder")
     p.add_argument("--overwrite", action="store_true", help="replace an existing overview")
     a = p.parse_args(argv)
     write_overviews(a.spec, a.split, n=a.n, seed=a.seed, out=a.out, overwrite=a.overwrite, max_seq=a.max_seq)

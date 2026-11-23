@@ -128,7 +128,8 @@ class TrainConfig:
         run_dir, name: Run directory, or a suffix for the default one.
         exist_ok: Write into an existing, non-empty ``run_dir``.
         resume: A run directory (or its ``last.ckpt``) to continue. Its saved config is used; only
-            ``epochs``, ``device``, and ``num_workers`` may be changed.
+            ``epochs``, ``device``, and ``num_workers`` may be changed. A ``cosine`` schedule then
+            anneals over the new ``epochs``, from the LR it gives at the current epoch.
     """
 
     model       : str = MISSING
@@ -397,6 +398,23 @@ def _scheduler(cfg: SchedulerConfig, optimizer: torch.optim.Optimizer, epochs: i
     return None
 
 
+def _retarget_cosine(sched: torch.optim.lr_scheduler.LRScheduler, epochs: int) -> None:
+    """After a resume with a new ``epochs``: anneal to ``eta_min`` over it, not the saved ``T_max``.
+
+    ``load_state_dict`` restores the old ``T_max``, so without this a longer resume would keep the old
+    horizon (and cosine past it, back up). The LR jumps to the new curve at the current epoch; later
+    steps follow it. An unchanged ``epochs`` leaves the state untouched (exact resume).
+    """
+    if not isinstance(sched, torch.optim.lr_scheduler.CosineAnnealingLR) or sched.T_max == epochs:
+        return
+    sched.T_max = epochs
+    t = sched.last_epoch
+    lrs = [sched.eta_min + (base - sched.eta_min) * (1 + math.cos(math.pi * t / epochs)) / 2 for base in sched.base_lrs]
+    for group, lr in zip(sched.optimizer.param_groups, lrs, strict=True):
+        group["lr"] = lr
+    sched._last_lr = lrs  # what get_last_lr() reports
+
+
 # --- Checkpoints ---
 
 def _rng_state() -> dict[str, Any]:
@@ -534,6 +552,7 @@ def train(cfg: TrainConfig | DictConfig | Mapping[str, Any]) -> Path:
             s = scheds[n]
             if s is not None and saved_scheds[n] is not None:
                 s.load_state_dict(saved_scheds[n])
+                _retarget_cosine(s, config.epochs)
         scaler.load_state_dict(ckpt["scaler"])
         start_epoch, step, best = ckpt["epoch"], ckpt["step"], ckpt["best"]
         _set_rng_state(ckpt["rng"])

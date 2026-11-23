@@ -95,6 +95,22 @@ def test_resume_continues_exactly(folder: StdPath, tmp_path: StdPath):
         train({"resume": str(resumed), "batch_size": 4})
 
 
+def test_longer_cosine_resume_anneals_over_the_new_epochs(folder: StdPath, tmp_path: StdPath):
+    def lrs(run: StdPath) -> list[float]:
+        return [float(r["lr"]) for r in csv.DictReader((run / "log.csv").open())]
+
+    cosine   = {"scheduler": {"name": "cosine"}}
+    straight = train(_cfg(folder, tmp_path, epochs=4, run_dir=str(tmp_path / "a"), **cosine))
+    part     = train(_cfg(folder, tmp_path, epochs=2, run_dir=str(tmp_path / "b"), **cosine))
+    resumed  = train({"resume": str(part), "epochs": 4})
+    # Epochs 3-4 follow the 4-epoch curve (lr0/2, then lr0·(1 + cos 3π/4)/2), not the saved T_max=2,
+    # which had reached eta_min and would cosine back up.
+    assert lrs(resumed)[2:] == pytest.approx(lrs(straight)[2:], rel=1e-6)
+    assert lrs(resumed)[2] == pytest.approx(lrs(straight)[0] / 2, rel=1e-6)
+    sched = torch.load(resumed / "last.ckpt", weights_only=True)["scheduler"]
+    assert sched["T_max"] == 4 and sched["last_epoch"] == 4
+
+
 def test_multi_optimizer_resume_continues_exactly(tmp_path: StdPath):
     folder   = _images(tmp_path / "train", n=6, size=(16, 24))
     cfg      = {"model": "sci++", "data": str(folder), "num_workers": 0, "device": "cpu"}

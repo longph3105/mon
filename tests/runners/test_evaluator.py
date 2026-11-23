@@ -106,6 +106,32 @@ def test_missing_prediction_and_size_mismatch(pair, tmp_path: StdPath):
         evaluate({"pred": str(pred_dir), "data": str(wrong), "metrics": FR, "device": "cpu"})
 
 
+def test_an_unscorable_image_is_recorded_not_fatal(pair, caplog: pytest.LogCaptureFixture):
+    pred_dir, gt_dir, preds, targets = pair
+    tiny = torch.rand(3, 6, 6)  # below SSIM's 11×11 window; PSNR still scores it
+    _write(pred_dir, {"tiny.png": tiny})
+    _write(gt_dir, {"tiny.png": tiny})
+    means = evaluate({"pred": str(pred_dir), "data": str(gt_dir), "metrics": FR, "device": "cpu"})
+    want_ssim = [ssim(_quant(preds[k]), _quant(targets[k])).item() for k in ("a.png", "night/b.png")]
+    assert means["ssim"] == pytest.approx(sum(want_ssim) / 2)  # the two scored images only
+    rows = {r["stem"]: r for r in csv.DictReader((pred_dir / "metrics.csv").open())}
+    assert rows["tiny"]["ssim"] == "" and float(rows["tiny"]["psnr"]) > 0
+    summary = yaml.safe_load((pred_dir / "metrics.yaml").read_text())
+    assert summary["count"] == 3 and summary["scored"] == {"psnr": 3, "ssim": 2}
+    assert list(summary["failed"]) == ["ssim"] and "window" in summary["failed"]["ssim"]["tiny"]
+    assert "tiny: ssim failed" in caplog.text
+
+
+def test_16_bit_files_are_scaled_by_65535(tmp_path: StdPath):
+    img8  = torch.randint(0, 256, (3, 16, 16), dtype=torch.uint8)
+    pred  = tmp_path / "pred"
+    gt    = tmp_path / "gt"
+    write_image(img8, pred / "a.png")
+    write_image((img8.to(torch.int32) * 257).to(torch.uint16), gt / "a.png")  # same image, 16-bit: 255·257 = 65535
+    means = evaluate({"pred": str(pred), "data": str(gt), "metrics": ["psnr"], "device": "cpu"})
+    assert means["psnr"] > 70  # identical up to eps; dividing the 16-bit file by 255 gave a large negative PSNR
+
+
 @pytest.mark.parametrize(("overrides", "error", "match"), [
     ({"metrics": ["nope"]}, KeyError, "nope"),
     ({"metrics": []}, ValueError, "empty"),

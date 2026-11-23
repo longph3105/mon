@@ -50,6 +50,7 @@ import torch
 from omegaconf import MISSING, DictConfig, OmegaConf
 from rich.table import Table
 from torch import Tensor, nn
+from torchvision.transforms.v2.functional import to_dtype
 
 from mon.core.console import console, get_logger, print_dict
 from mon.core.enums import Task
@@ -287,7 +288,9 @@ def _measure_size(model: Callable[[Tensor], Any], images: list[Tensor], config: 
     """One resolution's row: ``model`` is the network, or the fit function when ``config.zero_shot``."""
     assert config.warmup is not None and config.runs is not None
     # One image on the device at a time: a peak must not include the size's other inputs.
-    batches = [pad_to_multiple((img.float() / 255)[None].expand(config.batch_size, -1, -1, -1), multiple)[0]
+    # scale=True: uint8 / 255, uint16 (16-bit PNG/TIFF) / 65535.
+    batches = [pad_to_multiple(to_dtype(img, torch.float32, scale=True)[None]
+                               .expand(config.batch_size, -1, -1, -1), multiple)[0]
                for img in images]
     if config.zero_shot:
         return _measure_fit_size(model, batches, config, device)

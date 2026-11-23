@@ -11,7 +11,9 @@ import pytest
 import torch
 
 from mon.core.enums import Split
-from mon.data.dataset import ClassFolderDataset, FolderDataset, Modality, classification_layout, detection_layout
+from mon.data.dataset import (
+    ClassFolderDataset, FolderDataset, ImageFolder, Modality, classification_layout, detection_layout,
+)
 from mon.data.io import write_image
 from mon.data.structures import ClassList
 
@@ -127,9 +129,11 @@ def test_write_overviews_folder(tool: ModuleType, tmp_path: StdPath):
     write_image(img(), folder / "x/a.png")
     write_image(img(), folder / "b.png")
     logs: list[str] = []
-    assert tool.write_overviews(str(folder), log=logs.append) == [folder / "overview.jpg"]
-    assert cv2.imread(str(folder / "overview.jpg")) is not None
+    out = folder.resolve().parent / "imgs_overview.jpg"  # beside the folder: ImageFolder reads all of it
+    assert tool.write_overviews(str(folder), log=logs.append) == [out]
+    assert cv2.imread(str(out)) is not None
+    assert sorted(stem for stem, _ in ImageFolder(folder).items()) == ["b", "x/a"]  # not an input
     assert tool.write_overviews(str(folder), log=logs.append) == [] and logs[-1].startswith("skip")
-    assert tool.write_overviews(str(folder), overwrite=True, log=logs.append) == [folder / "overview.jpg"]
+    assert tool.write_overviews(str(folder), overwrite=True, log=logs.append) == [out]
     with pytest.raises(SystemExit):
         tool.write_overviews(str(tmp_path / "missing"))
