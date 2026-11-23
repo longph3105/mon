@@ -413,7 +413,7 @@ class NRQM(Metric):
             raise ValueError(f"NRQM needs H, W >= 70, got {h}×{w}")
         device = levels.device
         scores = [torch.ones(levels.shape[0], dtype=torch.float64, device=device)]
-        for feats, forest in zip(nrqm_features(levels), self.forests):
+        for feats, forest in zip(nrqm_features(levels), self.forests, strict=True):
             scores.append(_forest_predict(feats, [t.to(device) for t in forest]))
         out: Tensor = torch.stack(scores, dim=1) @ self.linear.to(device)
         return out

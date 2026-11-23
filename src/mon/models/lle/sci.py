@@ -338,7 +338,7 @@ def _train_step(model: nn.Module, loss: nn.Module, batch: dict[str, Tensor]) -> 
     assert isinstance(model, SCI)
     stages = model.forward_stages(batch["image"])
     terms: dict[str, Tensor] = {f"stage{k + 1}": loss(x, i)
-                                for k, (x, i) in enumerate(zip(stages["inputs"], stages["illuminations"]))}
+                                for k, (x, i) in enumerate(zip(stages["inputs"], stages["illuminations"], strict=True))}
     return {"loss": torch.stack(list(terms.values())).sum(), **terms}
 
 

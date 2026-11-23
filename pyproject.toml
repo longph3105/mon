@@ -73,6 +73,7 @@ Issues          = "https://github.com/longph3105/mon/issues"
 dev             = [
     "mypy>=2.4",                        # Static type checker.
     "pytest>=9.2",                      # Test runner.
+    "ruff>=0.17.6",                     # Linter only (no formatter: it would undo the aligned `=` and `:`).
     "scikit-image>=0.26",               # Test reference only (TV denoising parity).
     "types-PyYAML>=6.0.12",             # Type stubs for pyyaml.
 ]
@@ -86,6 +87,14 @@ markers         = [
     "gpu: needs CUDA or MPS (deselect with -m 'not gpu')",
     "full: regression on a full dataset against published numbers; off by default (run with -m full)",
 ]
+
+# --- ruff ---
+[tool.ruff]
+line-length     = 120
+target-version  = "py313"
+
+[tool.ruff.lint]
+select          = ["E4", "E7", "E9", "E501", "F", "B", "UP", "C4", "SIM"]
 
 # --- mypy ---
 [tool.mypy]

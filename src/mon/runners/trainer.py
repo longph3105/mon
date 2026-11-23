@@ -248,7 +248,7 @@ def _validate(cfg: TrainConfig) -> None:
 
 
 def _resume_config(user: dict[str, Any]) -> TrainConfig:
-    extra = sorted(set(k for k, v in user.items() if v is not None) - _RESUME_KEYS)
+    extra = sorted({k for k, v in user.items() if v is not None} - _RESUME_KEYS)
     if extra:
         allowed = sorted(_RESUME_KEYS - {"resume"})
         raise ValueError(f"resume uses the run's saved config; only {allowed} may change, got {extra}")

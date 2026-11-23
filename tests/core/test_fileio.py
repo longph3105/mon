@@ -114,9 +114,11 @@ def test_permissions_follow_umask(tmp_path: StdPath):
 def test_crash_during_replace_keeps_old_file_and_cleans_temp(tmp_path: StdPath):
     f = tmp_path / "state.json"
     save_json({"step": 1}, f)
-    with mock.patch.object(fileio.os, "replace", side_effect=OSError("disk full")):
-        with pytest.raises(OSError, match="disk full"):
-            save_json({"step": 2}, f)
+    with (
+        mock.patch.object(fileio.os, "replace", side_effect=OSError("disk full")),
+        pytest.raises(OSError, match="disk full"),
+    ):
+        save_json({"step": 2}, f)
     assert load_json(f) == {"step": 1}
     assert _no_temp_files(tmp_path)
 

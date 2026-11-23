@@ -59,9 +59,8 @@ def test_profiler_stages():
 
 def test_profiler_stage_stops_on_exception():
     prof = Profiler(sync=False)
-    with pytest.raises(ZeroDivisionError):
-        with prof.stage("boom"):
-            1 / 0
+    with pytest.raises(ZeroDivisionError), prof.stage("boom"):
+        _ = 1 / 0
     assert prof["boom"].calls == 1
 
 

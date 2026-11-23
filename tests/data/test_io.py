@@ -2,7 +2,6 @@
 
 from pathlib import Path as StdPath
 
-import cv2
 import numpy as np
 import pytest
 import torch
@@ -168,7 +167,7 @@ def test_iter_frames_range_exact(video: StdPath):
     assert len(frames) == 12 and all(isinstance(f, tv_tensors.Image) and f.shape == (3, 32, 48) for f in frames)
     means = [float(f.float().mean()) for f in iter_video_frames(video, start=2, stop=9, step=3)]
     assert len(means) == 3  # frames 2, 5, 8
-    for got, idx in zip(means, (2, 5, 8)):
+    for got, idx in zip(means, (2, 5, 8), strict=True):
         assert got == pytest.approx(idx * 20, abs=4)  # lossy codec
 
 

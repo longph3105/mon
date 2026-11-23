@@ -119,7 +119,7 @@ def test_forward_shapes_ranges_and_histogram():
     assert out["enhanced"].shape == (2, 3, 16, 40) and out["gray"].shape == (2, 1, 16, 40)
     assert out["color_hist"].shape == (2, 3, 16)
     assert torch.allclose(out["color_hist"].sum(-1), torch.ones(2, 3))
-    assert 0 <= out["enhanced"].min() and out["enhanced"].max() <= 1
+    assert out["enhanced"].min() >= 0 and out["enhanced"].max() <= 1
 
 
 def test_sizes_must_be_divisible_by_8():

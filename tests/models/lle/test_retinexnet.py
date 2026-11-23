@@ -249,7 +249,7 @@ def test_forward_definition_and_any_size():
             out = model(torch.rand(1, 3, h, w))
             assert out["enhanced"].shape == (1, 3, h, w) and out["illumination"].shape == (1, 1, h, w)
             assert torch.allclose(out["enhanced"], out["reflectance"] * out["illumination_adjusted"])
-            assert 0 < out["reflectance"].min() and out["reflectance"].max() < 1
+            assert out["reflectance"].min() > 0 and out["reflectance"].max() < 1
 
 
 def test_state_dict_layout():

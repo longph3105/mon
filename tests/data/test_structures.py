@@ -26,8 +26,11 @@ def test_classdef_defaults_and_validation():
     assert ClassDef("car", 3).color == c.color  # deterministic
     assert ClassDef("car", 4).color != c.color
     assert ClassDef("x", 0, color=[1, 2, 3]).color == (1, 2, 3)  # list (YAML) → tuple
-    for bad in [dict(name="", id=0), dict(name="a", id=-1), dict(name="a", id=True), dict(name="a", id=0, source_id=-2),
-                dict(name="a", id=0, color=(1, 2)), dict(name="a", id=0, color=(0, 0, 256))]:
+    for bad in [
+        {"name": "", "id": 0}, {"name": "a", "id": -1}, {"name": "a", "id": True},
+        {"name": "a", "id": 0, "source_id": -2}, {"name": "a", "id": 0, "color": (1, 2)},
+        {"name": "a", "id": 0, "color": (0, 0, 256)},
+    ]:
         with pytest.raises(ValueError):
             ClassDef(**bad)
 

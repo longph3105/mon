@@ -108,10 +108,11 @@ def main(checkout: str, lol_v1: str) -> None:
 
     p8 = (pred.double() * 255).round().numpy().transpose(0, 2, 3, 1)
     t8 = (target.double() * 255).round().numpy().transpose(0, 2, 3, 1)
+    pairs = list(zip(p8, t8, strict=True))
     result["skimage"] = {
-        "psnr": [float(peak_signal_noise_ratio(t, p, data_range=255)) for p, t in zip(p8, t8)],
+        "psnr": [float(peak_signal_noise_ratio(t, p, data_range=255)) for p, t in pairs],
         "ssim": [float(structural_similarity(t, p, data_range=255, channel_axis=2, gaussian_weights=True,
-                                             sigma=1.5, use_sample_covariance=False)) for p, t in zip(p8, t8)],
+                                             sigma=1.5, use_sample_covariance=False)) for p, t in pairs],
     }
     result["lpips"] = {}
     for net in ("alex", "vgg"):

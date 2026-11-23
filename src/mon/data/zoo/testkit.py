@@ -229,7 +229,7 @@ def _mef(w: _Writer) -> None:
     for scene in _evenly(eligible, _MEF_SCENES):
         exposures = sorted(scenes[scene], key=lambda kv: (len(kv[0]), kv[0]))  # k = 1 (darkest) … n (brightest)
         picked = _evenly(exposures, _MEF_EXPOSURES)
-        for i, (k, files) in enumerate(picked, start=1):
+        for i, (_, files) in enumerate(picked, start=1):
             w.write(_square(_read(files["image"])), f"mef/test/images/sice_{scene}/{i}.png", files["image"])
         target = picked[0][1]["target"]
         w.write(_square(_read(target)), f"mef/test/targets/sice_{scene}.png", target)

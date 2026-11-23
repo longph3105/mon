@@ -3,6 +3,7 @@
 import ast
 import importlib
 import re
+from itertools import pairwise
 from pathlib import Path as StdPath
 from types import ModuleType
 
@@ -42,7 +43,7 @@ def test_exports_match_submodule_all(package: str):
         for name in importlib.import_module(f"{package}.{sub}").__all__
         if (package, sub, name) not in EXCLUDED
     }
-    assert pkg._EXPORTS == expected
+    assert expected == pkg._EXPORTS
 
 
 @pytest.mark.parametrize("package", PACKAGES)
@@ -108,7 +109,7 @@ def _overview_rows(package: str) -> list[tuple[str, str, list[str]]]:
     spans = [m.span() for m in re.finditer(r"=+", lines[rule_idx[0]])]
     cells: list[list[str]] = []
     for line in lines[rule_idx[1] + 1 : rule_idx[2]]:
-        for (_, end), (nxt, _) in zip(spans, spans[1:]):
+        for (_, end), (nxt, _) in pairwise(spans):
             assert not line[end:nxt].strip(), f"text in a column gap (misaligned row): {line!r}"
         assert len(line) <= spans[-1][1], f"row wider than the table: {line!r}"
         module, purpose, names = (line[a:b].strip() for a, b in spans)

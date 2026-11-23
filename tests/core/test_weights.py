@@ -3,7 +3,6 @@
 import functools
 import hashlib
 import pathlib
-from collections.abc import Callable
 
 import pytest
 import torch

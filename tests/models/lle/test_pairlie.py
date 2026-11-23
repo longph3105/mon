@@ -122,7 +122,7 @@ def test_forward_definition_and_alpha():
         denoised = model.N_net(x)
     assert torch.allclose(out["denoised"], denoised)
     assert torch.allclose(out["enhanced"], out["illumination"] ** 0.5 * out["reflectance"])
-    assert out["illumination"].shape == (2, 1, 13, 18) and 0 < out["illumination"].min()
+    assert out["illumination"].shape == (2, 1, 13, 18) and out["illumination"].min() > 0
     assert out["enhanced"].min() >= 0 and out["enhanced"].max() <= 1
     model.alpha = 1.0
     with torch.no_grad():

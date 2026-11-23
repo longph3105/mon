@@ -20,6 +20,7 @@ __all__ = [
     "LPIPS_Weights",
 ]
 
+from itertools import pairwise
 from typing import ClassVar, Literal
 
 import torch
@@ -103,7 +104,7 @@ class LPIPS(Metric):
         self.net = net
         bounds, channels = _SLICES[net]
         features = _backbone(net, pretrained_backbone)
-        self.slices = nn.ModuleList(nn.Sequential(*features[a:b]) for a, b in zip(bounds, bounds[1:]))
+        self.slices = nn.ModuleList(nn.Sequential(*features[a:b]) for a, b in pairwise(bounds))
         lins = [nn.Conv2d(c, 1, 1, bias=False) for c in channels]
         self.lins = nn.ModuleList(lins)
         self.register_buffer("shift", torch.tensor([-0.030, -0.088, -0.188]).view(1, 3, 1, 1), persistent=False)
@@ -144,5 +145,5 @@ class LPIPS(Metric):
             raise ValueError(f"LPIPS needs RGB images, got {pred.shape[1]} channel(s)")
         dtype = self.shift.dtype
         f0, f1 = self._features(pred.to(dtype)), self._features(target.to(dtype))
-        total = sum(lin((a - b).square()).mean(dim=(2, 3)) for lin, a, b in zip(self.lins, f0, f1))
+        total = sum(lin((a - b).square()).mean(dim=(2, 3)) for lin, a, b in zip(self.lins, f0, f1, strict=True))
         return torch.as_tensor(total).flatten().double()

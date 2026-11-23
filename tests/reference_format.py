@@ -43,7 +43,10 @@ def _format(obj: Any, level: int, used: int, tail: int) -> str:
     else:
         items = [""] * len(obj)
         values = list(obj)
-    lines = [f"{inner}{key}{_format(v, level + 1, len(inner) + len(key), 1)}," for key, v in zip(items, values)]
+    lines = [
+        f"{inner}{key}{_format(v, level + 1, len(inner) + len(key), 1)},"
+        for key, v in zip(items, values, strict=True)
+    ]
     brackets = {dict: "{}", list: "[]", tuple: "()"}[type(obj)]
     return brackets[0] + "\n" + "\n".join(lines) + "\n" + INDENT * level + brackets[1]
 

@@ -297,7 +297,7 @@ def predict(cfg: PredictConfig | DictConfig | Mapping[str, Any]) -> Path:
                 for name, value in saved.items():
                     images = crop_to(value, size).clamp(0, 1).float().cpu()
                     suffix = "" if name == key else f"_{name}"
-                    for image, meta in zip(images, batch["meta"]):
+                    for image, meta in zip(images, batch["meta"], strict=True):
                         write_image(image, run_dir / f"{meta.stem}{suffix}{config.ext}")
 
     save_yaml(profiler.summary(), run_dir / "timing.yaml")

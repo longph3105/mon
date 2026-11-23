@@ -158,9 +158,8 @@ def test_speed_column(speed: float | None, expected: str):
 def test_progress_bar_tracks_and_renders(no_rank: None):
     pbar = mc.progress_bar()
     assert isinstance(pbar, Progress) and not pbar.disable
-    with mc.console.capture() as cap:
-        with pbar:
-            assert list(pbar.track(range(5), description="Predicting")) == list(range(5))
+    with mc.console.capture() as cap, pbar:
+        assert list(pbar.track(range(5), description="Predicting")) == list(range(5))
     out = cap.get()
     assert "Predicting" in out and "5/5" in out
 
