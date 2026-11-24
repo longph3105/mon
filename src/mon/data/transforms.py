@@ -12,7 +12,8 @@ transforms on the whole sample, photometric ones only on input keys via ``ApplyT
         v2.SanitizeBoundingBoxes(),
     ])
 
-Sizing for networks with a stride: train with ``ResizeToMultiple``; at inference, pad with
+Sizing for networks with a stride: train with ``ResizeToMultiple`` (then ``ClampPixels``: bicubic
+resizing overshoots ``[0, 1]``); at inference, pad with
 ``PadToMultiple`` (or ``pad_to_multiple`` on a batch) and crop predictions back with
 ``crop_to``. Padding is exact; resizing in and back out resamples the output twice.
 
@@ -23,6 +24,7 @@ References:
 
 __all__ = [
     "ApplyTo",
+    "ClampPixels",
     "MinMaxNormalize",
     "PadToMultiple",
     "ResizeToMultiple",
@@ -95,6 +97,41 @@ class ApplyTo(torch.nn.Module):
 
     def extra_repr(self) -> str:
         return f"keys={list(self.keys)}, missing_ok={self.missing_ok}"
+
+
+# --- Value range ---
+
+class ClampPixels(v2.Transform):  # type: ignore[misc]  # torchvision is untyped
+    """Clamp float images and videos to ``[low, high]``; masks, boxes and integer tensors pass through.
+
+    Bicubic (and antialiased) resizing overshoots near edges, so a float image in ``[0, 1]`` comes
+    out with values slightly below 0 and above 1. Run this after a resize to restore the range.
+
+    Args:
+        low, high: Range bounds (``low < high``).
+
+    Examples:
+        >>> x = tv_tensors.Image(torch.tensor([[[-0.1, 0.5, 1.2]]]))
+        >>> ClampPixels()(x).tolist()
+        [[[0.0, 0.5, 1.0]]]
+    """
+
+    def __init__(self, low: float = 0.0, high: float = 1.0) -> None:
+        super().__init__()
+        if not low < high:
+            raise ValueError(f"need low < high, got low={low}, high={high}")
+        self.low  = low
+        self.high = high
+
+    def transform(self, inpt: Any, params: dict[str, Any]) -> Any:
+        pixels = isinstance(inpt, tv_tensors.Image | tv_tensors.Video) or type(inpt) is torch.Tensor
+        if not pixels or not inpt.is_floating_point():
+            return inpt
+        out = inpt.clamp(self.low, self.high)
+        return tv_tensors.wrap(out, like=inpt) if isinstance(inpt, tv_tensors.TVTensor) else out
+
+    def extra_repr(self) -> str:
+        return f"low={self.low}, high={self.high}"
 
 
 # --- Sizing to a stride multiple ---

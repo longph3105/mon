@@ -53,7 +53,7 @@ from mon.core.runtime import seed_everything, select_device
 from mon.data.dataset import DATASETS, ImageFolder
 from mon.data.loader import collate, create_dataloader
 from mon.data.structures import Sample
-from mon.data.transforms import ResizeToMultiple, crop_to, pad_to_multiple
+from mon.data.transforms import ClampPixels, ResizeToMultiple, crop_to, pad_to_multiple
 from mon.metrics.base import Metric
 from mon.metrics.registry import METRICS
 from mon.models.registry import MODELS, load
@@ -97,7 +97,8 @@ class TrainConfig:
         data: Training set: a ``DATASETS`` id (``split``) or a folder of images (unpaired training).
         split: Dataset split.
         resize: ``[H, W]`` every training image is resized to (bicubic, antialiased), rounded up to the
-            model's ``input_multiple``; ``None``: native size, rounded up the same way.
+            model's ``input_multiple``; ``None``: native size, rounded up the same way. Pixels are then
+            clamped to ``[0, 1]`` (bicubic overshoots).
         crop: Random square crop side after resizing; ``None``: none.
         hflip: Random horizontal flips.
         shuffle: Shuffle each epoch (order seeded by ``seed + epoch``, so resuming repeats it).
@@ -340,6 +341,7 @@ def _train_transform(cfg: TrainConfig, multiple: int) -> v2.Transform:
     steps: list[Any] = [v2.ToDtype(torch.float32, scale=True)]
     if cfg.resize is not None or multiple > 1:
         steps.append(ResizeToMultiple(multiple, cfg.resize, interpolation=v2.InterpolationMode.BICUBIC))
+        steps.append(ClampPixels())  # bicubic + antialias overshoots [0, 1]
     if cfg.crop is not None:
         steps.append(v2.RandomCrop(cfg.crop))
     if cfg.hflip:

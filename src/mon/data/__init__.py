@@ -64,6 +64,7 @@ _EXPORTS: dict[str, str] = {
     "SampleMeta"           : "structures",
     # transforms
     "ApplyTo"              : "transforms",
+    "ClampPixels"          : "transforms",
     "MinMaxNormalize"      : "transforms",
     "PadToMultiple"        : "transforms",
     "ResizeToMultiple"     : "transforms",
@@ -74,6 +75,7 @@ _EXPORTS: dict[str, str] = {
 # Literal list so static tools (mypy, pyright) see the re-exports; must equal sorted(_EXPORTS).
 __all__ = [
     "ApplyTo",
+    "ClampPixels",
     "ClassDef",
     "ClassFolderDataset",
     "ClassList",
@@ -126,5 +128,5 @@ if TYPE_CHECKING:  # Real imports for type checkers and IDEs; never executed.
     from mon.data.loader import LIST_KEYS, collate, create_dataloader
     from mon.data.structures import ClassDef, ClassList, Sample, SampleMeta
     from mon.data.transforms import (
-        ApplyTo, MinMaxNormalize, PadToMultiple, ResizeToMultiple, crop_to, pad_to_multiple,
+        ApplyTo, ClampPixels, MinMaxNormalize, PadToMultiple, ResizeToMultiple, crop_to, pad_to_multiple,
     )

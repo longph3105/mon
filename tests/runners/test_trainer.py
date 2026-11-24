@@ -287,3 +287,16 @@ def test_resume_on_cuda(folder: StdPath, tmp_path: StdPath):
     part = train(_cfg(folder, tmp_path, epochs=1, device="cuda", run_dir=str(tmp_path / "gpu")))
     resumed = train({"resume": str(part), "epochs": 2})
     assert torch.load(resumed / "last.ckpt", weights_only=True)["epoch"] == 2
+
+
+def test_train_transform_keeps_pixels_in_range():
+    from torchvision import tv_tensors  # noqa: PLC0415
+
+    from mon.runners.trainer import _train_transform  # noqa: PLC0415
+
+    x = torch.zeros(3, 64, 64, dtype=torch.uint8)
+    x[:, :, 32:] = 255                                       # a sharp edge: bicubic overshoots both ways
+    cfg = resolve_train_config({"model": "zero_dce", "resize": [24, 24]})
+    out = _train_transform(cfg, 1)({"image": tv_tensors.Image(x)})["image"]
+    assert out.shape == (3, 24, 24) and out.dtype == torch.float32
+    assert out.min() >= 0 and out.max() <= 1

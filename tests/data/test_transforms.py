@@ -8,7 +8,7 @@ from torchvision.transforms import v2
 from mon.core.size import Size
 from mon.data.structures import SampleMeta
 from mon.data.transforms import (
-    ApplyTo, MinMaxNormalize, PadToMultiple, ResizeToMultiple, crop_to, pad_to_multiple,
+    ApplyTo, ClampPixels, MinMaxNormalize, PadToMultiple, ResizeToMultiple, crop_to, pad_to_multiple,
 )
 
 
@@ -71,6 +71,39 @@ def test_apply_to_rejects_bad_args():
         ApplyTo(["image"], v2.Identity())(torch.rand(3, 4, 4))
     with pytest.raises(TypeError, match="must return a dict"):
         ApplyTo(["image"], lambda d: d["image"])(_sample())
+
+
+# --- ClampPixels ---
+
+def test_clamp_pixels_clamps_float_images_only():
+    s = _sample(8, 8)
+    s["image"]  = tv_tensors.Image(torch.linspace(-0.5, 1.5, 192).reshape(3, 8, 8))
+    s["mask"]   = tv_tensors.Mask(torch.full((8, 8), 7, dtype=torch.uint8))
+    s["labels"] = torch.tensor([3])
+    out = ClampPixels()(s)
+    assert isinstance(out["image"], tv_tensors.Image)
+    assert out["image"].min() == 0 and out["image"].max() == 1
+    assert torch.equal(out["image"], s["image"].clamp(0, 1))
+    assert torch.equal(out["target"], s["target"])                    # already in [0, 1]
+    assert torch.equal(out["mask"], s["mask"]) and torch.equal(out["boxes"], s["boxes"])
+    assert out["labels"] is s["labels"] and out["meta"] is s["meta"]
+
+
+def test_clamp_pixels_range_and_bad_range():
+    x = tv_tensors.Video(torch.tensor([-2.0, 0.0, 3.0]).reshape(1, 1, 1, 3))
+    assert ClampPixels(-1, 2)(x).flatten().tolist() == [-1.0, 0.0, 2.0]
+    with pytest.raises(ValueError, match="low < high"):
+        ClampPixels(1, 1)
+
+
+def test_bicubic_resize_overshoots_and_clamp_restores():
+    x = torch.zeros(3, 64, 64)
+    x[:, :, 32:] = 1.0                                                 # a sharp edge
+    t = v2.Compose([ResizeToMultiple(1, 24, interpolation=v2.InterpolationMode.BICUBIC), ClampPixels()])
+    raw = ResizeToMultiple(1, 24, interpolation=v2.InterpolationMode.BICUBIC)(tv_tensors.Image(x))
+    assert raw.min() < 0 or raw.max() > 1                              # the overshoot this guards against
+    out = t(tv_tensors.Image(x))
+    assert out.min() >= 0 and out.max() <= 1
 
 
 # --- ResizeToMultiple ---
