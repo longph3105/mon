@@ -5,6 +5,8 @@ official Zero-DCE code exactly (``Myloss.py``), which is what the published Zero
 Zero-DCE++ weights were trained with. Other copies in ``mon_old`` (``nn/loss/vision.py``)
 differ: color constancy there takes ``sqrt(d_rg + d_rb + d_gb)`` instead of
 ``sqrt(d_rg² + d_rb² + d_gb²)``, and total variation averages over channels (3× smaller).
+One deliberate difference from the official code: color constancy clamps its sum before ``sqrt``, so its
+gradient stays finite at equal channel means (``SQRT_MIN``; identical otherwise).
 
 Every loss computes one value per sample, then applies ``reduction``: ``"mean"`` (default;
 equals the official batch value), ``"sum"``, or ``"none"`` (shape ``[B]``). Inputs are
@@ -50,10 +52,17 @@ class _ZeroReferenceLoss(nn.Module):
         return f"reduction={self.reduction!r}"
 
 
+SQRT_MIN = 1e-12
+"""Floor of ``ColorConstancyLoss``'s sum before ``sqrt`` (its loss is then at least ``1e-6``)."""
+
+
 class ColorConstancyLoss(_ZeroReferenceLoss):
     """Penalize differences between the mean R, G and B of the enhanced image (``L_col``).
 
-    ``sqrt(d_rg² + d_rb² + d_gb²)`` with ``d_rg = (mean_R - mean_G)²`` (gray-world assumption).
+    ``sqrt(d_rg² + d_rb² + d_gb²)`` with ``d_rg = (mean_R - mean_G)²`` (gray-world assumption). The sum is
+    clamped to ``SQRT_MIN`` before the root: at equal channel means (e.g. a fully saturated crop) the official
+    ``sqrt(0)`` has an infinite gradient (NaN in backward); above ``SQRT_MIN`` values and gradients are the
+    official ones.
 
     Examples:
         >>> gray = torch.full((2, 3, 8, 8), 0.5)
@@ -69,7 +78,7 @@ class ColorConstancyLoss(_ZeroReferenceLoss):
         d_rg = (mr - mg) ** 2
         d_rb = (mr - mb) ** 2
         d_gb = (mb - mg) ** 2
-        return reduce_loss(torch.sqrt(d_rg**2 + d_rb**2 + d_gb**2), self.reduction)
+        return reduce_loss(torch.sqrt((d_rg**2 + d_rb**2 + d_gb**2).clamp_min(SQRT_MIN)), self.reduction)
 
 
 class ExposureControlLoss(_ZeroReferenceLoss):

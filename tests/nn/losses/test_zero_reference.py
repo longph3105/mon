@@ -56,6 +56,15 @@ def test_color_constancy_matches_reference(images):
     assert torch.allclose(ColorConstancyLoss()(enh), ref_col(enh), atol=1e-7)
 
 
+def test_color_constancy_gradient_at_equal_means():
+    """Equal channel means (a fully saturated crop): finite loss and gradient (the official sqrt(0) gives NaN)."""
+    x = torch.ones(2, 3, 8, 8, requires_grad=True)
+    loss = ColorConstancyLoss()(x)
+    loss.backward()
+    assert torch.isfinite(loss) and float(loss) <= 1e-6
+    assert x.grad is not None and torch.isfinite(x.grad).all()
+
+
 def test_spatial_consistency_matches_reference(images):
     low, enh = images
     assert torch.allclose(SpatialConsistencyLoss()(enh, low), ref_spa(low, enh), atol=1e-7)
