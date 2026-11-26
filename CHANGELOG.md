@@ -7,6 +7,12 @@
 - `ClampPixels` (`mon.data`): clamps float images and videos to a range
   (default `[0, 1]`); masks, boxes and integer tensors pass through.
 
+### Changed
+
+- Training run folders use ISO dates:
+  `runs/train/<model>/<data>/<YYYY-MM-DD_HHMMSS>[_<name>]` (was
+  `YYYY_MM_DD_HHMMSS`).
+
 ### Fixed
 
 - Training transform: bicubic resizing (`resize`) left pixels outside

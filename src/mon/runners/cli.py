@@ -22,7 +22,7 @@ commands:
 examples:
   mon train model=zero_dce                                  # official recipe: SICE-ME, 100 epochs
   mon train model=zero_dce epochs=10 val_data=lol_v1 name=short
-  mon train resume=runs/train/zero_dce/sice_me_train/2026_11_19_101500 epochs=200
+  mon train resume=runs/train/zero_dce/sice_me_train/2026-11-19_101500 epochs=200
   mon predict model=zero_dce data=path/to/images
   mon predict model=zero_dce++ weights=sice model_args.scale_factor=12 data=lol_v1 split=test
   mon predict model=zero_ig data=night.png fit_args.iterations=500 device=cuda:0

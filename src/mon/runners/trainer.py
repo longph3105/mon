@@ -7,7 +7,7 @@ gives the loss, the runner does backward, AMP scaling, gradient clipping, the op
 scheduler steps. Validation (optional) uses the evaluation protocol: inputs padded to the model's
 ``input_multiple``, outputs cropped back, clamped, and rounded to 8-bit levels, then ``mon.metrics``.
 
-Run directory (default ``runs_dir() / "train" / <model> / <data> / <YYYY_MM_DD_HHMMSS>[_<name>]``):
+Run directory (default ``runs_dir() / "train" / <model> / <data> / <YYYY-MM-DD_HHMMSS>[_<name>]``):
 
 - ``config.yaml``: the resolved config, with the seed;
 - ``log.csv``: one row per epoch (step, lr, seconds, mean train terms, validation metrics);
@@ -522,7 +522,7 @@ def train(cfg: TrainConfig | DictConfig | Mapping[str, Any]) -> Path:
     elif config.run_dir is not None:
         run_dir = Path(config.run_dir).expanduser()
     else:
-        stamp   = time.strftime("%Y_%m_%d_%H%M%S") + (f"_{config.name}" if config.name else "")
+        stamp   = time.strftime("%Y-%m-%d_%H%M%S") + (f"_{config.name}" if config.name else "")
         run_dir = runs_dir() / "train" / config.model / label / stamp
     if not resume:
         _check_run_dir(run_dir, config.exist_ok)
