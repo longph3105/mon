@@ -19,7 +19,6 @@ follow both.
 | `tools/`         | Scripts on top of `mon`                  |
 | `tests/`         | Tests, mirroring `src/mon/`              |
 | `docs/`          | Long-form docs                           |
-| `logs/`          | Agent work logs                          |
 | `pyproject.toml` | Package metadata and tool settings       |
 | `uv.lock`        | Locked dependencies                      |
 | `CHANGELOG.md`   | User-facing changes                      |
@@ -53,15 +52,12 @@ Before writing or changing code in `src/` or `tests/`, read and follow
 
 ## Logs
 
-- Log work on this repo in `logs/<machine>/YYYY-MM-DD.md`, not in the
-  workspace's `coord/logs/`. Machine name, times and entry format follow
-  `../../coord/AGENTS.md` ("Machine name", "Times", "Logs").
-- Write an entry after significant work: what changed and why, results
-  (metrics, parity numbers), and what is left open.
-- Each machine writes only to its own folder. Never rewrite or delete earlier
-  entries; add a correction as a new entry.
-- Each version branch starts with empty logs. Older logs stay at the
-  release tags: up to 3.0.0 at `v3.0.0`, 3.0.1 at `v3.0.1`
-  (`git show v3.0.1:logs/<machine>/YYYY-MM-DD.md`).
-- Logs are committed like any other change in this repo (only when the owner
-  asks), with the message `logs: <machine> <short title>`.
+- Log work on this repo in the workspace log,
+  `../../coord/logs/<machine>/YYYY-MM-DD.md`, with `Scope: code/mon`.
+  Format and rules: `../../coord/AGENTS.md` ("Logs").
+- What changed in a version goes in `CHANGELOG.md`; results (metrics, parity
+  numbers) go in the workspace wiki (`wiki/wiki/experiments/`), and the log
+  entry names the page.
+- The repo no longer keeps a `logs/` folder. Old logs are in git: up to
+  3.0.0 at `v3.0.0`, 3.0.1 at `v3.0.1`, and 3.0.2 up to 2026-11-27 at
+  `9977c1e` (e.g. `git show 9977c1e:logs/<machine>/YYYY-MM-DD.md`).
